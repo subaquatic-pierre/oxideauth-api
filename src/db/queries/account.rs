@@ -70,7 +70,7 @@ pub async fn get_account_by_email_db(pool: &SqlitePool, email: &str) -> Result<A
             let roles_r = sqlx::query!(
                 r#"
                   SELECT * FROM role_bindings
-                  WHERE role_id = ?
+                  WHERE account_id = ?
                 "#,
                 record.id
             )
@@ -112,4 +112,23 @@ pub async fn get_account_by_email_db(pool: &SqlitePool, email: &str) -> Result<A
         }
         None => Err(Error::RowNotFound),
     }
+}
+
+pub async fn get_account_id_by_email_db(pool: &SqlitePool, email: &str) -> Result<String> {
+    // Fetch the newly created user from the database
+    match sqlx::query!(
+        r#"
+          SELECT id FROM accounts
+          WHERE email = ?
+        "#,
+        email
+    )
+    .fetch_optional(pool)
+    .await?
+    {
+        Some(r) => Ok(r.id.unwrap()),
+        None => Err(Error::RowNotFound),
+    }
+
+    // Ok("to".to_string())
 }

@@ -6,6 +6,7 @@ use uuid::Uuid;
 use super::{principal::Principal, role::Role};
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum AccountType {
     User,
     Service,

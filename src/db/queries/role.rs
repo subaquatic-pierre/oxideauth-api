@@ -216,6 +216,8 @@ pub async fn get_role_permissions_db(pool: &SqlitePool, role_id: &str) -> Result
         .map(|row| row.permission_name.to_string())
         .collect();
 
+    debug!("Permissions in get_role_permissions_db, {permissions:?}");
+
     Ok(permissions)
 }
 

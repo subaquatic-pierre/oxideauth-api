@@ -20,7 +20,7 @@ pub async fn create_tables(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS accounts (
-        id TEXT PRIMARY KEY,
+        id TEXT PRIMARY KEY NOT NULL,
         email TEXT NOT NULL,
         password_hash TEXT NOT NULL,
         name TEXT NOT NULL,

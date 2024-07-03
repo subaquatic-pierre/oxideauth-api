@@ -13,6 +13,7 @@ mod routes;
 mod utils;
 
 use log::info;
+use routes::accounts::register_accounts_collection;
 use routes::auth::register_auth_collection;
 use routes::roles::register_roles_collection;
 use routes::users::register_users_collection;
@@ -40,6 +41,7 @@ async fn main() -> io::Result<()> {
             .service(register_auth_collection())
             .service(register_roles_collection())
             .service(register_users_collection())
+            .service(register_accounts_collection())
     })
     .bind("0.0.0.0:8080")?
     .run();

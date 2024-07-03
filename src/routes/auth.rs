@@ -3,13 +3,16 @@ use actix_web::{web::scope, Scope};
 
 use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
 use jsonwebtoken::{encode, EncodingKey, Header};
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::app::AppData;
 use crate::db::queries::account::{create_account_db, get_account_by_email_db};
+use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
 use crate::models::account::{Account, AccountType};
 use crate::models::error::ApiError;
+use crate::models::role::Role;
 use crate::models::token::TokenClaims;
 use crate::utils::crypt::{hash_password, verify_password};
 use crate::utils::token::gen_token;
@@ -56,10 +59,33 @@ pub async fn register_user(
         Err(e) => return e.respond_to(&req),
     };
 
-    HttpResponse::Ok().json(RegisterRes {
-        token: token,
-        user: user,
-    })
+    let role = match get_role_db(&app_data.db_pool, "viewer").await {
+        Ok(res) => res,
+        Err(_e) => {
+            let viewer_role = Role::new("viewer", vec![]);
+            if let Err(e) = create_role_db(&app_data.db_pool, &viewer_role).await {
+                error!("Unable to create viewer role, {viewer_role:?}, {e}");
+            }
+            viewer_role
+        }
+    };
+
+    match bind_role_to_account_db(&app_data.db_pool, &user, &role).await {
+        Ok(_) => match get_account_by_email_db(&app_data.db_pool, &user.email).await {
+            Ok(db_user) => HttpResponse::Ok().json(RegisterRes {
+                token: token,
+                user: db_user,
+            }),
+            Err(e) => {
+                error!("Unable to create new user, {user:?}");
+                ApiError::new(&e.to_string()).respond_to(&req)
+            }
+        },
+        Err(e) => {
+            error!("Unable to create new user, {user:?}");
+            ApiError::new(&e.to_string()).respond_to(&req)
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
