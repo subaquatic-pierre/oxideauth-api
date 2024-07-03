@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::models::{
     account::Account,
-    error::{ApiError, ApiResult},
+    api::{ApiError, ApiResult},
     role::{Permission, Role, RolePermissions},
 };
 

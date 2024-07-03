@@ -28,13 +28,6 @@ impl Display for ApiError {
     }
 }
 
-// impl ResponseError for ApiError {
-//     fn error_response(&self) -> actix_web::HttpResponse {
-//         return HttpResponse::ExpectationFailed()
-//             .json(json!({"status":"error","message": self.message}));
-//     }
-// }
-
 impl Responder for ApiError {
     type Body = BoxBody;
     fn respond_to(self, _req: &actix_web::HttpRequest) -> HttpResponse<Self::Body> {
@@ -44,15 +37,6 @@ impl Responder for ApiError {
 
 pub type ApiResult<T> = Result<T, ApiError>;
 
-// pub struct ApiResult<T>(Result<T, ApiError>);
-
-// impl<T> Responder for ApiResult<T> {
-//     type Body = BoxBody;
-//     fn respond_to(self, _req: &actix_web::HttpRequest) -> HttpResponse<Self::Body> {
-//         match self.0 {
-//             Ok(t) => HttpResponse::ExpectationFailed().json(json!({"status":"error"})),
-//             Err(e) => HttpResponse::ExpectationFailed()
-//                 .json(json!({"status":"error","message": e.message})),
-//         }
-//     }
-// }
+pub trait ApiModel {
+    fn save<T>(&self) -> ApiResult<T>;
+}

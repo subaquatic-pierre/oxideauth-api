@@ -15,7 +15,7 @@ use crate::db::queries::role::{
 };
 use crate::lib::token::get_token_from_req;
 use crate::models::account::Account;
-use crate::models::error::ApiError;
+use crate::models::api::ApiError;
 use crate::models::role::{Permission, Role};
 use crate::models::token::TokenClaims;
 use log::{debug, error, info};
@@ -34,38 +34,19 @@ pub struct CreateRoleRes {
 #[post("/create-role")]
 pub async fn create_role(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<CreateRoleReq>,
 ) -> impl Responder {
     debug!("{:?}", body);
-    let token_str = match get_token_from_req(&req) {
-        Some(token) => token,
-        None => return ApiError::new("Unable to get token from request").respond_to(&req),
-    };
 
-    debug!("token: {token_str:?}");
-
-    let claims = match TokenClaims::from_str(&token_str, &app_data.config) {
-        Ok(claims) => claims,
-        Err(e) => {
-            debug!("{:?}", e);
-            // validate expiration
-
-            // validate roles
-
-            // create new role
-            return e.respond_to(&req);
-        }
-    };
-
-    if let Ok(role) = get_role_db(&app_data.db_pool, &body.name).await {
+    if let Ok(role) = get_role_db(&app.db, &body.name).await {
         return ApiError::new(&format!("Role '{:}' already exists", role.name)).respond_to(&req);
     }
 
     // create role
     let permissions = body.permissions.clone().unwrap_or(vec![]);
     let new_role = Role::new(&body.name, permissions);
-    match create_role_db(&app_data.db_pool, &new_role).await {
+    match create_role_db(&app.db, &new_role).await {
         Ok(role) => return HttpResponse::Ok().json(CreateRoleRes { role }),
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     }
@@ -83,11 +64,11 @@ pub struct DescribeRoleRes {
 #[post("/describe-role")]
 pub async fn describe_role(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<DescribeRoleReq>,
 ) -> impl Responder {
     // verify credentials
-    match get_role_db(&app_data.db_pool, &body.role).await {
+    match get_role_db(&app.db, &body.role).await {
         Ok(role) => HttpResponse::Ok().json(DescribeRoleRes { role }),
         Err(e) => ApiError::new(&e.to_string()).respond_to(&req),
     }
@@ -99,9 +80,9 @@ pub struct ListRoleRes {
 }
 
 #[get("/list-roles")]
-pub async fn list_roles(req: HttpRequest, app_data: Data<AppData>) -> impl Responder {
+pub async fn list_roles(req: HttpRequest, app: Data<AppData>) -> impl Responder {
     // verify credentials
-    match get_all_roles_db(&app_data.db_pool).await {
+    match get_all_roles_db(&app.db).await {
         Ok(roles) => HttpResponse::Ok().json(ListRoleRes { roles }),
         Err(e) => ApiError::new(&e.to_string()).respond_to(&req),
     }
@@ -120,29 +101,17 @@ pub struct DeleteRoleRes {
 #[post("/delete-role")]
 pub async fn delete_role(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<DeleteRoleReq>,
 ) -> impl Responder {
     // verify credentials
-    let token_str = match get_token_from_req(&req) {
-        Some(token) => token,
-        None => return ApiError::new("Unable to get token from request").respond_to(&req),
-    };
 
-    if let Ok(claims) = TokenClaims::from_str(&token_str, &app_data.config) {
-        // validate expiration
-
-        // validate roles
-
-        // create new role
-    }
-
-    let role = match get_role_db(&app_data.db_pool, &body.role).await {
+    let role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
-    match delete_role_db(&app_data.db_pool, &role).await {
+    match delete_role_db(&app.db, &role).await {
         Ok(_) => HttpResponse::Ok().json(DeleteRoleRes {
             deleted_role: role.name,
         }),
@@ -164,7 +133,7 @@ pub struct AssignRoleRes {
 #[post("/assign-roles")]
 pub async fn assign_roles(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<AssignRolesReq>,
 ) -> impl Responder {
     // verify credentials
@@ -173,14 +142,14 @@ pub async fn assign_roles(
 
     // respond
 
-    let account = match get_account_by_email_db(&app_data.db_pool, &body.account).await {
+    let account = match get_account_by_email_db(&app.db, &body.account).await {
         Ok(role) => role,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
     for role in &body.roles {
-        if let Ok(role) = get_role_db(&app_data.db_pool, role).await {
-            match bind_role_to_account_db(&app_data.db_pool, &account, &role).await {
+        if let Ok(role) = get_role_db(&app.db, role).await {
+            match bind_role_to_account_db(&app.db, &account, &role).await {
                 Ok(_) => {
                     debug!("Role: {role:?} assign to account: {account:?}");
                 }
@@ -191,7 +160,7 @@ pub async fn assign_roles(
         }
     }
 
-    let updated_acc = match get_account_by_email_db(&app_data.db_pool, &body.account).await {
+    let updated_acc = match get_account_by_email_db(&app.db, &body.account).await {
         Ok(role) => role,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
@@ -215,31 +184,29 @@ pub struct RemoveRoleRes {
 #[post("/remove-roles")]
 pub async fn remove_roles(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<RemoveRoleReq>,
 ) -> impl Responder {
-    let account = match get_account_by_email_db(&app_data.db_pool, &body.account).await {
+    let account = match get_account_by_email_db(&app.db, &body.account).await {
         Ok(acc) => acc,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
     for role in &body.roles {
-        match get_role_db(&app_data.db_pool, role).await {
-            Ok(role) => {
-                match remove_role_from_account_db(&app_data.db_pool, &account, &role).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        error!("Unable to remove role: {role:?} from account: {account:?}, {e}");
-                    }
+        match get_role_db(&app.db, role).await {
+            Ok(role) => match remove_role_from_account_db(&app.db, &account, &role).await {
+                Ok(_) => {}
+                Err(e) => {
+                    error!("Unable to remove role: {role:?} from account: {account:?}, {e}");
                 }
-            }
+            },
             Err(e) => {
                 error!("Unable to find role '{role}'");
             }
         }
     }
 
-    let updated_account = match get_account_by_email_db(&app_data.db_pool, &body.account).await {
+    let updated_account = match get_account_by_email_db(&app.db, &body.account).await {
         Ok(acc) => acc,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
@@ -262,22 +229,10 @@ struct CreatePermissionsRes {
 #[post("/create-permissions")]
 pub async fn create_permissions(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<CreatePermissionsReq>,
 ) -> impl Responder {
     // verify credentials
-    let token_str = match get_token_from_req(&req) {
-        Some(token) => token,
-        None => return ApiError::new("unable to get token from request").respond_to(&req),
-    };
-
-    if let Ok(claims) = TokenClaims::from_str(&token_str, &app_data.config) {
-        // validate expiration
-
-        // validate roles
-
-        // create new role
-    }
 
     let perms = body
         .permissions
@@ -286,7 +241,7 @@ pub async fn create_permissions(
         .collect();
 
     // update db
-    let created_permissions = match create_permissions_db(&app_data.db_pool, perms).await {
+    let created_permissions = match create_permissions_db(&app.db, perms).await {
         Ok(created_perms) => created_perms,
         Err(e) => {
             return ApiError::new(&e.to_string()).respond_to(&req);
@@ -304,22 +259,10 @@ struct ListPermissionsRes {
 }
 
 #[get("/list-permissions")]
-pub async fn list_permissions(req: HttpRequest, app_data: Data<AppData>) -> impl Responder {
+pub async fn list_permissions(req: HttpRequest, app: Data<AppData>) -> impl Responder {
     // verify credentials
-    let token_str = match get_token_from_req(&req) {
-        Some(token) => token,
-        None => return ApiError::new("unable to get token from request").respond_to(&req),
-    };
 
-    if let Ok(claims) = TokenClaims::from_str(&token_str, &app_data.config) {
-        // validate expiration
-
-        // validate roles
-
-        // create new role
-    }
-
-    let permissions = match get_all_permissions(&app_data.db_pool).await {
+    let permissions = match get_all_permissions(&app.db).await {
         Ok(perms) => perms,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
@@ -340,29 +283,16 @@ struct DeletePermissionsRes {
 #[post("/delete-permissions")]
 pub async fn delete_permissions(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<DeletePermissionsReq>,
 ) -> impl Responder {
     // verify credentials
-    let token_str = match get_token_from_req(&req) {
-        Some(token) => token,
-        None => return ApiError::new("unable to get token from request").respond_to(&req),
-    };
-
-    if let Ok(claims) = TokenClaims::from_str(&token_str, &app_data.config) {
-        // validate expiration
-
-        // validate roles
-
-        // create new role
-    }
 
     // update db
-    let deleted_permissions =
-        match delete_permissions_db(&app_data.db_pool, body.permissions.clone()).await {
-            Ok(perms) => perms,
-            Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
-        };
+    let deleted_permissions = match delete_permissions_db(&app.db, body.permissions.clone()).await {
+        Ok(perms) => perms,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
 
     HttpResponse::Ok().json(DeletePermissionsRes {
         deleted_permissions,
@@ -383,30 +313,18 @@ struct AssignPermissionsRes {
 #[post("/assign-permissions")]
 pub async fn assign_permissions(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<AssignPermissionsReq>,
 ) -> impl Responder {
     // verify credentials
-    let token_str = match get_token_from_req(&req) {
-        Some(token) => token,
-        None => return ApiError::new("unable to get token from request").respond_to(&req),
-    };
 
-    if let Ok(claims) = TokenClaims::from_str(&token_str, &app_data.config) {
-        // validate expiration
-
-        // validate roles
-
-        // create new role
-    }
-
-    let role = match get_role_db(&app_data.db_pool, &body.role).await {
+    let role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
     for perm in &body.permissions {
-        match bind_permission_to_role(&app_data.db_pool, &role, &perm).await {
+        match bind_permission_to_role(&app.db, &role, &perm).await {
             Ok(_) => {
                 debug!("Permission: {perm} assign to role: {role:?}");
             }
@@ -416,7 +334,7 @@ pub async fn assign_permissions(
         }
     }
 
-    let updated_role = match get_role_db(&app_data.db_pool, &body.role).await {
+    let updated_role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
@@ -438,30 +356,18 @@ struct RemovePermissionsRes {
 #[post("/remove-permissions")]
 pub async fn remove_permissions(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<RemovePermissionsReq>,
 ) -> impl Responder {
     // verify credentials
-    let token_str = match get_token_from_req(&req) {
-        Some(token) => token,
-        None => return ApiError::new("unable to get token from request").respond_to(&req),
-    };
 
-    if let Ok(claims) = TokenClaims::from_str(&token_str, &app_data.config) {
-        // validate expiration
-
-        // validate roles
-
-        // create new role
-    }
-
-    let role = match get_role_db(&app_data.db_pool, &body.role).await {
+    let role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
     for perm in &body.permissions {
-        match remove_permission_from_role_db(&app_data.db_pool, &role, &perm).await {
+        match remove_permission_from_role_db(&app.db, &role, &perm).await {
             Ok(_) => {
                 debug!("Permission: {perm} assign to role: {role:?}");
             }
@@ -471,7 +377,7 @@ pub async fn remove_permissions(
         }
     }
 
-    let updated_role = match get_role_db(&app_data.db_pool, &body.role).await {
+    let updated_role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };

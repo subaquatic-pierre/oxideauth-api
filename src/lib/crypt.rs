@@ -1,7 +1,7 @@
 use argon2::Config;
 use rand::Rng;
 
-use crate::models::error::{ApiError, ApiResult};
+use crate::models::api::{ApiError, ApiResult};
 
 pub fn hash_password(password: &str) -> ApiResult<String> {
     let salt: [u8; 32] = rand::thread_rng().gen();

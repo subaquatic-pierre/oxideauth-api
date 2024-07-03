@@ -6,7 +6,7 @@ use crate::{
     app::AppConfig,
     models::{
         account::Account,
-        error::{ApiError, ApiResult},
+        api::{ApiError, ApiResult},
         token::TokenClaims,
     },
 };
@@ -29,9 +29,7 @@ pub fn gen_token(app_config: &AppConfig, user: &Account) -> ApiResult<String> {
     token
 }
 
-pub fn decode_token(app_config: &AppConfig, token: &str) -> ApiResult<TokenClaims> {
-    let jwt_secret = &app_config.jwt_secret;
-
+pub fn decode_token(jwt_secret: &str, token: &str) -> ApiResult<TokenClaims> {
     let data = decode::<TokenClaims>(
         &token,
         &DecodingKey::from_secret(jwt_secret.as_ref()),

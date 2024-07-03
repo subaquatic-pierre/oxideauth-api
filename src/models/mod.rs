@@ -1,5 +1,6 @@
 pub mod account;
-pub mod error;
+pub mod api;
+pub mod guard;
 pub mod principal;
 pub mod role;
 pub mod service;

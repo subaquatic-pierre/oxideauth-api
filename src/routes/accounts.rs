@@ -13,7 +13,7 @@ use crate::db::queries::account::{
     update_account_db,
 };
 use crate::models::account::Account;
-use crate::models::error::ApiError;
+use crate::models::api::ApiError;
 use crate::models::token::TokenClaims;
 
 #[derive(Debug, Serialize)]
@@ -22,25 +22,12 @@ pub struct ListAccountsRes {
 }
 
 #[get("/list-accounts")]
-pub async fn list_accounts(req: HttpRequest, app_data: Data<AppData>) -> impl Responder {
-    // check user exists in DB
+pub async fn list_accounts(req: HttpRequest, app: Data<AppData>) -> impl Responder {
+    if let Err(e) = app.guard.authorize_req(&req, &["auth.accounts.list"]).await {
+        return e.respond_to(&req);
+    }
 
-    // update db
-
-    // respond
-    let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-
-    let user = Account::default();
-    let token_claims = TokenClaims::new(user, None, vec![]);
-
-    let token = encode(
-        &Header::default(),
-        &token_claims,
-        &EncodingKey::from_secret(secret.as_ref()),
-    )
-    .unwrap();
-
-    let accounts = match get_all_accounts_db(&app_data.db_pool).await {
+    let accounts = match get_all_accounts_db(&app.db).await {
         Ok(mut accounts) => {
             accounts
                 .iter_mut()
@@ -68,27 +55,10 @@ pub struct UpdateAccountRes {
 #[post("/update-account")]
 pub async fn update_account(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<UpdateAccountReq>,
 ) -> impl Responder {
-    // check user exists in DB
-
-    // update db
-
-    // respond
-    let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-
-    let user = Account::default();
-    let token_claims = TokenClaims::new(user, None, vec![]);
-
-    let token = encode(
-        &Header::default(),
-        &token_claims,
-        &EncodingKey::from_secret(secret.as_ref()),
-    )
-    .unwrap();
-
-    let account = match get_account_by_email_db(&app_data.db_pool, &body.account).await {
+    let account = match get_account_by_email_db(&app.db, &body.account).await {
         Ok(acc) => acc,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
@@ -96,7 +66,7 @@ pub async fn update_account(
     // update account with new values, or default to old values
 
     let updated_account = match update_account_db(
-        &app_data.db_pool,
+        &app.db,
         &account.id.to_string(),
         body.name.clone(),
         body.email.clone(),
@@ -125,34 +95,17 @@ pub struct DeleteAccountRes {
 #[post("/delete-account")]
 pub async fn delete_account(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<DeleteAccountReq>,
 ) -> impl Responder {
-    // check user exists in DB
-
-    // update db
-
-    // respond
-    let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-
-    let user = Account::default();
-    let token_claims = TokenClaims::new(user, None, vec![]);
-
-    let token = encode(
-        &Header::default(),
-        &token_claims,
-        &EncodingKey::from_secret(secret.as_ref()),
-    )
-    .unwrap();
-
-    let account = match get_account_by_email_db(&app_data.db_pool, &body.account).await {
+    let account = match get_account_by_email_db(&app.db, &body.account).await {
         Ok(acc) => acc,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
     // update account with new values, or default to old values
 
-    match delete_account_db(&app_data.db_pool, &account).await {
+    match delete_account_db(&app.db, &account).await {
         Ok(_) => HttpResponse::Ok().json(DeleteAccountRes { deleted: true }),
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     }
@@ -171,7 +124,7 @@ pub struct DescribeAccountRes {
 #[post("/describe-account")]
 pub async fn describe_account(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<DescribeAccountReq>,
 ) -> impl Responder {
     // check user exists in DB
@@ -191,7 +144,7 @@ pub async fn describe_account(
     )
     .unwrap();
 
-    let account = match get_account_by_email_db(&app_data.db_pool, &body.account).await {
+    let account = match get_account_by_email_db(&app.db, &body.account).await {
         Ok(acc) => acc,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };

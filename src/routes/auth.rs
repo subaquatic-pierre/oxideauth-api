@@ -13,7 +13,7 @@ use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role
 use crate::lib::crypt::{hash_password, verify_password};
 use crate::lib::token::gen_token;
 use crate::models::account::{Account, AccountType};
-use crate::models::error::ApiError;
+use crate::models::api::ApiError;
 use crate::models::role::Role;
 use crate::models::token::TokenClaims;
 
@@ -34,7 +34,7 @@ pub struct RegisterRes {
 #[post("/register")]
 pub async fn register_user(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<RegisterReq>,
 ) -> impl Responder {
     let password_hash = match hash_password(&body.password) {
@@ -42,7 +42,7 @@ pub async fn register_user(
         Err(e) => return e.respond_to(&req),
     };
 
-    if let Ok(_) = get_account_by_email_db(&app_data.db_pool, &body.email).await {
+    if let Ok(_) = get_account_by_email_db(&app.db, &body.email).await {
         return ApiError::new("User already exists").respond_to(&req);
     }
 
@@ -50,28 +50,28 @@ pub async fn register_user(
     let user = Account::new(&body.email, name, &password_hash, AccountType::User, vec![]);
 
     // update db
-    if let Err(e) = create_account_db(&app_data.db_pool, &user).await {
+    if let Err(e) = create_account_db(&app.db, &user).await {
         return ApiError::new(&e.to_string()).respond_to(&req);
     }
 
-    let token = match gen_token(&app_data.config, &user) {
+    let token = match gen_token(&app.config, &user) {
         Ok(t) => t,
         Err(e) => return e.respond_to(&req),
     };
 
-    let role = match get_role_db(&app_data.db_pool, "viewer").await {
+    let role = match get_role_db(&app.db, "viewer").await {
         Ok(res) => res,
         Err(_e) => {
             let viewer_role = Role::new("viewer", vec![]);
-            if let Err(e) = create_role_db(&app_data.db_pool, &viewer_role).await {
+            if let Err(e) = create_role_db(&app.db, &viewer_role).await {
                 error!("Unable to create viewer role, {viewer_role:?}, {e}");
             }
             viewer_role
         }
     };
 
-    match bind_role_to_account_db(&app_data.db_pool, &user, &role).await {
-        Ok(_) => match get_account_by_email_db(&app_data.db_pool, &user.email).await {
+    match bind_role_to_account_db(&app.db, &user, &role).await {
+        Ok(_) => match get_account_by_email_db(&app.db, &user.email).await {
             Ok(db_user) => HttpResponse::Ok().json(RegisterRes {
                 token: token,
                 user: db_user,
@@ -103,14 +103,14 @@ pub struct LoginRes {
 #[post("/login")]
 pub async fn login_user(
     req: HttpRequest,
-    app_data: Data<AppData>,
+    app: Data<AppData>,
     body: Json<LoginReq>,
 ) -> impl Responder {
-    match get_account_by_email_db(&app_data.db_pool, &body.email).await {
+    match get_account_by_email_db(&app.db, &body.email).await {
         Ok(user) => match verify_password(&user.password_hash, &body.password) {
             Ok(is_valid) => {
                 if is_valid {
-                    let token = match gen_token(&app_data.config, &user) {
+                    let token = match gen_token(&app.config, &user) {
                         Ok(t) => t,
                         Err(e) => return e.respond_to(&req),
                     };

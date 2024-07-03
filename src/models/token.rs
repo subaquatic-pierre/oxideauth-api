@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::{app::AppConfig, lib::token::decode_token};
 
-use super::{error::ApiResult, principal::Principal};
+use super::{api::ApiResult, principal::Principal};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Token {
@@ -14,9 +14,9 @@ pub struct Token {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TokenClaims {
-    sub: String,
+    pub sub: String,
     exp: usize,
-    roles: Vec<String>,
+    pub roles: Vec<String>,
 }
 
 impl TokenClaims {
@@ -28,7 +28,7 @@ impl TokenClaims {
         }
     }
 
-    pub fn from_str(token: &str, app_config: &AppConfig) -> ApiResult<Self> {
-        decode_token(app_config, token)
+    pub fn from_str(jwt_secret: &str, token: &str) -> ApiResult<Self> {
+        decode_token(jwt_secret, token)
     }
 }

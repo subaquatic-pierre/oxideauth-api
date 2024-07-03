@@ -30,7 +30,7 @@ async fn main() -> io::Result<()> {
         SERVER_HOST.0, SERVER_HOST.1
     );
 
-    init_db(&app_data.db_pool, false)
+    init_db(&app_data.db, false)
         .await
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
