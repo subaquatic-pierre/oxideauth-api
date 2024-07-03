@@ -71,6 +71,28 @@ pub async fn create_role(
     }
 }
 
+#[derive(Debug, Deserialize)]
+pub struct DescribeRoleReq {
+    pub role: String,
+}
+#[derive(Debug, Serialize)]
+pub struct DescribeRoleRes {
+    pub role: Role,
+}
+
+#[post("/describe-role")]
+pub async fn describe_role(
+    req: HttpRequest,
+    app_data: Data<AppData>,
+    body: Json<DescribeRoleReq>,
+) -> impl Responder {
+    // verify credentials
+    match get_role_db(&app_data.db_pool, &body.role).await {
+        Ok(role) => HttpResponse::Ok().json(DescribeRoleRes { role }),
+        Err(e) => ApiError::new(&e.to_string()).respond_to(&req),
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct RoleListRes {
     pub roles: Vec<Role>,
@@ -384,6 +406,7 @@ pub fn register_roles_collection() -> Scope {
     scope("/roles")
         .service(create_role)
         .service(list_roles)
+        .service(describe_role)
         .service(delete_role)
         .service(assign_role)
         .service(remove_role)
