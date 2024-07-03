@@ -13,11 +13,11 @@ use crate::db::queries::role::{
     delete_permissions_db, delete_role_db, get_all_permissions, get_all_roles_db, get_role_db,
     remove_permission_from_role_db, remove_role_from_account_db,
 };
+use crate::lib::token::get_token_from_req;
 use crate::models::account::Account;
 use crate::models::error::ApiError;
 use crate::models::role::{Permission, Role};
 use crate::models::token::TokenClaims;
-use crate::utils::token::get_token_from_req;
 use log::{debug, error, info};
 
 #[derive(Debug, Deserialize)]

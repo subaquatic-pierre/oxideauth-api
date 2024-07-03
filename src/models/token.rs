@@ -2,7 +2,7 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{app::AppConfig, utils::token::decode_token};
+use crate::{app::AppConfig, lib::token::decode_token};
 
 use super::{error::ApiResult, principal::Principal};
 

@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::models::{
     account::Account,
     error::{ApiError, ApiResult},
-    role::{Permission, Role},
+    role::{Permission, Role, RolePermissions},
 };
 
 use super::account::get_account_by_email_db;
@@ -51,7 +51,6 @@ pub async fn update_role_db(pool: &SqlitePool, role: &Role) -> Result<Role> {
     // // let mut tx = pool.begin().await?;
 
     // // Update the role name if provided
-
     sqlx::query!(
         r#"
         UPDATE roles
@@ -161,7 +160,7 @@ pub async fn get_role_db(pool: &SqlitePool, role_name: &str) -> Result<Role> {
             Ok(Role {
                 id: Uuid::parse_str(&r.id).unwrap(),
                 name: r.name.to_string(),
-                permissions,
+                permissions: RolePermissions::new(permissions),
             })
         }
         None => Err(Error::RowNotFound),

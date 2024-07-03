@@ -41,7 +41,12 @@ pub async fn list_accounts(req: HttpRequest, app_data: Data<AppData>) -> impl Re
     .unwrap();
 
     let accounts = match get_all_accounts_db(&app_data.db_pool).await {
-        Ok(acc) => acc,
+        Ok(mut accounts) => {
+            accounts
+                .iter_mut()
+                .for_each(|el| el.set_skip_serialize_permissions(true));
+            accounts
+        }
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 

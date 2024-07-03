@@ -62,6 +62,12 @@ impl Account {
             roles,
         }
     }
+
+    pub fn set_skip_serialize_permissions(&mut self, val: bool) {
+        for role in self.roles.iter_mut() {
+            role.set_skip_serialize_permissions(val)
+        }
+    }
 }
 
 impl Default for Account {

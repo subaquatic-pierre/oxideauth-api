@@ -10,12 +10,12 @@ use serde_json::json;
 use crate::app::AppData;
 use crate::db::queries::account::{create_account_db, get_account_by_email_db};
 use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
+use crate::lib::crypt::{hash_password, verify_password};
+use crate::lib::token::gen_token;
 use crate::models::account::{Account, AccountType};
 use crate::models::error::ApiError;
 use crate::models::role::Role;
 use crate::models::token::TokenClaims;
-use crate::utils::crypt::{hash_password, verify_password};
-use crate::utils::token::gen_token;
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterReq {

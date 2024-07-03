@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::models::{
     account::Account,
     error::{ApiError, ApiResult},
-    role::{Permission, Role},
+    role::{Permission, Role, RolePermissions},
 };
 
 use super::role::{
@@ -126,7 +126,7 @@ pub async fn get_account_by_id_db(pool: &SqlitePool, id: &str) -> Result<Account
                 let role = Role {
                     id: Uuid::parse_str(&role_r.role_id).unwrap(),
                     name: role_name,
-                    permissions,
+                    permissions: RolePermissions::new(permissions),
                 };
 
                 roles.push(role);
@@ -187,7 +187,7 @@ pub async fn get_account_by_email_db(pool: &SqlitePool, email: &str) -> Result<A
                 let role = Role {
                     id: Uuid::parse_str(&role_r.role_id).unwrap(),
                     name: role_name,
-                    permissions,
+                    permissions: RolePermissions::new(permissions),
                 };
 
                 roles.push(role);

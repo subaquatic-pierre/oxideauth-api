@@ -8,9 +8,9 @@ use db::init::init_db;
 mod app;
 mod cli;
 mod db;
+mod lib;
 mod models;
 mod routes;
-mod utils;
 
 use log::info;
 use routes::accounts::register_accounts_collection;
