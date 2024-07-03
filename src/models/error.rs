@@ -43,3 +43,16 @@ impl Responder for ApiError {
 }
 
 pub type ApiResult<T> = Result<T, ApiError>;
+
+// pub struct ApiResult<T>(Result<T, ApiError>);
+
+// impl<T> Responder for ApiResult<T> {
+//     type Body = BoxBody;
+//     fn respond_to(self, _req: &actix_web::HttpRequest) -> HttpResponse<Self::Body> {
+//         match self.0 {
+//             Ok(t) => HttpResponse::ExpectationFailed().json(json!({"status":"error"})),
+//             Err(e) => HttpResponse::ExpectationFailed()
+//                 .json(json!({"status":"error","message": e.message})),
+//         }
+//     }
+// }

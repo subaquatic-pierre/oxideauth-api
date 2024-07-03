@@ -43,14 +43,10 @@ pub async fn create_account(pool: &SqlitePool, acc: &Account) -> ApiResult<Optio
     let user = match acc_r {
         Some(record) => Some(Account {
             id: acc.id,
-            name: record.name.unwrap_or("".to_string()).to_string(),
+            name: record.name.to_string(),
             email: record.email,
             password_hash: record.password_hash,
-            acc_type: record
-                .acc_type
-                .unwrap_or("unknown".to_string())
-                .as_str()
-                .into(),
+            acc_type: record.acc_type.as_str().into(),
             roles: vec![],
         }),
         None => None,
@@ -85,14 +81,10 @@ pub async fn get_by_email(pool: &SqlitePool, email: &str) -> ApiResult<Option<Ac
                 .map_err(|e| ApiError::new(&e.to_string()))?;
             Some(Account {
                 id,
-                name: record.name.unwrap_or("".to_string()).to_string(),
+                name: record.name.to_string(),
                 email: record.email,
                 password_hash: record.password_hash,
-                acc_type: record
-                    .acc_type
-                    .unwrap_or("unknown".to_string())
-                    .as_str()
-                    .into(),
+                acc_type: record.acc_type.as_str().into(),
                 roles: vec![],
             })
         }
