@@ -9,16 +9,18 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::app::AppData;
+use crate::db::queries::account::get_account_by_email_db;
 use crate::db::queries::role::{
-    create_permissions_db, create_role_db, delete_permissions_db, delete_role_db,
-    get_all_permissions, get_all_roles, get_role_db,
+    bind_permission_to_role, bind_role_to_account_db, create_permissions_db, create_role_db,
+    delete_permissions_db, delete_role_db, get_all_permissions, get_all_roles_db, get_role_db,
+    remove_permission_from_role_db,
 };
 use crate::models::account::Account;
 use crate::models::error::ApiError;
 use crate::models::role::{Permission, Role};
 use crate::models::token::TokenClaims;
 use crate::utils::token::get_token_from_req;
-use log::{debug, info};
+use log::{debug, error, info};
 
 #[derive(Debug, Deserialize)]
 pub struct CreateRoleReq {
@@ -94,22 +96,22 @@ pub async fn describe_role(
 }
 
 #[derive(Debug, Serialize)]
-pub struct RoleListRes {
+pub struct ListRoleRes {
     pub roles: Vec<Role>,
 }
 
 #[get("/list-roles")]
 pub async fn list_roles(req: HttpRequest, app_data: Data<AppData>) -> impl Responder {
     // verify credentials
-    match get_all_roles(&app_data.db_pool).await {
-        Ok(roles) => HttpResponse::Ok().json(RoleListRes { roles }),
+    match get_all_roles_db(&app_data.db_pool).await {
+        Ok(roles) => HttpResponse::Ok().json(ListRoleRes { roles }),
         Err(e) => ApiError::new(&e.to_string()).respond_to(&req),
     }
 }
 
 #[derive(Debug, Deserialize)]
 pub struct DeleteRoleReq {
-    pub name: String,
+    pub role: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -137,7 +139,7 @@ pub async fn delete_role(
         // create new role
     }
 
-    let role = match get_role_db(&app_data.db_pool, &body.name).await {
+    let role = match get_role_db(&app_data.db_pool, &body.role).await {
         Ok(role) => role,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
@@ -151,33 +153,60 @@ pub async fn delete_role(
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AssignRoleReq {
-    pub name: String,
-    pub principal: String,
+pub struct AssignRolesReq {
+    pub account: String,
+    pub roles: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct AssignRoleRes {
-    pub role: Role,
+    pub account: Account,
 }
 
-#[post("/assign-role")]
-pub async fn assign_role(req: HttpRequest, body: Json<AssignRoleReq>) -> impl Responder {
+#[post("/assign-roles")]
+pub async fn assign_roles(
+    req: HttpRequest,
+    app_data: Data<AppData>,
+    body: Json<AssignRolesReq>,
+) -> impl Responder {
     // verify credentials
 
     // update db
 
     // respond
 
-    let role = Role::default();
+    let account = match get_account_by_email_db(&app_data.db_pool, &body.account).await {
+        Ok(role) => role,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
 
-    HttpResponse::Ok().json(AssignRoleRes { role })
+    for role in &body.roles {
+        if let Ok(role) = get_role_db(&app_data.db_pool, role).await {
+            match bind_role_to_account_db(&app_data.db_pool, &account, &role).await {
+                Ok(_) => {
+                    debug!("Role: {role:?} assign to account: {account:?}");
+                }
+                Err(e) => {
+                    error!("Unable to assign role: {role:?} to account: {account:?}, {e}");
+                }
+            }
+        }
+    }
+
+    let updated_acc = match get_account_by_email_db(&app_data.db_pool, &body.account).await {
+        Ok(role) => role,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
+
+    HttpResponse::Ok().json(AssignRoleRes {
+        account: updated_acc,
+    })
 }
 
 #[derive(Debug, Deserialize)]
 pub struct RemoveRoleReq {
-    pub name: String,
-    pub principal: String,
+    pub role: String,
+    pub account: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -185,8 +214,8 @@ pub struct RemoveRoleRes {
     pub role: Role,
 }
 
-#[post("/remove-role")]
-pub async fn remove_role(
+#[post("/remove-roles")]
+pub async fn remove_roles(
     req: HttpRequest,
     app_data: Data<AppData>,
     body: Json<RemoveRoleReq>,
@@ -257,11 +286,7 @@ struct ListPermissionsRes {
 }
 
 #[get("/list-permissions")]
-pub async fn list_permissions(
-    req: HttpRequest,
-    app_data: Data<AppData>,
-    body: Json<CreateRoleReq>,
-) -> impl Responder {
+pub async fn list_permissions(req: HttpRequest, app_data: Data<AppData>) -> impl Responder {
     // verify credentials
     let token_str = match get_token_from_req(&req) {
         Some(token) => token,
@@ -328,12 +353,13 @@ pub async fn delete_permissions(
 
 #[derive(Debug, Deserialize)]
 struct AssignPermissionsReq {
+    role: String,
     permissions: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 struct AssignPermissionsRes {
-    deleted_permissions: Vec<String>,
+    role: Role,
 }
 
 #[post("/assign-permissions")]
@@ -356,22 +382,39 @@ pub async fn assign_permissions(
         // create new role
     }
 
-    // update db
-    if let Err(e) = delete_permissions_db(&app_data.db_pool, body.permissions.clone()).await {
-        return ApiError::new(&e.to_string()).respond_to(&req);
+    let role = match get_role_db(&app_data.db_pool, &body.role).await {
+        Ok(role) => role,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
+
+    for perm in &body.permissions {
+        match bind_permission_to_role(&app_data.db_pool, &role, &perm).await {
+            Ok(_) => {
+                debug!("Permission: {perm} assign to role: {role:?}");
+            }
+            Err(e) => {
+                error!("Unable to assign permission: {perm} to role: {role:?}, {e}");
+            }
+        }
     }
 
-    HttpResponse::Ok().json(json!({}))
+    let updated_role = match get_role_db(&app_data.db_pool, &body.role).await {
+        Ok(role) => role,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
+
+    HttpResponse::Ok().json(AssignPermissionsRes { role: updated_role })
 }
 
 #[derive(Debug, Deserialize)]
 struct RemovePermissionsReq {
+    role: String,
     permissions: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 struct RemovePermissionsRes {
-    deleted_permissions: Vec<String>,
+    role: Role,
 }
 
 #[post("/remove-permissions")]
@@ -394,12 +437,28 @@ pub async fn remove_permissions(
         // create new role
     }
 
-    // update db
-    if let Err(e) = delete_permissions_db(&app_data.db_pool, body.permissions.clone()).await {
-        return ApiError::new(&e.to_string()).respond_to(&req);
+    let role = match get_role_db(&app_data.db_pool, &body.role).await {
+        Ok(role) => role,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
+
+    for perm in &body.permissions {
+        match remove_permission_from_role_db(&app_data.db_pool, &role, &perm).await {
+            Ok(_) => {
+                debug!("Permission: {perm} assign to role: {role:?}");
+            }
+            Err(e) => {
+                error!("Unable to assign permission: {perm} to role: {role:?}, {e}");
+            }
+        }
     }
 
-    HttpResponse::Ok().json(json!({}))
+    let updated_role = match get_role_db(&app_data.db_pool, &body.role).await {
+        Ok(role) => role,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
+
+    HttpResponse::Ok().json(RemovePermissionsRes { role: updated_role })
 }
 
 pub fn register_roles_collection() -> Scope {
@@ -408,8 +467,8 @@ pub fn register_roles_collection() -> Scope {
         .service(list_roles)
         .service(describe_role)
         .service(delete_role)
-        .service(assign_role)
-        .service(remove_role)
+        .service(assign_roles)
+        .service(remove_roles)
         .service(create_permissions)
         .service(list_permissions)
         .service(delete_permissions)

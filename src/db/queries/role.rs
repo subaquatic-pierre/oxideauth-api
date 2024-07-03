@@ -1,5 +1,5 @@
 use log::debug;
-use sqlx::{Error, Result, SqlitePool};
+use sqlx::{Error, PgPool, Postgres, Result, SqlitePool};
 use uuid::Uuid;
 
 use crate::models::{
@@ -7,6 +7,8 @@ use crate::models::{
     error::{ApiError, ApiResult},
     role::{Permission, Role},
 };
+
+use super::account::get_account_by_email_db;
 
 pub async fn create_role_db(pool: &SqlitePool, role: &Role) -> Result<Role> {
     let id = role.id_str();
@@ -37,7 +39,7 @@ pub async fn create_role_db(pool: &SqlitePool, role: &Role) -> Result<Role> {
         if !existing_perms.contains(&perm) {
             create_permissions_db(pool, vec![new_perm.clone()]).await?;
         }
-        bind_permission_to_role(pool, role, &new_perm).await?;
+        bind_permission_to_role(pool, role, &new_perm.name).await?;
     }
 
     get_role_db(pool, &role.name).await
@@ -83,7 +85,7 @@ pub async fn update_role_db(pool: &SqlitePool, role: &Role) -> Result<Role> {
         if !existing_perms.contains(&perm) {
             create_permissions_db(pool, vec![new_perm.clone()]).await?;
         }
-        bind_permission_to_role(pool, role, &new_perm).await?;
+        bind_permission_to_role(pool, role, &new_perm.name).await?;
     }
 
     // tx.commit().await?;
@@ -154,21 +156,8 @@ pub async fn get_role_db(pool: &SqlitePool, role_name: &str) -> Result<Role> {
 
     match r {
         Some(r) => {
-            let permission_rows = sqlx::query!(
-                r#"
-                SELECT permission_name FROM permission_bindings
-                WHERE role_id = ?
-                "#,
-                r.id
-            )
-            .fetch_all(pool)
-            .await?;
-
-            let permissions: Vec<String> = permission_rows
-                .into_iter()
-                .map(|row| row.permission_name.to_string())
-                .collect();
-
+            let role_id = get_role_id_db(pool, role_name).await?;
+            let permissions = get_role_permissions_db(pool, &role_id).await?;
             Ok(Role {
                 id: Uuid::parse_str(&r.id).unwrap(),
                 name: r.name.to_string(),
@@ -179,7 +168,58 @@ pub async fn get_role_db(pool: &SqlitePool, role_name: &str) -> Result<Role> {
     }
 }
 
-pub async fn get_all_roles(pool: &SqlitePool) -> Result<Vec<Role>> {
+pub async fn get_role_id_db(pool: &SqlitePool, role_name: &str) -> Result<String> {
+    match sqlx::query!(
+        r#"
+        SELECT id FROM roles
+        WHERE name = ?
+        "#,
+        role_name
+    )
+    .fetch_optional(pool)
+    .await?
+    {
+        Some(r) => Ok(r.id),
+        None => Err(Error::RowNotFound),
+    }
+}
+
+pub async fn get_role_name_db(pool: &SqlitePool, role_id: &str) -> Result<String> {
+    match sqlx::query!(
+        r#"
+        SELECT name FROM roles
+        WHERE id = ?
+        "#,
+        role_id
+    )
+    .fetch_optional(pool)
+    .await?
+    {
+        Some(r) => Ok(r.name),
+        None => Err(Error::RowNotFound),
+    }
+}
+
+pub async fn get_role_permissions_db(pool: &SqlitePool, role_id: &str) -> Result<Vec<String>> {
+    let permission_rows = sqlx::query!(
+        r#"
+                SELECT permission_name FROM permission_bindings
+                WHERE role_id = ?
+                "#,
+        role_id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let permissions: Vec<String> = permission_rows
+        .into_iter()
+        .map(|row| row.permission_name.to_string())
+        .collect();
+
+    Ok(permissions)
+}
+
+pub async fn get_all_roles_db(pool: &SqlitePool) -> Result<Vec<Role>> {
     let rs = sqlx::query!(
         r#"
         SELECT * FROM roles
@@ -307,9 +347,15 @@ pub async fn delete_permissions_db(pool: &SqlitePool, perms: Vec<String>) -> Res
     Ok(created_perms)
 }
 
-pub async fn bind_role_to_account(pool: &SqlitePool, acc: &Account, role: &Role) -> Result<()> {
-    let acc_id = acc.id.to_string();
+pub async fn bind_role_to_account_db(pool: &SqlitePool, acc: &Account, role: &Role) -> Result<()> {
+    let acc_id: String = acc.id.to_string();
     let role_id = role.id.to_string();
+
+    // only create binding if both role and account exist!
+    if let (Ok(_role), Ok(_acc)) = (
+        get_role_db(pool, &role.name).await,
+        get_account_by_email_db(pool, &acc.email).await,
+    ) {}
     sqlx::query!(
         r#"
         INSERT INTO role_bindings (account_id, role_id)
@@ -324,24 +370,202 @@ pub async fn bind_role_to_account(pool: &SqlitePool, acc: &Account, role: &Role)
     Ok(())
 }
 
-pub async fn bind_permission_to_role(
-    pool: &SqlitePool,
-    role: &Role,
-    perm: &Permission,
-) -> Result<()> {
+pub async fn bind_permission_to_role(pool: &SqlitePool, role: &Role, perm: &str) -> Result<()> {
     let role_id = role.id.to_string();
 
-    debug!("Creating permission binding, for permission: {perm:?}, and role: {role:?}");
-    sqlx::query!(
-        r#"
-        INSERT INTO permission_bindings (role_id, permission_name)
-        VALUES (?, ?)
-        "#,
-        role_id,
-        perm.name
-    )
-    .execute(pool)
-    .await?;
+    debug!("Creating permission binding, for permission_name: {perm:?}, and role: {role:?}");
+
+    // only create binding if both role and permission exist!
+    if let (Ok(_role), Ok(perm)) = (
+        get_role_db(pool, &role.name).await,
+        get_permission_db(pool, perm).await,
+    ) {
+        sqlx::query!(
+            r#"
+            INSERT INTO permission_bindings (role_id, permission_name)
+            VALUES (?, ?)
+            "#,
+            role_id,
+            perm
+        )
+        .execute(pool)
+        .await?;
+    }
 
     Ok(())
 }
+
+pub async fn remove_permission_from_role_db(
+    pool: &SqlitePool,
+    role: &Role,
+    perm: &str,
+) -> Result<()> {
+    let role_id = role.id.to_string();
+    // let mut tx = pool
+    //     .begin()
+    //     .await
+    //     .map_err(|e| ApiError::new(&e.to_string()))?;
+
+    // only create binding if both role and permission exist!
+    if let (Ok(_role), Ok(perm)) = (
+        get_role_db(pool, &role.name).await,
+        get_permission_db(pool, perm).await,
+    ) {
+        debug!("Removing permission binding, for permission_name: {perm:?}, and role: {role:?}");
+        sqlx::query!(
+            r#"
+                DELETE FROM permission_bindings 
+                WHERE role_id = ? AND permission_name = ?
+                "#,
+            role_id,
+            perm
+        )
+        .execute(pool)
+        // .execute(&mut tx)
+        .await?;
+    }
+
+    // tx.commit()
+    //     .await
+    //     .map_err(|e| ApiError::new(&e.to_string()))?;
+
+    Ok(())
+}
+
+// pub async fn _remove_permissions_from_role(
+//     pool: &SqlitePool,
+//     role: &Role,
+//     perms: Vec<String>,
+// ) -> Result<()> {
+//     let role_id = role.id.to_string();
+//     // let mut tx = pool
+//     //     .begin()
+//     //     .await
+//     //     .map_err(|e| ApiError::new(&e.to_string()))?;
+
+//     // only create binding if both role and permission exist!
+//     if let Ok(_role) = get_role_db(pool, &role.name).await {
+//         for perm in perms {
+//             debug!(
+//                 "Creating permission binding, for permission_name: {perm:?}, and role: {role:?}"
+//             );
+//             sqlx::query!(
+//                 r#"
+//                 INSERT INTO permission_bindings (role_id, permission_name)
+//                 VALUES (?, ?)
+//                 "#,
+//                 role_id,
+//                 perm
+//             )
+//             .execute(pool)
+//             // .execute(&mut tx)
+//             .await?;
+//         }
+//     }
+
+//     // tx.commit()
+//     //     .await
+//     //     .map_err(|e| ApiError::new(&e.to_string()))?;
+
+//     Ok(())
+// }
+
+// pub async fn _bind_permissions_to_role(
+//     pool: &SqlitePool,
+//     role: &Role,
+//     perms: Vec<String>,
+// ) -> Result<()> {
+//     let role_id = role.id.to_string();
+//     // let mut tx = pool
+//     //     .begin()
+//     //     .await
+//     //     .map_err(|e| ApiError::new(&e.to_string()))?;
+
+//     // only create binding if both role and permission exist!
+//     if let Ok(_role) = get_role_db(pool, &role.name).await {
+//         for perm in perms {
+//             debug!(
+//                 "Creating permission binding, for permission_name: {perm:?}, and role: {role:?}"
+//             );
+//             sqlx::query!(
+//                 r#"
+//                 INSERT INTO permission_bindings (role_id, permission_name)
+//                 VALUES (?, ?)
+//                 "#,
+//                 role_id,
+//                 perm
+//             )
+//             .execute(pool)
+//             // .execute(&mut tx)
+//             .await?;
+//         }
+//     }
+
+//     // tx.commit()
+//     //     .await
+//     //     .map_err(|e| ApiError::new(&e.to_string()))?;
+
+//     Ok(())
+// }
+
+// pub async fn _bind_permission_to_role(pool: &PgPool, role: &Role, perm: &str) -> Result<()> {
+//     let role_id = role.id.to_string();
+
+//     debug!("Creating permission binding, for permission_name: {perm:?}, and role: {role:?}");
+
+//     let mut tx = pool.begin().await?;
+
+//     let role_exists = sqlx::query_scalar!(
+//         r#"
+//         SELECT EXISTS(
+//             SELECT 1
+//             FROM roles
+//             WHERE name = ?
+//         )
+//         "#,
+//         role.name
+//     )
+//     .fetch_one(&mut tx)
+//     .await?;
+
+//     let perm_exists = sqlx::query_scalar!(
+//         r#"
+//         SELECT EXISTS(
+//             SELECT 1
+//             FROM permissions
+//             WHERE name = ?
+//         )
+//         "#,
+//         perm
+//     )
+//     .fetch_one(&mut tx)
+//     .await?;
+
+//     if role_exists && perm_exists {
+//         sqlx::query!(
+//             r#"
+//             INSERT INTO permission_bindings (role_id, permission_name)
+//             VALUES (?, ?)
+//             "#,
+//             role_id,
+//             perm
+//         )
+//         .execute(&mut tx)
+//         .await?;
+
+//         tx.commit().await?;
+//     } else {
+//         tx.rollback().await?;
+//         if !role_exists {
+//             return Err(ApiError::new(&format!("Role {} does not exist", role.name)));
+//         }
+//         if !perm_exists {
+//             return Err(ApiError::new(&format!(
+//                 "Permission {} does not exist",
+//                 perm
+//             )));
+//         }
+//     }
+
+//     Ok(())
+// }

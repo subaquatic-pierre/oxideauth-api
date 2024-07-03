@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::app::AppData;
-use crate::db::queries::account::{create_account, get_by_email};
+use crate::db::queries::account::{create_account_db, get_account_by_email_db};
 use crate::models::account::{Account, AccountType};
 use crate::models::error::ApiError;
 use crate::models::token::TokenClaims;
@@ -39,16 +39,16 @@ pub async fn register_user(
         Err(e) => return e.respond_to(&req),
     };
 
-    if let Ok(Some(_)) = get_by_email(&app_data.db_pool, &body.email).await {
-        return ApiError::new("user already exists").respond_to(&req);
+    if let Ok(_) = get_account_by_email_db(&app_data.db_pool, &body.email).await {
+        return ApiError::new("User already exists").respond_to(&req);
     }
 
     let name = &body.username.clone().unwrap_or("".to_string());
     let user = Account::new(&body.email, name, &password_hash, AccountType::User, vec![]);
 
     // update db
-    if let Err(e) = create_account(&app_data.db_pool, &user).await {
-        return e.respond_to(&req);
+    if let Err(e) = create_account_db(&app_data.db_pool, &user).await {
+        return ApiError::new(&e.to_string()).respond_to(&req);
     }
 
     let token = match gen_token(&app_data.config, &user) {
@@ -80,8 +80,8 @@ pub async fn login_user(
     app_data: Data<AppData>,
     body: Json<LoginReq>,
 ) -> impl Responder {
-    match get_by_email(&app_data.db_pool, &body.email).await {
-        Ok(Some(user)) => match verify_password(&user.password_hash, &body.password) {
+    match get_account_by_email_db(&app_data.db_pool, &body.email).await {
+        Ok(user) => match verify_password(&user.password_hash, &body.password) {
             Ok(is_valid) => {
                 if is_valid {
                     let token = match gen_token(&app_data.config, &user) {
