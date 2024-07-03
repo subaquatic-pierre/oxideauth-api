@@ -4,6 +4,11 @@ Rust - Actix Web authorization server
 
 ## TODO:
 
+### Models
+
+- update models to have crud functions on struct to abstract away database queries
+- create ApiError generic Http response to respond to model errors
+
 ### API Error response
 
 - limit auth error response information
@@ -66,6 +71,11 @@ Rust - Actix Web authorization server
 
 ### DB query optimizations
 
+### Pagination
+
+- paginate Role list, LIMIT on db query
+- paginate Account list, LIMIT on db query
+
 #### Permission Bindings
 
 - create db optimizations for permission_bindings, query should take Vec<String>, combine transactions and run only once to assign permission bindings for all permission to a single role
@@ -73,3 +83,11 @@ Rust - Actix Web authorization server
 #### Role Bindings
 
 - create db optimizations for role_bindings, query should take Vec<Role>, combine transactions and run only once to assign role binding for all roles to a single account
+
+### Tests
+
+- database query integration tests
+- actix web endpoints integration tests
+- unit tests
+- utils
+- models

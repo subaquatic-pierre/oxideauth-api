@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use actix_web::web::{Data, Json};
 use actix_web::{web::scope, Scope};
 
@@ -13,7 +11,7 @@ use crate::db::queries::account::get_account_by_email_db;
 use crate::db::queries::role::{
     bind_permission_to_role, bind_role_to_account_db, create_permissions_db, create_role_db,
     delete_permissions_db, delete_role_db, get_all_permissions, get_all_roles_db, get_role_db,
-    remove_permission_from_role_db,
+    remove_permission_from_role_db, remove_role_from_account_db,
 };
 use crate::models::account::Account;
 use crate::models::error::ApiError;
@@ -205,13 +203,13 @@ pub async fn assign_roles(
 
 #[derive(Debug, Deserialize)]
 pub struct RemoveRoleReq {
-    pub role: String,
     pub account: String,
+    pub roles: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct RemoveRoleRes {
-    pub role: Role,
+    pub account: Account,
 }
 
 #[post("/remove-roles")]
@@ -220,15 +218,35 @@ pub async fn remove_roles(
     app_data: Data<AppData>,
     body: Json<RemoveRoleReq>,
 ) -> impl Responder {
-    // verify credentials
+    let account = match get_account_by_email_db(&app_data.db_pool, &body.account).await {
+        Ok(acc) => acc,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
 
-    // update db
+    for role in &body.roles {
+        match get_role_db(&app_data.db_pool, role).await {
+            Ok(role) => {
+                match remove_role_from_account_db(&app_data.db_pool, &account, &role).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("Unable to remove role: {role:?} from account: {account:?}, {e}");
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Unable to find role '{role}'");
+            }
+        }
+    }
 
-    // respond
+    let updated_account = match get_account_by_email_db(&app_data.db_pool, &body.account).await {
+        Ok(acc) => acc,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
 
-    let role = Role::default();
-
-    HttpResponse::Ok().json(RemoveRoleRes { role })
+    HttpResponse::Ok().json(RemoveRoleRes {
+        account: updated_account,
+    })
 }
 
 #[derive(Debug, Deserialize)]

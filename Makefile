@@ -1,5 +1,7 @@
 .PHONY: run watch clean
 
+DOCKER_COMPOSE_FILE := docker-compose.yml
+
 run:
 	cargo run
 
@@ -11,8 +13,16 @@ build:
 dev:
 	cargo watch -x "run --bin oxideauth-server" 
 
-fix:
-	cargo fix --bin "raderbot"
+# .PHONY: start-db
+# start-db:
+#     @docker-compose -f $(DOCKER_COMPOSE_FILE) up -d
+
+# stop-db:
+#     @docker-compose -f $(DOCKER_COMPOSE_FILE) down
+
+# test: start-db
+#     @cargo test
+#     @make stop-db
 
 test:
 	cargo test
@@ -25,8 +35,3 @@ rust-docs:
 
 serve-rust-docs:
 	python -m http.server --directory ./target/doc 3001
-
-docs:
-	scipts/build-docs.sh
-
-serve-docs:

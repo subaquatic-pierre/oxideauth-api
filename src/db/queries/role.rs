@@ -434,6 +434,42 @@ pub async fn remove_permission_from_role_db(
     Ok(())
 }
 
+pub async fn remove_role_from_account_db(
+    pool: &SqlitePool,
+    acc: &Account,
+    role: &Role,
+) -> Result<()> {
+    let role_id = role.id.to_string();
+    let account_id = acc.id.to_string();
+
+    // let mut tx = pool
+    //     .begin()
+    //     .await
+    //     .map_err(|e| ApiError::new(&e.to_string()))?;
+
+    // only create binding if both role and permission exist!
+    if let Ok(role) = get_role_db(pool, &role.name).await {
+        debug!("Removing role binding, for account: {role:?}, and role: {acc:?}");
+        sqlx::query!(
+            r#"
+                DELETE FROM role_bindings 
+                WHERE role_id = ? AND account_id = ?
+                "#,
+            role_id,
+            account_id,
+        )
+        .execute(pool)
+        // .execute(&mut tx)
+        .await?;
+    }
+
+    // tx.commit()
+    //     .await
+    //     .map_err(|e| ApiError::new(&e.to_string()))?;
+
+    Ok(())
+}
+
 // pub async fn _remove_permissions_from_role(
 //     pool: &SqlitePool,
 //     role: &Role,

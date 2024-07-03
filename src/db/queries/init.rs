@@ -82,3 +82,11 @@ pub async fn create_tables(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .await?;
     Ok(())
 }
+
+// #[cfg(test)]
+// mod test {
+//     use super::*;
+
+//     #[tokio::test]
+//     async fn test_create_role() {}
+// }
