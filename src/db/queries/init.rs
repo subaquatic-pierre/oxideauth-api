@@ -1,18 +1,37 @@
+use std::iter::Map;
+
 use sqlx::PgPool;
 
+use crate::models::{
+    account::Account,
+    role::{Permission, Role},
+};
+
+use super::{
+    account::create_account_db,
+    role::{bind_role_to_account_db, create_permissions_db, create_role_db},
+};
+
 pub async fn drop_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
-    // Drop all existing tables if they exist\
-    sqlx::query(
-        r#"
-        DROP TABLE IF EXISTS role_bindings;
-        DROP TABLE IF EXISTS permission_bindings;
-        DROP TABLE IF EXISTS roles;
-        DROP TABLE IF EXISTS permissions;
-        DROP TABLE IF EXISTS accounts;
-        "#,
-    )
-    .execute(pool)
-    .await?;
+    let mut tx = pool.begin().await?;
+
+    sqlx::query!("DROP TABLE IF EXISTS role_bindings;")
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query!("DROP TABLE IF EXISTS permission_bindings;")
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query!("DROP TABLE IF EXISTS roles;")
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query!("DROP TABLE IF EXISTS permissions;")
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query!("DROP TABLE IF EXISTS accounts;")
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
     Ok(())
 }
 
@@ -83,10 +102,114 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-// #[cfg(test)]
-// mod test {
-//     use super::*;
+const ALL_DEFAULT_PERMISSIONS: &'static [&str] = &[
+    "auth.users.create",
+    "auth.users.get",
+    "auth.users.getSelf",
+    "auth.users.list",
+    "auth.users.update",
+    "auth.services.create",
+    "auth.services.get",
+    "auth.services.list",
+    "auth.services.update",
+    "auth.roles.create",
+    "auth.roles.get",
+    "auth.roles.list",
+    "auth.roles.update",
+    "auth.roles.bind",
+    "auth.permissions.create",
+    "auth.permissions.get",
+    "auth.permissions.list",
+    "auth.permissions.update",
+    "auth.permissions.bind",
+];
 
-//     #[tokio::test]
-//     async fn test_create_role() {}
-// }
+const DEFAULT_ADMIN_PERMISSIONS: &'static [&str] = &[
+    "auth.users.create",
+    "auth.users.get",
+    "auth.users.getSelf",
+    "auth.users.list",
+    "auth.users.update",
+    "auth.services.create",
+    "auth.services.get",
+    "auth.services.list",
+    "auth.services.update",
+    "auth.roles.create",
+    "auth.roles.get",
+    "auth.roles.list",
+    "auth.roles.update",
+    "auth.roles.bind",
+    "auth.permissions.create",
+    "auth.permissions.get",
+    "auth.permissions.list",
+    "auth.permissions.update",
+    "auth.permissions.bind",
+];
+
+const DEFAULT_AUDITOR_PERMISSIONS: &'static [&str] = &[
+    "auth.users.get",
+    "auth.users.getSelf",
+    "auth.users.list",
+    "auth.services.get",
+    "auth.services.list",
+    "auth.roles.get",
+    "auth.roles.list",
+    "auth.permissions.get",
+    "auth.permissions.list",
+];
+
+const DEFAULT_VIEWER_PERMISSIONS: &'static [&str] = &["auth.users.getSelf"];
+
+pub async fn create_defaults(pool: &PgPool, owner_acc: &Account) -> Result<(), sqlx::Error> {
+    let perms = ALL_DEFAULT_PERMISSIONS
+        .iter()
+        .map(|el| Permission::new(el))
+        .collect();
+
+    create_permissions_db(pool, perms).await?;
+
+    // create owner role
+    let owner_role = Role::new(
+        "owner",
+        ALL_DEFAULT_PERMISSIONS
+            .iter()
+            .map(|el| el.to_string())
+            .collect(),
+    );
+    create_role_db(pool, &owner_role).await?;
+
+    // create admin role
+    let admin_role = Role::new(
+        "admin",
+        DEFAULT_ADMIN_PERMISSIONS
+            .iter()
+            .map(|el| el.to_string())
+            .collect(),
+    );
+    create_role_db(pool, &admin_role).await?;
+
+    // create auditor role
+    let auditor_role = Role::new(
+        "auditor",
+        DEFAULT_AUDITOR_PERMISSIONS
+            .iter()
+            .map(|el| el.to_string())
+            .collect(),
+    );
+    create_role_db(pool, &auditor_role).await?;
+
+    // create viewer role
+    let viewer_role = Role::new(
+        "viewer",
+        DEFAULT_VIEWER_PERMISSIONS
+            .iter()
+            .map(|el| el.to_string())
+            .collect(),
+    );
+    create_role_db(pool, &viewer_role).await?;
+
+    create_account_db(pool, owner_acc).await?;
+    bind_role_to_account_db(pool, owner_acc, &owner_role).await?;
+
+    Ok(())
+}

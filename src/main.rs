@@ -1,4 +1,4 @@
-use std::io;
+use std::{env, io};
 
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
@@ -12,7 +12,11 @@ mod lib;
 mod models;
 mod routes;
 
+use dotenv::dotenv;
+use lib::auth::build_owner_account;
 use log::info;
+use models::account::Account;
+use models::role::RolePermissions;
 use routes::accounts::register_accounts_collection;
 use routes::auth::register_auth_collection;
 use routes::roles::register_roles_collection;
@@ -23,6 +27,7 @@ const SERVER_HOST: (&str, u16) = ("127.0.0.1", 8080);
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     let app_data = new_app_data().await;
+
     env_logger::init();
 
     info!(
@@ -30,7 +35,9 @@ async fn main() -> io::Result<()> {
         SERVER_HOST.0, SERVER_HOST.1
     );
 
-    init_db(&app_data.db, false)
+    let owner_acc = build_owner_account();
+
+    init_db(&app_data.db, &owner_acc, true)
         .await
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
