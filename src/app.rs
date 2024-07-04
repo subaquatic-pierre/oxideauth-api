@@ -2,9 +2,9 @@ use std::{env, sync::Arc};
 
 use actix_web::web::Data;
 use dotenv::dotenv;
-use sqlx::{Pool, Sqlite};
+use sqlx::{PgPool, Pool};
 
-use crate::{db::init::establish_connection, models::guard::Guard};
+use crate::{db::init::establish_connection, models::guard::AuthGuard};
 
 pub struct AppConfig {
     pub database_url: String,
@@ -23,16 +23,16 @@ impl AppConfig {
 
 pub struct AppData {
     pub config: AppConfig,
-    pub db: Arc<Pool<Sqlite>>,
-    pub guard: Guard,
+    pub db: Arc<PgPool>,
+    pub guard: AuthGuard,
 }
 
 pub async fn new_app_data() -> Data<AppData> {
     let config = AppConfig::from_env();
-    let db: Pool<Sqlite> = establish_connection(&config.database_url).await;
+    let db: PgPool = establish_connection(&config.database_url).await;
     let arc_db = Arc::new(db);
 
-    let guard = Guard::new(&config.jwt_secret, arc_db.clone());
+    let guard = AuthGuard::new(&config.jwt_secret, arc_db.clone());
     Data::new(AppData {
         db: arc_db.clone(),
         config,

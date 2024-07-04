@@ -1,6 +1,6 @@
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
-pub async fn drop_tables(pool: &SqlitePool) -> Result<(), sqlx::Error> {
+pub async fn drop_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     // Drop all existing tables if they exist\
     sqlx::query(
         r#"
@@ -16,17 +16,17 @@ pub async fn drop_tables(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn create_tables(pool: &SqlitePool) -> Result<(), sqlx::Error> {
+pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS accounts (
-        id TEXT PRIMARY KEY NOT NULL,
-        email TEXT NOT NULL,
-        password_hash TEXT NOT NULL,
-        name TEXT NOT NULL,
-        acc_type TEXT NOT NULL
-    )
-    "#,
+            id UUID PRIMARY KEY,
+            email TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            name TEXT NOT NULL,
+            acc_type TEXT NOT NULL
+        )
+        "#,
     )
     .execute(pool)
     .await?;
@@ -34,10 +34,10 @@ pub async fn create_tables(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS roles (
-            id TEXT PRIMARY KEY NOT NULL,
+            id UUID PRIMARY KEY,
             name TEXT NOT NULL
         )
-    "#,
+        "#,
     )
     .execute(pool)
     .await?;
@@ -45,8 +45,8 @@ pub async fn create_tables(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS permissions (
-            id TEXT,
-            name TEXT PRIMARY KEY NOT NULL
+            id UUID,
+            name TEXT PRIMARY KEY
         )
         "#,
     )
@@ -56,7 +56,7 @@ pub async fn create_tables(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS permission_bindings (
-            role_id TEXT NOT NULL,
+            role_id UUID NOT NULL,
             permission_name TEXT NOT NULL,
             PRIMARY KEY (role_id, permission_name),
             FOREIGN KEY (role_id) REFERENCES roles(id),
@@ -70,8 +70,8 @@ pub async fn create_tables(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS role_bindings (
-            account_id TEXT NOT NULL,
-            role_id TEXT NOT NULL,
+            account_id UUID NOT NULL,
+            role_id UUID NOT NULL,
             PRIMARY KEY (account_id, role_id),
             FOREIGN KEY (account_id) REFERENCES accounts(id),
             FOREIGN KEY (role_id) REFERENCES roles(id)

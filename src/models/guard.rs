@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use actix_web::{HttpRequest, HttpResponse, Responder};
 use log::{debug, error, info};
-use sqlx::{Error, Pool, Sqlite};
+use sqlx::{Error, PgPool, Pool};
 
 use crate::{
     db::queries::{
@@ -15,13 +15,13 @@ use crate::{
 
 use super::{account::Account, api::ApiResult, token::TokenClaims};
 
-pub struct Guard {
+pub struct AuthGuard {
     jwt_secret: String,
-    pub db: Arc<Pool<Sqlite>>,
+    pub db: Arc<PgPool>,
 }
 
-impl Guard {
-    pub fn new(jwt_secret: &str, db: Arc<Pool<Sqlite>>) -> Self {
+impl AuthGuard {
+    pub fn new(jwt_secret: &str, db: Arc<PgPool>) -> Self {
         Self {
             jwt_secret: jwt_secret.to_string(),
             db,

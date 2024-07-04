@@ -1,5 +1,5 @@
 use log::error;
-use sqlx::{Error, Result, SqlitePool};
+use sqlx::{Error, PgPool, Result};
 use uuid::Uuid;
 
 use crate::models::{
@@ -12,16 +12,15 @@ use super::role::{
     get_role_id_db, get_role_name_db, get_role_permissions_db, remove_role_from_account_db,
 };
 
-pub async fn create_account_db(pool: &SqlitePool, acc: &Account) -> Result<Account> {
+pub async fn create_account_db(pool: &PgPool, acc: &Account) -> Result<Account> {
     let acc_type = acc.acc_type.to_string();
-    let id = acc.id.to_string();
 
     sqlx::query!(
         r#"
         INSERT INTO accounts (id, email, name, password_hash, acc_type)
-        VALUES (?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5)
       "#,
-        id,
+        acc.id,
         acc.email,
         acc.name,
         acc.password_hash,
@@ -36,9 +35,9 @@ pub async fn create_account_db(pool: &SqlitePool, acc: &Account) -> Result<Accou
     let acc_r = sqlx::query!(
         r#"
           SELECT * FROM accounts
-          WHERE id = ?
+          WHERE id = $1
         "#,
-        id
+        acc.id
     )
     .fetch_optional(pool)
     .await?;
@@ -57,8 +56,8 @@ pub async fn create_account_db(pool: &SqlitePool, acc: &Account) -> Result<Accou
 }
 
 pub async fn update_account_db(
-    pool: &SqlitePool,
-    id: &str,
+    pool: &PgPool,
+    id: &Uuid,
     name: Option<String>,
     email: Option<String>,
 ) -> Result<Account> {
@@ -66,8 +65,8 @@ pub async fn update_account_db(
         sqlx::query!(
             r#"
             UPDATE accounts
-            SET email = ?
-            WHERE id = ?
+            SET email = $1
+            WHERE id = $2
           "#,
             email,
             id,
@@ -80,8 +79,8 @@ pub async fn update_account_db(
         sqlx::query!(
             r#"
             UPDATE accounts
-            SET name = ?
-            WHERE id = ?
+            SET name = $1
+            WHERE id = $2
           "#,
             name,
             id,
@@ -93,12 +92,12 @@ pub async fn update_account_db(
     get_account_by_id_db(pool, &id).await
 }
 
-pub async fn get_account_by_id_db(pool: &SqlitePool, id: &str) -> Result<Account> {
+pub async fn get_account_by_id_db(pool: &PgPool, id: &Uuid) -> Result<Account> {
     // Fetch the newly created user from the database
     let acc_r = sqlx::query!(
         r#"
           SELECT * FROM accounts
-          WHERE id = ?
+          WHERE id = $1
         "#,
         id
     )
@@ -110,7 +109,7 @@ pub async fn get_account_by_id_db(pool: &SqlitePool, id: &str) -> Result<Account
             let roles_r = sqlx::query!(
                 r#"
                   SELECT * FROM role_bindings
-                  WHERE account_id = ?
+                  WHERE account_id = $1
                 "#,
                 record.id
             )
@@ -124,7 +123,7 @@ pub async fn get_account_by_id_db(pool: &SqlitePool, id: &str) -> Result<Account
                 let permissions = get_role_permissions_db(pool, &role_r.role_id).await?;
 
                 let role = Role {
-                    id: Uuid::parse_str(&role_r.role_id).unwrap(),
+                    id: role_r.role_id,
                     name: role_name,
                     permissions: RolePermissions::new(permissions),
                 };
@@ -132,17 +131,8 @@ pub async fn get_account_by_id_db(pool: &SqlitePool, id: &str) -> Result<Account
                 roles.push(role);
             }
 
-            let id_str = record.id.unwrap_or("".to_string()).to_string();
-            let id = Uuid::parse_str(&id_str)
-                .map_err(|e| {
-                    Error::Decode(Box::new(ApiError {
-                        message: "Error".to_string(),
-                    }))
-                })
-                .map_err(|e| Error::WorkerCrashed)?;
-
             Ok(Account {
-                id,
+                id: record.id,
                 name: record.name.to_string(),
                 email: record.email,
                 password_hash: record.password_hash,
@@ -154,12 +144,12 @@ pub async fn get_account_by_id_db(pool: &SqlitePool, id: &str) -> Result<Account
     }
 }
 
-pub async fn get_account_by_email_db(pool: &SqlitePool, email: &str) -> Result<Account> {
+pub async fn get_account_by_email_db(pool: &PgPool, email: &str) -> Result<Account> {
     // Fetch the newly created user from the database
     let acc_r = sqlx::query!(
         r#"
           SELECT * FROM accounts
-          WHERE email = ?
+          WHERE email = $1
         "#,
         email
     )
@@ -171,7 +161,7 @@ pub async fn get_account_by_email_db(pool: &SqlitePool, email: &str) -> Result<A
             let roles_r = sqlx::query!(
                 r#"
                   SELECT * FROM role_bindings
-                  WHERE account_id = ?
+                  WHERE account_id = $1
                 "#,
                 record.id
             )
@@ -185,7 +175,7 @@ pub async fn get_account_by_email_db(pool: &SqlitePool, email: &str) -> Result<A
                 let permissions = get_role_permissions_db(pool, &role_r.role_id).await?;
 
                 let role = Role {
-                    id: Uuid::parse_str(&role_r.role_id).unwrap(),
+                    id: role_r.role_id,
                     name: role_name,
                     permissions: RolePermissions::new(permissions),
                 };
@@ -193,17 +183,8 @@ pub async fn get_account_by_email_db(pool: &SqlitePool, email: &str) -> Result<A
                 roles.push(role);
             }
 
-            let id_str = record.id.unwrap_or("".to_string()).to_string();
-            let id = Uuid::parse_str(&id_str)
-                .map_err(|e| {
-                    Error::Decode(Box::new(ApiError {
-                        message: "Error".to_string(),
-                    }))
-                })
-                .map_err(|e| Error::WorkerCrashed)?;
-
             Ok(Account {
-                id,
+                id: record.id,
                 name: record.name.to_string(),
                 email: record.email,
                 password_hash: record.password_hash,
@@ -215,7 +196,7 @@ pub async fn get_account_by_email_db(pool: &SqlitePool, email: &str) -> Result<A
     }
 }
 
-pub async fn delete_account_db(pool: &SqlitePool, account: &Account) -> Result<()> {
+pub async fn delete_account_db(pool: &PgPool, account: &Account) -> Result<()> {
     let acc_id = account.id.to_string();
     // remove role bindings
     for role in &account.roles {
@@ -223,20 +204,20 @@ pub async fn delete_account_db(pool: &SqlitePool, account: &Account) -> Result<(
     }
 
     // Fetch the newly created user from the database
-    let acc_rs = sqlx::query!(
+    let acc_rs = sqlx::query(
         r#"
           DELETE FROM accounts
-          WHERE id = ?
+          WHERE id = $1
         "#,
-        acc_id
     )
+    .bind(acc_id)
     .fetch_all(pool)
     .await?;
 
     Ok(())
 }
 
-pub async fn get_all_accounts_db(pool: &SqlitePool) -> Result<Vec<Account>> {
+pub async fn get_all_accounts_db(pool: &PgPool) -> Result<Vec<Account>> {
     // Fetch the newly created user from the database
     let acc_rs = sqlx::query!(
         r#"
@@ -260,19 +241,19 @@ pub async fn get_all_accounts_db(pool: &SqlitePool) -> Result<Vec<Account>> {
     Ok(accounts)
 }
 
-pub async fn get_account_id_by_email_db(pool: &SqlitePool, email: &str) -> Result<String> {
+pub async fn get_account_id_by_email_db(pool: &PgPool, email: &str) -> Result<Uuid> {
     // Fetch the newly created user from the database
     match sqlx::query!(
         r#"
           SELECT id FROM accounts
-          WHERE email = ?
+          WHERE email = $1
         "#,
         email
     )
     .fetch_optional(pool)
     .await?
     {
-        Some(r) => Ok(r.id.unwrap()),
+        Some(r) => Ok(r.id),
         None => Err(Error::RowNotFound),
     }
 }

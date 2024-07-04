@@ -11,7 +11,7 @@ dotenv = "0.15.0"
 jsonwebtoken = "9.3.0"
 serde = "1.0.203"
 serde_json = "1.0.119"
-sqlx = { version = "0.7.4", features = ["postgres","sqlite", "runtime-tokio", "tls-native-tls"] }
+sqlx = { version = "0.7.4", features = ["postgres","sqlite","uuid", "runtime-tokio", "tls-native-tls"] }
 clap = { version = "4.0", features = ["derive"] }
 ctrlc = "3.2"
 uuid = { version = "1.3.3", features = [ "v4", "fast-rng", "macro-diagnostics", "serde" ] }

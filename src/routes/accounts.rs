@@ -67,7 +67,7 @@ pub async fn update_account(
 
     let updated_account = match update_account_db(
         &app.db,
-        &account.id.to_string(),
+        &account.id,
         body.name.clone(),
         body.email.clone(),
     )

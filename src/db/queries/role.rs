@@ -1,5 +1,5 @@
 use log::debug;
-use sqlx::{Error, PgPool, Postgres, Result, SqlitePool};
+use sqlx::{Error, PgPool, Postgres, Result};
 use uuid::Uuid;
 
 use crate::models::{
@@ -10,8 +10,7 @@ use crate::models::{
 
 use super::account::get_account_by_email_db;
 
-pub async fn create_role_db(pool: &SqlitePool, role: &Role) -> Result<Role> {
-    let id = role.id_str();
+pub async fn create_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
     // let mut tx = pool
     //     .begin()
     //     .await
@@ -21,9 +20,9 @@ pub async fn create_role_db(pool: &SqlitePool, role: &Role) -> Result<Role> {
     sqlx::query!(
         r#"
         INSERT INTO roles (id, name)
-        VALUES (?, ?)
+        VALUES ($1, $2)
         "#,
-        id,
+        role.id,
         role.name
     )
     .execute(pool)
@@ -45,7 +44,7 @@ pub async fn create_role_db(pool: &SqlitePool, role: &Role) -> Result<Role> {
     get_role_db(pool, &role.name).await
 }
 
-pub async fn update_role_db(pool: &SqlitePool, role: &Role) -> Result<Role> {
+pub async fn update_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
     let role_id = role.id_str();
     // let name = update.new_name.as_deref().unwrap_or(current_role_name);
     // // let mut tx = pool.begin().await?;
@@ -54,11 +53,11 @@ pub async fn update_role_db(pool: &SqlitePool, role: &Role) -> Result<Role> {
     sqlx::query!(
         r#"
         UPDATE roles
-        SET name = ?
-        WHERE id = ?
+            SET name = $1
+            WHERE id = $2
         "#,
         role.name,
-        role_id
+        role.id
     )
     // .execute(&mut tx)
     .execute(pool)
@@ -68,9 +67,9 @@ pub async fn update_role_db(pool: &SqlitePool, role: &Role) -> Result<Role> {
     sqlx::query!(
         r#"
         DELETE FROM permission_bindings
-        WHERE role_id = ?
+        WHERE role_id = $1
         "#,
-        role_id
+        role.id
     )
     // .execute(&mut tx)
     .execute(pool)
@@ -92,7 +91,7 @@ pub async fn update_role_db(pool: &SqlitePool, role: &Role) -> Result<Role> {
     get_role_db(pool, &role.name).await
 }
 
-pub async fn delete_role_db(pool: &SqlitePool, role: &Role) -> Result<()> {
+pub async fn delete_role_db(pool: &PgPool, role: &Role) -> Result<()> {
     let role_id = role.id_str();
     // let mut tx = pool
     //     .begin()
@@ -103,9 +102,9 @@ pub async fn delete_role_db(pool: &SqlitePool, role: &Role) -> Result<()> {
     sqlx::query!(
         r#"
         DELETE FROM permission_bindings
-        WHERE role_id = ?
+        WHERE role_id = $1
         "#,
-        role_id
+        role.id
     )
     .execute(pool)
     // .execute(&mut tx)
@@ -115,9 +114,9 @@ pub async fn delete_role_db(pool: &SqlitePool, role: &Role) -> Result<()> {
     sqlx::query!(
         r#"
         DELETE FROM role_bindings
-        WHERE role_id = ?
+        WHERE role_id = $1
         "#,
-        role_id
+        role.id
     )
     // .execute(&mut tx)
     .execute(pool)
@@ -127,9 +126,9 @@ pub async fn delete_role_db(pool: &SqlitePool, role: &Role) -> Result<()> {
     sqlx::query!(
         r#"
         DELETE FROM roles
-        WHERE id = ?
+        WHERE id = $1
         "#,
-        role_id
+        role.id
     )
     // .execute(&mut tx)
     .execute(pool)
@@ -142,11 +141,11 @@ pub async fn delete_role_db(pool: &SqlitePool, role: &Role) -> Result<()> {
     Ok(())
 }
 
-pub async fn get_role_db(pool: &SqlitePool, role_name: &str) -> Result<Role> {
+pub async fn get_role_db(pool: &PgPool, role_name: &str) -> Result<Role> {
     let r = sqlx::query!(
         r#"
         SELECT * FROM roles
-        WHERE name = ?
+        WHERE name = $1
         "#,
         role_name
     )
@@ -158,7 +157,7 @@ pub async fn get_role_db(pool: &SqlitePool, role_name: &str) -> Result<Role> {
             let role_id = get_role_id_db(pool, role_name).await?;
             let permissions = get_role_permissions_db(pool, &role_id).await?;
             Ok(Role {
-                id: Uuid::parse_str(&r.id).unwrap(),
+                id: r.id.clone(),
                 name: r.name.to_string(),
                 permissions: RolePermissions::new(permissions),
             })
@@ -167,11 +166,11 @@ pub async fn get_role_db(pool: &SqlitePool, role_name: &str) -> Result<Role> {
     }
 }
 
-pub async fn get_role_id_db(pool: &SqlitePool, role_name: &str) -> Result<String> {
+pub async fn get_role_id_db(pool: &PgPool, role_name: &str) -> Result<Uuid> {
     match sqlx::query!(
         r#"
         SELECT id FROM roles
-        WHERE name = ?
+        WHERE name = $1
         "#,
         role_name
     )
@@ -183,11 +182,11 @@ pub async fn get_role_id_db(pool: &SqlitePool, role_name: &str) -> Result<String
     }
 }
 
-pub async fn get_role_name_db(pool: &SqlitePool, role_id: &str) -> Result<String> {
+pub async fn get_role_name_db(pool: &PgPool, role_id: &Uuid) -> Result<String> {
     match sqlx::query!(
         r#"
         SELECT name FROM roles
-        WHERE id = ?
+        WHERE id = $1
         "#,
         role_id
     )
@@ -199,11 +198,11 @@ pub async fn get_role_name_db(pool: &SqlitePool, role_id: &str) -> Result<String
     }
 }
 
-pub async fn get_role_permissions_db(pool: &SqlitePool, role_id: &str) -> Result<Vec<String>> {
+pub async fn get_role_permissions_db(pool: &PgPool, role_id: &Uuid) -> Result<Vec<String>> {
     let permission_rows = sqlx::query!(
         r#"
                 SELECT permission_name FROM permission_bindings
-                WHERE role_id = ?
+                WHERE role_id = $1
                 "#,
         role_id
     )
@@ -220,7 +219,7 @@ pub async fn get_role_permissions_db(pool: &SqlitePool, role_id: &str) -> Result
     Ok(permissions)
 }
 
-pub async fn get_all_roles_db(pool: &SqlitePool) -> Result<Vec<Role>> {
+pub async fn get_all_roles_db(pool: &PgPool) -> Result<Vec<Role>> {
     let rs = sqlx::query!(
         r#"
         SELECT * FROM roles
@@ -238,10 +237,7 @@ pub async fn get_all_roles_db(pool: &SqlitePool) -> Result<Vec<Role>> {
     Ok(roles)
 }
 
-pub async fn create_permissions_db(
-    pool: &SqlitePool,
-    perms: Vec<Permission>,
-) -> Result<Vec<String>> {
+pub async fn create_permissions_db(pool: &PgPool, perms: Vec<Permission>) -> Result<Vec<String>> {
     let existing_perms = get_all_permissions(pool).await?;
     let mut created_perms = vec![];
     // let mut tx = pool
@@ -251,13 +247,12 @@ pub async fn create_permissions_db(
 
     for perm in perms {
         if !existing_perms.contains(&perm.name) {
-            let id = perm.id.to_string();
             sqlx::query!(
                 r#"
                 INSERT INTO permissions (id, name)
-                VALUES (?, ?)
+                VALUES ($1, $2)
                 "#,
-                id,
+                perm.id,
                 perm.name
             )
             .execute(pool)
@@ -275,11 +270,11 @@ pub async fn create_permissions_db(
     Ok(created_perms)
 }
 
-pub async fn get_permission_db(pool: &SqlitePool, permission_name: &str) -> Result<String> {
+pub async fn get_permission_db(pool: &PgPool, permission_name: &str) -> Result<String> {
     match sqlx::query!(
         r#"
         SELECT name FROM permissions
-        WHERE name = ?
+        WHERE name = $1
         "#,
         permission_name
     )
@@ -291,7 +286,7 @@ pub async fn get_permission_db(pool: &SqlitePool, permission_name: &str) -> Resu
     }
 }
 
-pub async fn get_all_permissions(pool: &SqlitePool) -> Result<Vec<String>> {
+pub async fn get_all_permissions(pool: &PgPool) -> Result<Vec<String>> {
     let rs = sqlx::query!(
         r#"
         SELECT name FROM permissions
@@ -305,7 +300,7 @@ pub async fn get_all_permissions(pool: &SqlitePool) -> Result<Vec<String>> {
     Ok(permissions)
 }
 
-pub async fn delete_permissions_db(pool: &SqlitePool, perms: Vec<String>) -> Result<Vec<String>> {
+pub async fn delete_permissions_db(pool: &PgPool, perms: Vec<String>) -> Result<Vec<String>> {
     // let mut tx = pool
     //     .begin()
     //     .await
@@ -318,7 +313,7 @@ pub async fn delete_permissions_db(pool: &SqlitePool, perms: Vec<String>) -> Res
             sqlx::query!(
                 r#"
                     DELETE FROM permission_bindings 
-                    WHERE permission_name = ?
+                    WHERE permission_name = $1
                     "#,
                 perm
             )
@@ -329,7 +324,7 @@ pub async fn delete_permissions_db(pool: &SqlitePool, perms: Vec<String>) -> Res
             sqlx::query!(
                 r#"
                 DELETE FROM permissions 
-                WHERE name = ?
+                WHERE name = $1
                 "#,
                 perm
             )
@@ -348,10 +343,7 @@ pub async fn delete_permissions_db(pool: &SqlitePool, perms: Vec<String>) -> Res
     Ok(created_perms)
 }
 
-pub async fn bind_role_to_account_db(pool: &SqlitePool, acc: &Account, role: &Role) -> Result<()> {
-    let acc_id: String = acc.id.to_string();
-    let role_id = role.id.to_string();
-
+pub async fn bind_role_to_account_db(pool: &PgPool, acc: &Account, role: &Role) -> Result<()> {
     // only create binding if both role and account exist!
     if let (Ok(_role), Ok(_acc)) = (
         get_role_db(pool, &role.name).await,
@@ -360,10 +352,10 @@ pub async fn bind_role_to_account_db(pool: &SqlitePool, acc: &Account, role: &Ro
     sqlx::query!(
         r#"
         INSERT INTO role_bindings (account_id, role_id)
-        VALUES (?, ?)
+        VALUES ($1, $2)
         "#,
-        acc_id,
-        role_id
+        acc.id,
+        role.id
     )
     .execute(pool)
     .await?;
@@ -371,9 +363,7 @@ pub async fn bind_role_to_account_db(pool: &SqlitePool, acc: &Account, role: &Ro
     Ok(())
 }
 
-pub async fn bind_permission_to_role(pool: &SqlitePool, role: &Role, perm: &str) -> Result<()> {
-    let role_id = role.id.to_string();
-
+pub async fn bind_permission_to_role(pool: &PgPool, role: &Role, perm: &str) -> Result<()> {
     debug!("Creating permission binding, for permission_name: {perm:?}, and role: {role:?}");
 
     // only create binding if both role and permission exist!
@@ -384,9 +374,9 @@ pub async fn bind_permission_to_role(pool: &SqlitePool, role: &Role, perm: &str)
         sqlx::query!(
             r#"
             INSERT INTO permission_bindings (role_id, permission_name)
-            VALUES (?, ?)
+            VALUES ($1, $2)
             "#,
-            role_id,
+            role.id,
             perm
         )
         .execute(pool)
@@ -396,11 +386,7 @@ pub async fn bind_permission_to_role(pool: &SqlitePool, role: &Role, perm: &str)
     Ok(())
 }
 
-pub async fn remove_permission_from_role_db(
-    pool: &SqlitePool,
-    role: &Role,
-    perm: &str,
-) -> Result<()> {
+pub async fn remove_permission_from_role_db(pool: &PgPool, role: &Role, perm: &str) -> Result<()> {
     let role_id = role.id.to_string();
     // let mut tx = pool
     //     .begin()
@@ -416,9 +402,9 @@ pub async fn remove_permission_from_role_db(
         sqlx::query!(
             r#"
                 DELETE FROM permission_bindings 
-                WHERE role_id = ? AND permission_name = ?
+                WHERE role_id = $1 AND permission_name = $2
                 "#,
-            role_id,
+            role.id,
             perm
         )
         .execute(pool)
@@ -433,14 +419,7 @@ pub async fn remove_permission_from_role_db(
     Ok(())
 }
 
-pub async fn remove_role_from_account_db(
-    pool: &SqlitePool,
-    acc: &Account,
-    role: &Role,
-) -> Result<()> {
-    let role_id = role.id.to_string();
-    let account_id = acc.id.to_string();
-
+pub async fn remove_role_from_account_db(pool: &PgPool, acc: &Account, role: &Role) -> Result<()> {
     // let mut tx = pool
     //     .begin()
     //     .await
@@ -452,10 +431,10 @@ pub async fn remove_role_from_account_db(
         sqlx::query!(
             r#"
                 DELETE FROM role_bindings 
-                WHERE role_id = ? AND account_id = ?
+                WHERE role_id = $1 AND account_id = $2
                 "#,
-            role_id,
-            account_id,
+            role.id,
+            acc.id,
         )
         .execute(pool)
         // .execute(&mut tx)
@@ -470,7 +449,7 @@ pub async fn remove_role_from_account_db(
 }
 
 // pub async fn _remove_permissions_from_role(
-//     pool: &SqlitePool,
+//     pool: &PgPool,
 //     role: &Role,
 //     perms: Vec<String>,
 // ) -> Result<()> {
@@ -508,7 +487,7 @@ pub async fn remove_role_from_account_db(
 // }
 
 // pub async fn _bind_permissions_to_role(
-//     pool: &SqlitePool,
+//     pool: &PgPool,
 //     role: &Role,
 //     perms: Vec<String>,
 // ) -> Result<()> {
