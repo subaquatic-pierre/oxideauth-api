@@ -7,11 +7,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::app::AppData;
-use crate::db::queries::account::get_account_by_email_db;
+use crate::db::queries::account::get_account_db;
 use crate::db::queries::role::{
     bind_permission_to_role, bind_role_to_account_db, create_permissions_db, create_role_db,
     delete_permissions_db, delete_role_db, get_all_permissions, get_all_roles_db, get_role_db,
-    remove_permission_from_role_db, remove_role_from_account_db,
+    remove_permission_from_role_db, remove_role_binding_db,
 };
 use crate::lib::token::get_token_from_req;
 use crate::models::account::Account;
@@ -142,7 +142,7 @@ pub async fn assign_roles(
 
     // respond
 
-    let account = match get_account_by_email_db(&app.db, &body.account).await {
+    let account = match get_account_db(&app.db, &body.account).await {
         Ok(role) => role,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
@@ -160,7 +160,7 @@ pub async fn assign_roles(
         }
     }
 
-    let updated_acc = match get_account_by_email_db(&app.db, &body.account).await {
+    let updated_acc = match get_account_db(&app.db, &body.account).await {
         Ok(role) => role,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
@@ -187,14 +187,14 @@ pub async fn remove_roles(
     app: Data<AppData>,
     body: Json<RemoveRoleReq>,
 ) -> impl Responder {
-    let account = match get_account_by_email_db(&app.db, &body.account).await {
+    let account = match get_account_db(&app.db, &body.account).await {
         Ok(acc) => acc,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
     for role in &body.roles {
         match get_role_db(&app.db, role).await {
-            Ok(role) => match remove_role_from_account_db(&app.db, &account, &role).await {
+            Ok(role) => match remove_role_binding_db(&app.db, &account, &role).await {
                 Ok(_) => {}
                 Err(e) => {
                     error!("Unable to remove role: {role:?} from account: {account:?}, {e}");
@@ -206,7 +206,7 @@ pub async fn remove_roles(
         }
     }
 
-    let updated_account = match get_account_by_email_db(&app.db, &body.account).await {
+    let updated_account = match get_account_db(&app.db, &body.account).await {
         Ok(acc) => acc,
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };

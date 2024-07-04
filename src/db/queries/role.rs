@@ -8,14 +8,9 @@ use crate::models::{
     role::{Permission, Role, RolePermissions},
 };
 
-use super::account::get_account_by_email_db;
+use super::account::get_account_db;
 
 pub async fn create_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
-    // let mut tx = pool
-    //     .begin()
-    //     .await
-    //     .map_err(|e| ApiError::new(&e.to_string()))?;
-
     debug!("Creating role: {role:?}");
     sqlx::query!(
         r#"
@@ -30,6 +25,7 @@ pub async fn create_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
     .await?;
 
     let existing_perms = get_all_permissions(pool).await?;
+
     debug!("Existing permissions: {existing_perms:?}");
 
     for perm in &role.permissions {
@@ -45,58 +41,35 @@ pub async fn create_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
 }
 
 pub async fn update_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
-    let role_id = role.id_str();
-    // let name = update.new_name.as_deref().unwrap_or(current_role_name);
-    // // let mut tx = pool.begin().await?;
-
-    // // Update the role name if provided
-    sqlx::query!(
+    let r = sqlx::query!(
         r#"
         UPDATE roles
             SET name = $1
             WHERE id = $2
+            RETURNING *
         "#,
         role.name,
         role.id
     )
     // .execute(&mut tx)
-    .execute(pool)
+    .fetch_optional(pool)
     .await?;
 
-    // Delete existing permission bindings for the role
-    sqlx::query!(
-        r#"
-        DELETE FROM permission_bindings
-        WHERE role_id = $1
-        "#,
-        role.id
-    )
-    // .execute(&mut tx)
-    .execute(pool)
-    .await?;
-
-    let existing_perms = get_all_permissions(pool).await?;
-
-    for perm in &role.permissions {
-        let new_perm = Permission::new(&perm);
-
-        if !existing_perms.contains(&perm) {
-            create_permissions_db(pool, vec![new_perm.clone()]).await?;
+    match r {
+        Some(r) => {
+            let permissions = get_role_permissions_db(pool, &r.id).await?;
+            Ok(Role {
+                id: r.id,
+                name: r.name,
+                permissions,
+            })
         }
-        bind_permission_to_role(pool, role, &new_perm.name).await?;
+        None => Err(Error::RowNotFound),
     }
-
-    // tx.commit().await?;
-
-    get_role_db(pool, &role.name).await
 }
 
 pub async fn delete_role_db(pool: &PgPool, role: &Role) -> Result<()> {
-    let role_id = role.id_str();
-    // let mut tx = pool
-    //     .begin()
-    //     .await
-    //     .map_err(|e| ApiError::new(&e.to_string()))?;
+    let mut tx = pool.begin().await?;
 
     // Delete from permission_bindings
     sqlx::query!(
@@ -106,7 +79,7 @@ pub async fn delete_role_db(pool: &PgPool, role: &Role) -> Result<()> {
         "#,
         role.id
     )
-    .execute(pool)
+    .execute(&mut *tx)
     // .execute(&mut tx)
     .await?;
 
@@ -119,7 +92,7 @@ pub async fn delete_role_db(pool: &PgPool, role: &Role) -> Result<()> {
         role.id
     )
     // .execute(&mut tx)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
 
     // // Delete the role itself
@@ -131,79 +104,64 @@ pub async fn delete_role_db(pool: &PgPool, role: &Role) -> Result<()> {
         role.id
     )
     // .execute(&mut tx)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
 
-    // tx.commit()
-    //     .await
-    //     .map_err(|e| ApiError::new(&e.to_string()))?;
+    tx.commit().await?;
 
     Ok(())
 }
 
-pub async fn get_role_db(pool: &PgPool, role_name: &str) -> Result<Role> {
-    let r = sqlx::query!(
-        r#"
-        SELECT * FROM roles
-        WHERE name = $1
-        "#,
-        role_name
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    match r {
-        Some(r) => {
-            let role_id = get_role_id_db(pool, role_name).await?;
-            let permissions = get_role_permissions_db(pool, &role_id).await?;
-            Ok(Role {
-                id: r.id.clone(),
-                name: r.name.to_string(),
-                permissions: RolePermissions::new(permissions),
-            })
+pub async fn get_role_db(pool: &PgPool, id_or_name: &str) -> Result<Role> {
+    let (id, name) = match Uuid::parse_str(id_or_name) {
+        Ok(id) => {
+            if let Some(r) = sqlx::query!(
+                r#"
+                SELECT * FROM roles
+                WHERE id = $1
+                "#,
+                id
+            )
+            .fetch_optional(pool)
+            .await?
+            {
+                (r.id, r.name)
+            } else {
+                return Err(Error::RowNotFound);
+            }
         }
-        None => Err(Error::RowNotFound),
-    }
+        Err(_) => {
+            if let Some(r) = sqlx::query!(
+                r#"
+                SELECT * FROM roles
+                WHERE name = $1
+                "#,
+                id_or_name
+            )
+            .fetch_optional(pool)
+            .await?
+            {
+                (r.id, r.name)
+            } else {
+                return Err(Error::RowNotFound);
+            }
+        }
+    };
+
+    let permissions = get_role_permissions_db(pool, &id).await?;
+    Ok(Role {
+        id,
+        name: name.to_string(),
+        permissions,
+    })
 }
 
-pub async fn get_role_id_db(pool: &PgPool, role_name: &str) -> Result<Uuid> {
-    match sqlx::query!(
-        r#"
-        SELECT id FROM roles
-        WHERE name = $1
-        "#,
-        role_name
-    )
-    .fetch_optional(pool)
-    .await?
-    {
-        Some(r) => Ok(r.id),
-        None => Err(Error::RowNotFound),
-    }
-}
-
-pub async fn get_role_name_db(pool: &PgPool, role_id: &Uuid) -> Result<String> {
-    match sqlx::query!(
-        r#"
-        SELECT name FROM roles
-        WHERE id = $1
-        "#,
-        role_id
-    )
-    .fetch_optional(pool)
-    .await?
-    {
-        Some(r) => Ok(r.name),
-        None => Err(Error::RowNotFound),
-    }
-}
-
-pub async fn get_role_permissions_db(pool: &PgPool, role_id: &Uuid) -> Result<Vec<String>> {
+pub async fn get_role_permissions_db(pool: &PgPool, role_id: &Uuid) -> Result<RolePermissions> {
     let permission_rows = sqlx::query!(
         r#"
-                SELECT permission_name FROM permission_bindings
-                WHERE role_id = $1
-                "#,
+            SELECT permission_name FROM permission_bindings
+            WHERE role_id = $1
+            "#,
         role_id
     )
     .fetch_all(pool)
@@ -216,13 +174,13 @@ pub async fn get_role_permissions_db(pool: &PgPool, role_id: &Uuid) -> Result<Ve
 
     debug!("Permissions in get_role_permissions_db, {permissions:?}");
 
-    Ok(permissions)
+    Ok(RolePermissions::new(permissions))
 }
 
 pub async fn get_all_roles_db(pool: &PgPool) -> Result<Vec<Role>> {
     let rs = sqlx::query!(
         r#"
-        SELECT * FROM roles
+        SELECT name FROM roles
         "#,
     )
     .fetch_all(pool)
@@ -347,7 +305,7 @@ pub async fn bind_role_to_account_db(pool: &PgPool, acc: &Account, role: &Role) 
     // only create binding if both role and account exist!
     if let (Ok(_role), Ok(_acc)) = (
         get_role_db(pool, &role.name).await,
-        get_account_by_email_db(pool, &acc.email).await,
+        get_account_db(pool, &acc.email).await,
     ) {}
     sqlx::query!(
         r#"
@@ -419,7 +377,7 @@ pub async fn remove_permission_from_role_db(pool: &PgPool, role: &Role, perm: &s
     Ok(())
 }
 
-pub async fn remove_role_from_account_db(pool: &PgPool, acc: &Account, role: &Role) -> Result<()> {
+pub async fn remove_role_binding_db(pool: &PgPool, acc: &Account, role: &Role) -> Result<()> {
     // let mut tx = pool
     //     .begin()
     //     .await

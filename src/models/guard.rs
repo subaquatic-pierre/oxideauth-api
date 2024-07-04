@@ -6,8 +6,8 @@ use sqlx::{Error, PgPool, Pool};
 
 use crate::{
     db::queries::{
-        account::get_account_by_email_db,
-        role::{get_role_id_db, get_role_permissions_db},
+        account::get_account_db,
+        role::{get_role_db, get_role_permissions_db},
     },
     lib::{auth::contains_all, token::get_token_from_req},
     models::api::ApiError,
@@ -46,7 +46,7 @@ impl AuthGuard {
             }
         };
 
-        let account = match get_account_by_email_db(&self.db, &claims.sub).await {
+        let account = match get_account_db(&self.db, &claims.sub).await {
             Ok(acc) => acc,
             Err(e) => match e {
                 Error::RowNotFound => {
@@ -70,8 +70,8 @@ impl AuthGuard {
 
         let mut token_permissions: Vec<String> = vec![];
         for role_name in claims.roles {
-            match get_role_id_db(&self.db, &role_name).await {
-                Ok(role_id) => match get_role_permissions_db(&self.db, &role_id).await {
+            match get_role_db(&self.db, &role_name).await {
+                Ok(role) => match get_role_permissions_db(&self.db, &role.id).await {
                     Ok(perms) => token_permissions.extend(perms),
                     Err(e) => {
                         error!("Unable to get permissions for '{role_name}', {:?}", e);
