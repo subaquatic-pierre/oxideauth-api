@@ -9,9 +9,9 @@ use serde_json::json;
 use crate::app::AppData;
 use crate::db::queries::account::get_account_db;
 use crate::db::queries::role::{
-    bind_permission_to_role, bind_role_to_account_db, create_permissions_db, create_role_db,
+    bind_permissions_to_role, bind_role_to_account_db, create_permissions_db, create_role_db,
     delete_permissions_db, delete_role_db, get_all_permissions, get_all_roles_db, get_role_db,
-    remove_permission_from_role_db, remove_role_binding_db,
+    remove_permissions_from_role_db, remove_role_binding_db,
 };
 use crate::lib::token::get_token_from_req;
 use crate::models::account::Account;
@@ -323,14 +323,14 @@ pub async fn assign_permissions(
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
-    for perm in &body.permissions {
-        match bind_permission_to_role(&app.db, &role, &perm).await {
-            Ok(_) => {
-                debug!("Permission: {perm} assign to role: {role:?}");
-            }
-            Err(e) => {
-                error!("Unable to assign permission: {perm} to role: {role:?}, {e}");
-            }
+    let perms: Vec<String> = body.permissions.iter().map(|el| el.to_string()).collect();
+
+    match bind_permissions_to_role(&app.db, &role, &perms).await {
+        Ok(_) => {
+            debug!("Permissions: {perms:?} assigned to role: {role:?}");
+        }
+        Err(e) => {
+            error!("Unable to assign permission: {perms:?} to role: {role:?}, {e}");
         }
     }
 
@@ -366,16 +366,16 @@ pub async fn remove_permissions(
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
-    for perm in &body.permissions {
-        match remove_permission_from_role_db(&app.db, &role, &perm).await {
-            Ok(_) => {
-                debug!("Permission: {perm} assign to role: {role:?}");
-            }
-            Err(e) => {
-                error!("Unable to assign permission: {perm} to role: {role:?}, {e}");
-            }
+    let perms: Vec<String> = body.permissions.iter().map(|el| el.to_string()).collect();
+
+    match remove_permissions_from_role_db(&app.db, &role, &perms).await {
+        Ok(_) => {
+            debug!("Permissions: {perms:?} removed to role: {role:?}");
         }
-    }
+        Err(e) => {
+            error!("Unable to remove permissions: {perms:?} from role: {role:?}, {e}");
+        }
+    };
 
     let updated_role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,

@@ -5,5 +5,6 @@ use uuid::Uuid;
 pub struct Service {
     id: Uuid,
     name: String,
-    description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
 }

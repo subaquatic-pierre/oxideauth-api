@@ -4,7 +4,10 @@ use uuid::Uuid;
 
 use crate::{app::AppConfig, lib::token::decode_token};
 
-use super::{account::Principal, api::ApiResult};
+use super::{
+    account::{Account, AccountType, Principal},
+    api::ApiResult,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Token {
@@ -16,15 +19,16 @@ pub struct Token {
 pub struct TokenClaims {
     pub sub: String,
     exp: usize,
-    pub roles: Vec<String>,
+    acc_type: String,
 }
 
 impl TokenClaims {
-    pub fn new(principal: impl Principal, exp: Option<u64>, roles: Vec<String>) -> Self {
+    pub fn new(account: &Account, exp: Option<u64>) -> Self {
         Self {
-            sub: principal.email(),
+            sub: account.id(),
             exp: 9999999999999999,
-            roles,
+            // acc_type: principal.acc_type().to_string(),
+            acc_type: account.acc_type.to_string(),
         }
     }
 

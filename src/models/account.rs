@@ -42,6 +42,8 @@ pub struct Account {
     pub password_hash: String,
     pub acc_type: AccountType,
     pub roles: Vec<Role>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 impl Account {
@@ -60,6 +62,7 @@ impl Account {
             password_hash: password_hash.to_string(),
             acc_type,
             roles,
+            description: None,
         }
     }
 
@@ -79,6 +82,7 @@ impl Default for Account {
             password_hash: "hashed password".to_string(),
             acc_type: AccountType::User,
             roles: vec![],
+            description: None,
         }
     }
 }
@@ -90,6 +94,9 @@ impl Principal for Account {
     fn id(&self) -> String {
         self.id.to_string()
     }
+    fn acc_type(&self) -> AccountType {
+        self.acc_type()
+    }
 }
 
 impl Principal for &Account {
@@ -99,9 +106,13 @@ impl Principal for &Account {
     fn id(&self) -> String {
         self.id.to_string()
     }
+    fn acc_type(&self) -> AccountType {
+        self.acc_type()
+    }
 }
 
 pub trait Principal {
     fn email(&self) -> String;
     fn id(&self) -> String;
+    fn acc_type(&self) -> AccountType;
 }

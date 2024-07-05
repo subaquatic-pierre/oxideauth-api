@@ -9,7 +9,7 @@ use crate::{
         account::get_account_db,
         role::{get_role_db, get_role_permissions_db},
     },
-    lib::{auth::contains_all, token::get_token_from_req},
+    lib::token::get_token_from_req,
     models::api::ApiError,
 };
 
@@ -50,7 +50,11 @@ impl AuthGuard {
             }
         };
 
+        info!("Token Claims: {claims:?}");
+
         // TODO: validate token expiry
+
+        // check token type
 
         let account = match get_account_db(&self.db, &claims.sub).await {
             Ok(acc) => acc,
@@ -65,31 +69,16 @@ impl AuthGuard {
             },
         };
 
-        info!("Token Claims: {claims:?}");
-
-        info!("Account from TokenClaims.sub {account:?}");
+        info!(
+            "Account returned from DB {account:?}, given TokenClaims.sub {}",
+            claims.sub
+        );
 
         let mut account_permissions: Vec<String> = vec![];
         for role in account.roles {
             account_permissions.extend(role.permissions)
         }
 
-        let mut token_permissions: Vec<String> = vec![];
-        for role_name in &claims.roles {
-            match get_role_db(&self.db, &role_name).await {
-                Ok(role) => match get_role_permissions_db(&self.db, &role.id).await {
-                    Ok(perms) => token_permissions.extend(perms),
-                    Err(e) => {
-                        error!("Unable to get permissions for '{role_name}', {:?}", e);
-                    }
-                },
-                Err(e) => {
-                    error!("Unable to get role_id for '{role_name}', {:?}", e);
-                }
-            }
-        }
-
-        info!("Token permissions: {token_permissions:?}");
         info!("Account permissions: {account_permissions:?}");
         info!("Required permissions: {required_perms:?}");
 

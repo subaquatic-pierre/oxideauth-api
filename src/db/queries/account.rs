@@ -11,15 +11,16 @@ pub async fn create_account_db(pool: &PgPool, acc: &Account) -> Result<Account> 
 
     let acc_r = sqlx::query!(
         r#"
-        INSERT INTO accounts (id, email, name, password_hash, acc_type)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO accounts (id, email, name, password_hash, acc_type, description)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
       "#,
         acc.id,
         acc.email,
         acc.name,
         acc.password_hash,
-        acc_type
+        acc_type,
+        acc.description
     )
     .fetch_optional(pool)
     .await?;
@@ -32,64 +33,35 @@ pub async fn create_account_db(pool: &PgPool, acc: &Account) -> Result<Account> 
             password_hash: record.password_hash,
             acc_type: record.acc_type.as_str().into(),
             roles: vec![],
+            description: record.description,
         }),
         None => Err(Error::RowNotFound),
     }
 }
 
-pub async fn update_account_db(
-    pool: &PgPool,
-    id: &Uuid,
-    name: Option<String>,
-    email: Option<String>,
-    password_hash: Option<String>,
-) -> Result<Account> {
+pub async fn update_account_db(pool: &PgPool, account: &Account) -> Result<Account> {
     let mut tx = pool.begin().await?;
-    if let Some(email) = email {
-        sqlx::query!(
-            r#"
-            UPDATE accounts
-            SET email = $1
-            WHERE id = $2
-          "#,
-            email,
-            id,
-        )
-        .execute(&mut *tx)
-        .await?;
-    }
-
-    if let Some(name) = name {
-        sqlx::query!(
-            r#"
-            UPDATE accounts
-            SET name = $1
-            WHERE id = $2
-          "#,
-            name,
-            id,
-        )
-        .execute(&mut *tx)
-        .await?;
-    }
-
-    if let Some(password_hash) = password_hash {
-        sqlx::query!(
-            r#"
-            UPDATE accounts
-            SET password_hash = $1
-            WHERE id = $2
-          "#,
-            password_hash,
-            id,
-        )
-        .execute(&mut *tx)
-        .await?;
-    }
+    sqlx::query!(
+        r#"
+        UPDATE accounts
+        SET email = $2,
+            name = $3,
+            description = $4,
+            password_hash = $5
+        WHERE id = $1
+      "#,
+        account.id,
+        account.email,
+        account.name,
+        account.description,
+        account.password_hash
+    )
+    .execute(&mut *tx)
+    .await?;
 
     tx.commit().await?;
 
-    get_account_db(pool, &id.to_string()).await
+    get_account_db(pool, &account.id.to_string()).await
 }
 
 pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account> {
@@ -99,6 +71,7 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
         pub email: String,
         pub acc_type: String,
         pub pw: String,
+        pub desc: Option<String>,
     }
 
     let acc_r = match Uuid::parse_str(id_or_email) {
@@ -119,6 +92,7 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
                     email: r.email,
                     acc_type: r.acc_type,
                     pw: r.password_hash,
+                    desc: r.description,
                 }
             } else {
                 return Err(Error::RowNotFound);
@@ -141,6 +115,7 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
                     email: r.email,
                     acc_type: r.acc_type,
                     pw: r.password_hash,
+                    desc: r.description,
                 }
             } else {
                 return Err(Error::RowNotFound);
@@ -172,6 +147,7 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
         password_hash: acc_r.pw,
         acc_type: acc_r.acc_type.as_str().into(),
         roles,
+        description: acc_r.desc,
     })
 }
 

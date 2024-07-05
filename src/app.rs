@@ -9,6 +9,7 @@ use crate::{db::init::establish_connection, models::guard::AuthGuard};
 pub struct AppConfig {
     pub database_url: String,
     pub jwt_secret: String,
+    pub default_sa_password: String,
 }
 
 impl AppConfig {
@@ -17,6 +18,8 @@ impl AppConfig {
         AppConfig {
             database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
             jwt_secret: env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
+            default_sa_password: env::var("DEFAULT_SERVICE_ACCOUNT_PASSWORD")
+                .expect("DEFAULT_SERVICE_ACCOUNT_PASSWORD must be set"),
         }
     }
 }

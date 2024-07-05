@@ -30,7 +30,6 @@ pub struct RegisterRes {
     pub token: String,
 }
 
-// TODO: Implement login
 #[post("/register")]
 pub async fn register_user(
     req: HttpRequest,
@@ -43,7 +42,11 @@ pub async fn register_user(
     };
 
     if let Ok(_) = get_account_db(&app.db, &body.email).await {
-        return ApiError::new("User already exists").respond_to(&req);
+        return ApiError::new(&format!(
+            "Cannot create Account with email '{}'",
+            body.email
+        ))
+        .respond_to(&req);
     }
 
     let name = &body.username.clone().unwrap_or("".to_string());
@@ -94,7 +97,6 @@ pub struct LoginRes {
     pub token: String,
 }
 
-// TODO: Implement login
 #[post("/login")]
 pub async fn login_user(
     req: HttpRequest,

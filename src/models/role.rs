@@ -55,6 +55,7 @@ pub struct Role {
     #[serde(flatten)]
     #[serde(skip_serializing_if = "RolePermissions::should_skip")]
     pub permissions: RolePermissions,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
 

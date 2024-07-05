@@ -11,17 +11,10 @@ Rust - Actix Web authorization server
 
 ## TODO:
 
-### Models
-
-- update models to have crud functions on struct to abstract away database queries
-- create ApiError generic Http response to respond to model errors
-
 ### API Error response
 
 - limit auth error response information
 - return correct error codes
-- update return messages
-  - `roles/delete-role`
 
 ### Default Roles
 
@@ -29,14 +22,15 @@ Rust - Actix Web authorization server
 
 ### Authorization
 
-- create Auth struct which holds jwt secret that can be added to AppData
-- add auth component to Data<AppData>, which can be accessed on each route
-- create authorize method which takes Vec<String> to validate token has correct permissions for given endpoint
+- validate token expiry
+- check token_type claims against returned account type from database, ie. if claim is `service` then `Account::acc_type` should also be `service`
+- create validate permissions endpoint for services to check permissions again given user token
+- check reset password token on `update_self` endpoint for `accounts` collection
 
-### Users
+### OAuth
 
-- implement users endpoints
-  - user list
+- add provider field to account: `local` | `github` | `facebook` | `google` ...
+- create oath endpoints
 
 ### Services
 
@@ -51,19 +45,13 @@ Rust - Actix Web authorization server
 
 ### Token
 
+- add token_type to TokenClaims, `user`|`service`|`reset_password`|`register`
+- create reset password token
 - create token in database
 - save/revoke tokens on login and logout in database/redis
 - check provided tokens against database/redis
-
-### OAuth
-
-- add provider field to account: `local` | `github` | `facebook` | `google` ...
-- create oath endpoints
-
-### Database Updates
-
-- change all pool: SqlitePool parameters to accept PgPool
-- change all query methods that contain multiple queries to group all queries and run one transaction against the database
+- implement refresh token endpoint
+- implement reset password token endpoint, write token to database
 
 ### DB query optimizations
 
@@ -71,14 +59,6 @@ Rust - Actix Web authorization server
 
 - paginate Role list, LIMIT on db query
 - paginate Account list, LIMIT on db query
-
-#### Permission Bindings
-
-- create db optimizations for permission_bindings, query should take Vec<String>, combine transactions and run only once to assign permission bindings for all permission to a single role
-
-#### Role Bindings
-
-- create db optimizations for role_bindings, query should take Vec<Role>, combine transactions and run only once to assign role binding for all roles to a single account
 
 ### Tests
 

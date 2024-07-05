@@ -14,11 +14,7 @@ use crate::{
 pub fn gen_token(app_config: &AppConfig, user: &Account) -> ApiResult<String> {
     let jwt_secret = &app_config.jwt_secret;
 
-    let token_claims = TokenClaims::new(
-        user,
-        None,
-        user.roles.iter().map(|i| i.name.to_string()).collect(),
-    );
+    let token_claims = TokenClaims::new(user, None);
 
     let token = encode(
         &Header::default(),
@@ -35,7 +31,8 @@ pub fn decode_token(jwt_secret: &str, token: &str) -> ApiResult<TokenClaims> {
         &DecodingKey::from_secret(jwt_secret.as_ref()),
         &Validation::new(Algorithm::HS256),
     )
-    .map_err(|e| ApiError::new(&e.to_string()))?;
+    // TODO: remove {e} from error message, to obviscate actual error for user response
+    .map_err(|e| ApiError::new(&format!("Decoding token error, {e}")))?;
 
     debug!("{data:?}");
 
