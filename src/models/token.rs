@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::{app::AppConfig, lib::token::decode_token};
 
-use super::{api::ApiResult, principal::Principal};
+use super::{account::Principal, api::ApiResult};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Token {

@@ -62,6 +62,7 @@ pub async fn update_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
                 id: r.id,
                 name: r.name,
                 permissions,
+                description: r.description,
             })
         }
         None => Err(Error::RowNotFound),
@@ -113,7 +114,7 @@ pub async fn delete_role_db(pool: &PgPool, role: &Role) -> Result<()> {
 }
 
 pub async fn get_role_db(pool: &PgPool, id_or_name: &str) -> Result<Role> {
-    let (id, name) = match Uuid::parse_str(id_or_name) {
+    let (id, name, description) = match Uuid::parse_str(id_or_name) {
         Ok(id) => {
             if let Some(r) = sqlx::query!(
                 r#"
@@ -125,7 +126,7 @@ pub async fn get_role_db(pool: &PgPool, id_or_name: &str) -> Result<Role> {
             .fetch_optional(pool)
             .await?
             {
-                (r.id, r.name)
+                (r.id, r.name, r.description)
             } else {
                 return Err(Error::RowNotFound);
             }
@@ -141,7 +142,7 @@ pub async fn get_role_db(pool: &PgPool, id_or_name: &str) -> Result<Role> {
             .fetch_optional(pool)
             .await?
             {
-                (r.id, r.name)
+                (r.id, r.name, r.description)
             } else {
                 return Err(Error::RowNotFound);
             }
@@ -153,6 +154,7 @@ pub async fn get_role_db(pool: &PgPool, id_or_name: &str) -> Result<Role> {
         id,
         name: name.to_string(),
         permissions,
+        description,
     })
 }
 

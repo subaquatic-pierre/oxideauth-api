@@ -23,20 +23,9 @@ Rust - Actix Web authorization server
 - update return messages
   - `roles/delete-role`
 
-### Endpoints
-
-- allow endpoints to accept `Account.id` or `Account.email` to edit model
-- allow endpoints to pass `Role.id` or `Role.name` to edit model
-
 ### Default Roles
 
-- create default auth roles, ensure they cannot be deleted
-  - `owner`
-  - `admin`
-  - `editor`
-  - `viewer`
-- create default auth permissions, ensure they cannot be deleted
-- populate database with defaults on startup
+- prevent default roles and permission deletes
 
 ### Authorization
 

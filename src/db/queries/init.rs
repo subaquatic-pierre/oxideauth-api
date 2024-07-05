@@ -2,9 +2,12 @@ use std::iter::Map;
 
 use sqlx::PgPool;
 
-use crate::models::{
-    account::Account,
-    role::{Permission, Role},
+use crate::{
+    lib::crypt::hash_password,
+    models::{
+        account::{Account, AccountType},
+        role::{Permission, Role},
+    },
 };
 
 use super::{
@@ -30,6 +33,9 @@ pub async fn drop_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     sqlx::query!("DROP TABLE IF EXISTS accounts;")
         .execute(&mut *tx)
         .await?;
+    sqlx::query!("DROP TABLE IF EXISTS services;")
+        .execute(&mut *tx)
+        .await?;
 
     tx.commit().await?;
     Ok(())
@@ -43,7 +49,8 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             email TEXT NOT NULL,
             password_hash TEXT NOT NULL,
             name TEXT NOT NULL,
-            acc_type TEXT NOT NULL
+            acc_type TEXT NOT NULL,
+            description TEXT
         )
         "#,
     )
@@ -54,7 +61,8 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         r#"
         CREATE TABLE IF NOT EXISTS roles (
             id UUID PRIMARY KEY,
-            name TEXT NOT NULL
+            name TEXT NOT NULL,
+            description TEXT
         )
         "#,
     )
@@ -65,7 +73,8 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         r#"
         CREATE TABLE IF NOT EXISTS permissions (
             id UUID,
-            name TEXT PRIMARY KEY
+            name TEXT PRIMARY KEY,
+            description TEXT
         )
         "#,
     )
@@ -103,62 +112,84 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
 }
 
 const ALL_DEFAULT_PERMISSIONS: &'static [&str] = &[
-    "auth.users.create",
-    "auth.users.get",
-    "auth.users.getSelf",
-    "auth.users.list",
-    "auth.users.update",
+    // accounts
+    "auth.accounts.create",
+    "auth.accounts.describe",
+    "auth.accounts.describeSelf",
+    "auth.accounts.updateSelf",
+    "auth.accounts.list",
+    "auth.accounts.update",
+    // services
     "auth.services.create",
-    "auth.services.get",
+    "auth.services.describe",
     "auth.services.list",
     "auth.services.update",
+    // roles
     "auth.roles.create",
-    "auth.roles.get",
+    "auth.roles.describe",
     "auth.roles.list",
     "auth.roles.update",
     "auth.roles.bind",
+    // permissions
     "auth.permissions.create",
-    "auth.permissions.get",
+    "auth.permissions.describe",
     "auth.permissions.list",
     "auth.permissions.update",
     "auth.permissions.bind",
 ];
 
 const DEFAULT_ADMIN_PERMISSIONS: &'static [&str] = &[
-    "auth.users.create",
-    "auth.users.get",
-    "auth.users.getSelf",
-    "auth.users.list",
-    "auth.users.update",
+    // accounts
+    "auth.accounts.create",
+    "auth.accounts.describe",
+    "auth.accounts.describeSelf",
+    "auth.accounts.updateSelf",
+    "auth.accounts.list",
+    "auth.accounts.update",
+    // services
     "auth.services.create",
-    "auth.services.get",
+    "auth.services.describe",
     "auth.services.list",
     "auth.services.update",
+    //roles
     "auth.roles.create",
-    "auth.roles.get",
+    "auth.roles.describe",
     "auth.roles.list",
     "auth.roles.update",
     "auth.roles.bind",
+    // permissions
     "auth.permissions.create",
-    "auth.permissions.get",
+    "auth.permissions.describe",
     "auth.permissions.list",
     "auth.permissions.update",
     "auth.permissions.bind",
 ];
 
 const DEFAULT_AUDITOR_PERMISSIONS: &'static [&str] = &[
-    "auth.users.get",
-    "auth.users.getSelf",
-    "auth.users.list",
-    "auth.services.get",
+    // accounts
+    "auth.accounts.list",
+    "auth.accounts.describe",
+    "auth.accounts.describeSelf",
+    "auth.accounts.updateSelf",
+    // services
+    "auth.services.describe",
     "auth.services.list",
-    "auth.roles.get",
+    // roles
+    "auth.roles.describe",
     "auth.roles.list",
-    "auth.permissions.get",
+    // permissions
+    "auth.permissions.describe",
     "auth.permissions.list",
 ];
 
-const DEFAULT_VIEWER_PERMISSIONS: &'static [&str] = &["auth.users.getSelf"];
+const DEFAULT_VIEWER_PERMISSIONS: &'static [&str] = &[
+    // accounts
+    "auth.accounts.describeSelf",
+    "auth.accounts.updateSelf",
+    // services
+    "auth.services.describe",
+    "auth.services.list",
+];
 
 pub async fn create_defaults(pool: &PgPool, owner_acc: &Account) -> Result<(), sqlx::Error> {
     let perms = ALL_DEFAULT_PERMISSIONS
@@ -207,6 +238,20 @@ pub async fn create_defaults(pool: &PgPool, owner_acc: &Account) -> Result<(), s
             .collect(),
     );
     create_role_db(pool, &viewer_role).await?;
+
+    // TODO: remove development accounts
+    // ---
+    let pw_hash = hash_password(&"password").unwrap();
+    let viewer_acc = Account::new(
+        "viewer@email.com",
+        "viewer",
+        &pw_hash,
+        AccountType::User,
+        vec![],
+    );
+    create_account_db(pool, &viewer_acc).await?;
+    bind_role_to_account_db(pool, &viewer_acc, &viewer_role).await?;
+    // ---
 
     create_account_db(pool, owner_acc).await?;
     bind_role_to_account_db(pool, owner_acc, &owner_role).await?;

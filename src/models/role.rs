@@ -55,6 +55,7 @@ pub struct Role {
     #[serde(flatten)]
     #[serde(skip_serializing_if = "RolePermissions::should_skip")]
     pub permissions: RolePermissions,
+    pub description: Option<String>,
 }
 
 impl Role {
@@ -63,6 +64,7 @@ impl Role {
             id: Uuid::new_v4(),
             name: name.to_string(),
             permissions: RolePermissions::new(permissions),
+            description: None,
         }
     }
 
@@ -81,6 +83,7 @@ impl Default for Role {
             id: Uuid::new_v4(),
             name: "defaultRole".to_string(),
             permissions: RolePermissions::new(vec!["auth.users.getSelf".to_string()]),
+            description: None,
         }
     }
 }

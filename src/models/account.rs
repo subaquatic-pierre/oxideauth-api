@@ -3,7 +3,7 @@ use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{principal::Principal, role::Role};
+use super::role::Role;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -87,10 +87,21 @@ impl Principal for Account {
     fn email(&self) -> String {
         self.email.to_string()
     }
+    fn id(&self) -> String {
+        self.id.to_string()
+    }
 }
 
 impl Principal for &Account {
     fn email(&self) -> String {
         self.email.to_string()
     }
+    fn id(&self) -> String {
+        self.id.to_string()
+    }
+}
+
+pub trait Principal {
+    fn email(&self) -> String;
+    fn id(&self) -> String;
 }

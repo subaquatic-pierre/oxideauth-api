@@ -42,6 +42,7 @@ pub async fn update_account_db(
     id: &Uuid,
     name: Option<String>,
     email: Option<String>,
+    password_hash: Option<String>,
 ) -> Result<Account> {
     let mut tx = pool.begin().await?;
     if let Some(email) = email {
@@ -66,6 +67,20 @@ pub async fn update_account_db(
             WHERE id = $2
           "#,
             name,
+            id,
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    if let Some(password_hash) = password_hash {
+        sqlx::query!(
+            r#"
+            UPDATE accounts
+            SET password_hash = $1
+            WHERE id = $2
+          "#,
+            password_hash,
             id,
         )
         .execute(&mut *tx)

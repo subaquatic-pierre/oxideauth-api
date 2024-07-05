@@ -28,7 +28,11 @@ impl AuthGuard {
         }
     }
 
-    pub async fn authorize_req(&self, req: &HttpRequest, required_perms: &[&str]) -> ApiResult<()> {
+    pub async fn authorize_req(
+        &self,
+        req: &HttpRequest,
+        required_perms: &[&str],
+    ) -> ApiResult<TokenClaims> {
         // check user exists in DB
 
         let token_str = match get_token_from_req(&req) {
@@ -45,6 +49,8 @@ impl AuthGuard {
                 return Err(e);
             }
         };
+
+        // TODO: validate token expiry
 
         let account = match get_account_db(&self.db, &claims.sub).await {
             Ok(acc) => acc,
@@ -69,7 +75,7 @@ impl AuthGuard {
         }
 
         let mut token_permissions: Vec<String> = vec![];
-        for role_name in claims.roles {
+        for role_name in &claims.roles {
             match get_role_db(&self.db, &role_name).await {
                 Ok(role) => match get_role_permissions_db(&self.db, &role.id).await {
                     Ok(perms) => token_permissions.extend(perms),
@@ -95,6 +101,6 @@ impl AuthGuard {
             }
         }
 
-        Ok(())
+        Ok(claims)
     }
 }
