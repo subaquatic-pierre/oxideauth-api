@@ -1,8 +1,8 @@
 use std::{env, io};
 
 use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpServer};
-use app::new_app_data;
+use actix_web::web::scope;
+use actix_web::{web, App, HttpServer, Scope};
 use db::init::init_db;
 
 mod app;
@@ -17,10 +17,8 @@ use lib::auth::build_owner_account;
 use log::info;
 use models::account::Account;
 use models::role::RolePermissions;
-use routes::accounts::register_accounts_collection;
-use routes::auth::register_auth_collection;
-use routes::roles::register_roles_collection;
-use routes::users::register_users_collection;
+
+use app::{new_app_data, register_all_services};
 
 const SERVER_HOST: (&str, u16) = ("127.0.0.1", 8080);
 
@@ -45,10 +43,7 @@ async fn main() -> io::Result<()> {
         App::new()
             .wrap(Logger::default())
             .app_data(app_data.clone())
-            .service(register_auth_collection())
-            .service(register_roles_collection())
-            .service(register_users_collection())
-            .service(register_accounts_collection())
+            .service(register_all_services())
     })
     .bind("0.0.0.0:8080")?
     .run();

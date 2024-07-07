@@ -7,12 +7,14 @@ use crate::{
     models::{
         account::{Account, AccountType},
         role::{Permission, Role},
+        service::Service,
     },
 };
 
 use super::{
     account::create_account_db,
     role::{bind_role_to_account_db, create_permissions_db, create_role_db},
+    service::create_service_db,
 };
 
 pub async fn drop_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -42,11 +44,13 @@ pub async fn drop_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
 }
 
 pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let mut tx = pool.begin().await?;
+
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS accounts (
             id UUID PRIMARY KEY,
-            email TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             name TEXT NOT NULL,
             acc_type TEXT NOT NULL,
@@ -54,7 +58,7 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
 
     sqlx::query(
@@ -66,7 +70,7 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
 
     sqlx::query(
@@ -78,7 +82,7 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
 
     sqlx::query(
@@ -92,7 +96,7 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
 
     sqlx::query(
@@ -106,8 +110,24 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS services (
+            id UUID PRIMARY KEY,
+            name TEXT UNIQUE NOT NULL,
+            endpoint TEXT,
+            description TEXT
+        )
+        "#,
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
     Ok(())
 }
 
@@ -255,6 +275,13 @@ pub async fn create_defaults(pool: &PgPool, owner_acc: &Account) -> Result<(), s
 
     create_account_db(pool, owner_acc).await?;
     bind_role_to_account_db(pool, owner_acc, &owner_role).await?;
+
+    let auth_service = Service::new(
+        "Auth",
+        Some("/auth".to_string()),
+        Some("Default Auth service provided by OxideAuth".to_string()),
+    );
+    create_service_db(pool, &auth_service).await?;
 
     Ok(())
 }

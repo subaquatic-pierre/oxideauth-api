@@ -74,9 +74,10 @@ pub async fn update_account(
     }
 
     if let Some(email) = &body.email {
+        // TODO: ensure correct check logic for email update/conflict
         // ensure cannot change email to account with email that already exists
         match Uuid::parse_str(&body.account) {
-            Ok(id) => {
+            Ok(_) => {
                 if let Ok(existing_acc) = get_account_db(&app.db, &email.clone()).await {
                     if existing_acc.id != account.id {
                         return ApiError::new(&format!(
@@ -100,6 +101,7 @@ pub async fn update_account(
 
         account.email = email.to_string();
     }
+
     if let Some(name) = &body.name {
         account.name = name.to_string();
     }
@@ -141,7 +143,7 @@ pub async fn delete_account(
 
     match delete_account_db(&app.db, &account).await {
         Ok(_) => HttpResponse::Ok().json(DeleteAccountRes { deleted: true }),
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => ApiError::new(&e.to_string()).respond_to(&req),
     }
 }
 

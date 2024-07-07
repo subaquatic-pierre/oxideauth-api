@@ -1,124 +1,206 @@
-use std::borrow::Cow;
-
-use actix_web::web::Json;
+use actix_web::web::{Data, Json};
 use actix_web::{web::scope, Scope};
 
-use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
-use jsonwebtoken::{encode, EncodingKey, Header};
+use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use sqlx::Error;
+use uuid::Uuid;
 
-use crate::models::account::Account;
-use crate::models::token::TokenClaims;
+use crate::app::AppData;
+use crate::db;
+use crate::db::queries::service::{
+    self, create_service_db, delete_service_db, get_all_services_db, get_service_db,
+    update_service_db,
+};
+use crate::models::api::ApiError;
+use crate::models::service::Service;
 
-// #[derive(Debug, Deserialize)]
-// pub struct RegisterReq {
-//     pub identity: String,
-//     pub password: String,
-// }
+#[derive(Debug, Deserialize)]
+pub struct CreateServiceReq {
+    pub name: String,
+    pub endpoint: Option<String>,
+    pub description: Option<String>,
+}
 
-// #[derive(Debug, Serialize)]
-// pub struct RegisterRes {
-//     pub user: Account,
-//     pub token: String,
-// }
+#[derive(Debug, Serialize)]
+pub struct CreateServiceRes {
+    pub service: Service,
+}
 
-// // TODO: Implement login
-// #[post("/register")]
-// pub async fn register_user(body: Json<RegisterReq>) -> impl Responder {
-//     // check user exists in DB
+#[post("/create-service")]
+pub async fn create_service(
+    req: HttpRequest,
+    app: Data<AppData>,
+    body: Json<CreateServiceReq>,
+) -> impl Responder {
+    // TODO: authorize request
+    let new_service = Service::new(&body.name, body.endpoint.clone(), body.description.clone());
 
-//     // update db
+    let created_service = match create_service_db(&app.db, &new_service).await {
+        Ok(services) => services,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
 
-//     // respond
-//     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    HttpResponse::Ok().json(CreateServiceRes {
+        service: created_service,
+    })
+}
 
-//     let user = Account::default();
-//     let token_claims = TokenClaims::new(user, None, vec![]);
+#[derive(Debug, Serialize)]
+pub struct ListServicesRes {
+    pub services: Vec<Service>,
+}
 
-//     let token = encode(
-//         &Header::default(),
-//         &token_claims,
-//         &EncodingKey::from_secret(secret.as_ref()),
-//     )
-//     .unwrap();
+#[get("/list-services")]
+pub async fn list_services(req: HttpRequest, app: Data<AppData>) -> impl Responder {
+    // TODO: authorize request
+    let services = match get_all_services_db(&app.db).await {
+        Ok(services) => services,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
 
-//     let user = Account::default();
+    HttpResponse::Ok().json(ListServicesRes { services })
+}
 
-//     HttpResponse::Ok().json(RegisterRes { token, user })
-// }
+#[derive(Debug, Deserialize)]
+pub struct UpdateServiceReq {
+    pub service: String,
+    pub name: Option<String>,
+    pub endpoint: Option<String>,
+    pub description: Option<String>,
+}
 
-// #[derive(Debug, Deserialize)]
-// pub struct LoginReq {
-//     pub identity: String,
-//     pub password: String,
-// }
+#[derive(Debug, Serialize)]
+pub struct UpdateServiceRes {
+    pub service: Service,
+}
 
-// #[derive(Debug, Serialize)]
-// pub struct LoginRes {
-//     pub token: String,
-// }
+#[post("/update-service")]
+pub async fn update_service(
+    req: HttpRequest,
+    app: Data<AppData>,
+    body: Json<UpdateServiceReq>,
+) -> impl Responder {
+    // TODO: authorize request
+    let mut service = match get_service_db(&app.db, &body.service).await {
+        Ok(service) => service,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
 
-// // TODO: Implement login
-// #[post("/login")]
-// pub async fn login_user(body: Json<LoginReq>) -> impl Responder {
-//     // verify credentials
+    if service.name == "Auth" {
+        if body.description.is_some() {
+            return ApiError::new("Cannot change the description of the default Auth service")
+                .respond_to(&req);
+        }
+        return ApiError::new("Cannot change the name of the default Auth service")
+            .respond_to(&req);
+    }
 
-//     // update db
+    if let Some(name) = &body.name {
+        // TODO: ensure correct check logic for name update/conflict
+        // ensure cannot change service name to service with name that already exists
+        match Uuid::parse_str(&body.service) {
+            Ok(_) => {
+                if let Ok(existing_svc) = get_service_db(&app.db, &name).await {
+                    if existing_svc.id != service.id {
+                        return ApiError::new(&format!("Cannot update service name to '{name}'"))
+                            .respond_to(&req);
+                    }
+                }
+            }
+            Err(_) => {
+                if let Ok(existing_svc) = get_service_db(&app.db, &name).await {
+                    if existing_svc.id != service.id {
+                        return ApiError::new(&format!("Cannot update service name to '{name}'"))
+                            .respond_to(&req);
+                    }
+                }
+            }
+        }
 
-//     // respond
-//     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+        service.name = name.clone();
+    };
 
-//     let user = Account::default();
-//     let token_claims = TokenClaims::new(user, None, None);
+    if body.endpoint.is_some() {
+        service.endpoint = body.endpoint.clone();
+    }
+    if body.description.is_some() {
+        service.description = body.description.clone();
+    }
 
-//     let token = encode(
-//         &Header::default(),
-//         &token_claims,
-//         &EncodingKey::from_secret(secret.as_ref()),
-//     )
-//     .unwrap();
+    let updated_service = match update_service_db(&app.db, &service).await {
+        Ok(svc) => svc,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
 
-//     HttpResponse::Ok().json(LoginRes { token })
-// }
+    HttpResponse::Ok().json(UpdateServiceRes {
+        service: updated_service,
+    })
+}
 
-// #[derive(Debug, Deserialize)]
-// pub struct LogoutReq {
-//     pub email: String,
-// }
+#[derive(Debug, Deserialize)]
+pub struct DescribeServiceReq {
+    pub service: String,
+}
 
-// #[derive(Debug, Serialize)]
-// pub struct LogoutRes {
-//     pub status: String,
-// }
+#[derive(Debug, Serialize)]
+pub struct DescribeServiceRes {
+    pub service: Service,
+}
 
-// // TODO: Implement logout
-// #[post("/logout")]
-// pub async fn logout(req: HttpRequest, body: Json<LogoutReq>) -> impl Responder {
-//     // verify token
+#[post("/describe-service")]
+pub async fn describe_service(
+    req: HttpRequest,
+    app: Data<AppData>,
+    body: Json<UpdateServiceReq>,
+) -> impl Responder {
+    // TODO: authorize request
+    let service = match get_service_db(&app.db, &body.service).await {
+        Ok(service) => service,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
 
-//     // remove token from DB
+    HttpResponse::Ok().json(DescribeServiceRes { service: service })
+}
 
-//     // respond
+#[derive(Debug, Deserialize)]
+pub struct DeleteServiceReq {
+    pub service: String,
+}
 
-//     HttpResponse::Ok().json(LogoutRes {
-//         status: "ok".to_string(),
-//     })
-// }
+#[derive(Debug, Serialize)]
+pub struct DeleteServiceRes {
+    pub deleted: bool,
+}
 
-// // TODO: Implement refresh
-// #[post("/refresh-token")]
-// pub async fn refresh_user_token(req: HttpRequest, body: Json<LogoutReq>) -> impl Responder {
-//     // verify token
+#[post("/delete-service")]
+pub async fn delete_service(
+    req: HttpRequest,
+    app: Data<AppData>,
+    body: Json<UpdateServiceReq>,
+) -> impl Responder {
+    // TODO: authorize request
+    let service = match get_service_db(&app.db, &body.service).await {
+        Ok(service) => service,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
 
-//     // remove token from DB
+    if service.name == "Auth" {
+        return ApiError::new("Cannot delete Auth service").respond_to(&req);
+    }
 
-//     // respond
+    match delete_service_db(&app.db, &service).await {
+        Ok(_) => HttpResponse::Ok().json(DeleteServiceRes { deleted: true }),
+        Err(e) => ApiError::new(&e.to_string()).respond_to(&req),
+    }
+}
 
-//     HttpResponse::Ok().json(LogoutRes {
-//         status: "ok".to_string(),
-//     })
-// }
-
-pub fn register_users_collection() -> Scope {
-    scope("/auth")
+pub fn register_services_collection() -> Scope {
+    scope("/services")
+        .service(create_service)
+        .service(list_services)
+        .service(update_service)
+        .service(describe_service)
+        .service(delete_service)
 }

@@ -1,6 +1,13 @@
+use actix_web::web::{scope, Data};
+use actix_web::{web, App, HttpServer, Scope};
 use std::{collections::HashSet, env};
 
 use dotenv::dotenv;
+
+use crate::routes::accounts::register_accounts_collection;
+use crate::routes::auth::register_auth_collection;
+use crate::routes::roles::register_roles_collection;
+use crate::routes::services::register_services_collection;
 
 use crate::models::{
     account::{Account, AccountType},
