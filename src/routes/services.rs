@@ -9,12 +9,14 @@ use uuid::Uuid;
 
 use crate::app::AppData;
 use crate::db;
+use crate::db::queries::account::get_account_db;
 use crate::db::queries::service::{
     self, create_service_db, delete_service_db, get_all_services_db, get_service_db,
     update_service_db,
 };
 use crate::models::api::ApiError;
 use crate::models::service::Service;
+use crate::models::token::TokenClaims;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateServiceReq {
@@ -196,6 +198,50 @@ pub async fn delete_service(
     }
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatePermissionsReq {
+    pub requesting_token: String,
+    pub required_permissions: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ValidatePermissionsRes {
+    pub authorized: bool,
+}
+
+#[post("/validate-permissions")]
+pub async fn validate_permissions(
+    req: HttpRequest,
+    app: Data<AppData>,
+    body: Json<ValidatePermissionsReq>,
+) -> impl Responder {
+    // TODO: authorize request
+
+    let requesting_claims = match app.guard.get_token_claims(&body.requesting_token).await {
+        Ok(claims) => claims,
+        Err(e) => return e.respond_to(&req),
+    };
+
+    let requesting_account = match get_account_db(&app.db, &requesting_claims.sub).await {
+        Ok(service) => service,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
+
+    let mut acc_perms = vec![];
+    requesting_account
+        .roles
+        .iter()
+        .for_each(|el| acc_perms.extend(el.permissions.clone()));
+
+    for needed_perm in &body.required_permissions {
+        if !acc_perms.contains(needed_perm) {
+            return HttpResponse::Ok().json(ValidatePermissionsRes { authorized: false });
+        }
+    }
+    return HttpResponse::Ok().json(ValidatePermissionsRes { authorized: true });
+}
+
 pub fn register_services_collection() -> Scope {
     scope("/services")
         .service(create_service)
@@ -203,4 +249,5 @@ pub fn register_services_collection() -> Scope {
         .service(update_service)
         .service(describe_service)
         .service(delete_service)
+        .service(validate_permissions)
 }

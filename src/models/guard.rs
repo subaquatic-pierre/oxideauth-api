@@ -28,6 +28,18 @@ impl AuthGuard {
         }
     }
 
+    pub async fn get_token_claims(&self, token_str: &str) -> ApiResult<TokenClaims> {
+        let claims = match TokenClaims::from_str(self.jwt_secret.as_ref(), &token_str) {
+            Ok(claims) => claims,
+            Err(e) => {
+                error!("Error building TokenClaims from string, {:?}", e);
+                return Err(e);
+            }
+        };
+
+        Ok(claims)
+    }
+
     pub async fn authorize_req(
         &self,
         req: &HttpRequest,
