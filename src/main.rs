@@ -1,22 +1,19 @@
 use std::{env, io};
 
+use actix_cors::Cors;
 use actix_web::middleware::Logger;
-use actix_web::web::scope;
-use actix_web::{web, App, HttpServer, Scope};
+use actix_web::{http::header, web, App, HttpServer, Scope};
 use db::init::init_db;
 
 mod app;
 mod cli;
 mod db;
-mod lib;
 mod models;
 mod routes;
+mod utils;
 
-use dotenv::dotenv;
-use lib::auth::build_owner_account;
 use log::info;
-use models::account::Account;
-use models::role::RolePermissions;
+use utils::auth::build_owner_account;
 
 use app::{new_app_data, register_all_services};
 
@@ -42,10 +39,20 @@ async fn main() -> io::Result<()> {
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     let server = HttpServer::new(move || {
+        let cors = Cors::default()
+            .allowed_origin(&app_data.config.client_origin)
+            .allowed_methods(vec!["GET", "POST", "OPTIONS"])
+            .allowed_headers(vec![
+                header::CONTENT_TYPE,
+                header::AUTHORIZATION,
+                header::ACCEPT,
+            ])
+            .supports_credentials();
         App::new()
-            .wrap(Logger::default())
             .app_data(app_data.clone())
             .service(register_all_services())
+            .wrap(Logger::default())
+            .wrap(cors)
     })
     .bind("0.0.0.0:8080")?
     .run();

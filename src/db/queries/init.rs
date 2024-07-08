@@ -3,12 +3,12 @@ use std::iter::Map;
 use sqlx::PgPool;
 
 use crate::{
-    lib::crypt::hash_password,
     models::{
-        account::{Account, AccountType},
+        account::{Account, AccountProvider, AccountType},
         role::{Permission, Role},
         service::Service,
     },
+    utils::crypt::hash_password,
 };
 
 use super::{
@@ -54,6 +54,8 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             password_hash TEXT NOT NULL,
             name TEXT NOT NULL,
             acc_type TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            provider_id TEXT,
             description TEXT
         )
         "#,
@@ -262,13 +264,7 @@ pub async fn create_defaults(pool: &PgPool, owner_acc: &Account) -> Result<(), s
     // TODO: remove development accounts
     // ---
     let pw_hash = hash_password(&"password").unwrap();
-    let viewer_acc = Account::new(
-        "viewer@email.com",
-        "viewer",
-        &pw_hash,
-        AccountType::User,
-        vec![],
-    );
+    let viewer_acc = Account::new_local_user("viewer@email.com", "viewer", &pw_hash);
     create_account_db(pool, &viewer_acc).await?;
     bind_role_to_account_db(pool, &viewer_acc, &viewer_role).await?;
     // ---

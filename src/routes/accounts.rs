@@ -12,9 +12,9 @@ use crate::app::AppData;
 use crate::db::queries::account::{
     delete_account_db, get_account_db, get_all_accounts_db, update_account_db,
 };
-use crate::lib::crypt::hash_password;
 use crate::models::account::Account;
 use crate::models::api::ApiError;
+use crate::utils::crypt::hash_password;
 
 #[derive(Debug, Serialize)]
 pub struct ListAccountsRes {
@@ -57,6 +57,9 @@ pub async fn update_account(
     app: Data<AppData>,
     body: Json<UpdateAccountReq>,
 ) -> impl Responder {
+    // TODO: logic to check external provider email change
+    // if the user registers from OAuth provider, they shouldn't be able to change their email
+
     // TODO: authorize request
     let mut account = match get_account_db(&app.db, &body.account).await {
         Ok(acc) => acc,
@@ -207,6 +210,9 @@ pub async fn update_self(
     app: Data<AppData>,
     body: Json<UpdateSelfReq>,
 ) -> impl Responder {
+    // TODO: logic to check external provider email change
+    // if the user registers from OAuth provider, they shouldn't be able to change their email
+
     let required_perms = ["auth.accounts.updateSelf"];
 
     let token = match app.guard.authorize_req(&req, &required_perms).await {
@@ -251,88 +257,6 @@ pub async fn update_self(
         account: updated_account,
     })
 }
-
-// #[derive(Debug, Deserialize)]
-// pub struct CreateAccountReq {
-//     pub email: String,
-//     pub name: Option<String>,
-//     pub password: Option<String>,
-//     pub description: Option<String>,
-// }
-
-// #[derive(Debug, Serialize)]
-// pub struct CreateAccountRes {
-//     pub account: Account,
-// }
-
-// #[post("/create-account")]
-// pub async fn create_account(
-//     req: HttpRequest,
-//     app: Data<AppData>,
-//     body: Json<UpdateAccountReq>,
-// ) -> impl Responder {
-//     let required_perms = ["auth.accounts.update"];
-
-//     if let Ok(_) = get_account_db(&app.db, &body.email).await {
-//         return ApiError::new(&format!(
-//             "Account with email '{}' already exists",
-//             body.email
-//         ))
-//         .respond_to(&req);
-//     };
-
-//     let password_hash = match &body.password {
-//         Some(p) => {
-//             let hash = match hash_password(&p) {
-//                 Ok(hash) => hash,
-//                 Err(e) => return e.respond_to(&req),
-//             };
-//             hash
-//         }
-//         None => {
-//             let hash = match hash_password(&app.config.default_sa_password) {
-//                 Ok(hash) => hash,
-//                 Err(e) => return e.respond_to(&req),
-//             };
-//             hash
-//         }
-//     };
-
-//     let token = match app.guard.authorize_req(&req, &required_perms).await {
-//         Ok(token) => token,
-//         Err(e) => return e.respond_to(&req),
-//     };
-
-//     let account = match get_account_db(&app.db, &token.sub).await {
-//         Ok(acc) => acc,
-//         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
-//     };
-
-//     let pw_hash = match &body.password {
-//         Some(p) => {
-//             let hash = match hash_password(&p) {
-//                 Ok(p) => p,
-//                 Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
-//             };
-//             Some(hash)
-//         }
-//         None => None,
-//     };
-
-//     match update_account_db(
-//         &app.db,
-//         &account.id,
-//         body.name.clone(),
-//         body.email.clone(),
-//         pw_hash,
-//         body.description.clone(),
-//     )
-//     .await
-//     {
-//         Ok(updated) => return HttpResponse::Ok().json(DescribeAccountRes { account: updated }),
-//         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
-//     };
-// }
 
 pub fn register_accounts_collection() -> Scope {
     scope("/accounts")

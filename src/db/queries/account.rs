@@ -2,17 +2,18 @@ use log::{debug, error, info};
 use sqlx::{Error, PgPool, Result};
 use uuid::Uuid;
 
-use crate::models::account::Account;
+use crate::models::account::{Account, AccountProvider};
 
 use super::role::get_role_db;
 
 pub async fn create_account_db(pool: &PgPool, acc: &Account) -> Result<Account> {
     let acc_type = acc.acc_type.to_string();
+    let provider = acc.provider.to_string();
 
     let acc_r = sqlx::query!(
         r#"
-        INSERT INTO accounts (id, email, name, password_hash, acc_type, description)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO accounts (id, email, name, password_hash, acc_type, description, provider,provider_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
       "#,
         acc.id,
@@ -20,7 +21,9 @@ pub async fn create_account_db(pool: &PgPool, acc: &Account) -> Result<Account> 
         acc.name,
         acc.password_hash,
         acc_type,
-        acc.description
+        acc.description,
+        provider,
+        acc.provider_id
     )
     .fetch_optional(pool)
     .await?;
@@ -33,6 +36,8 @@ pub async fn create_account_db(pool: &PgPool, acc: &Account) -> Result<Account> 
             password_hash: record.password_hash,
             acc_type: record.acc_type.as_str().into(),
             roles: vec![],
+            provider: record.provider.as_str().into(),
+            provider_id: record.provider_id,
             description: record.description,
         }),
         None => Err(Error::RowNotFound),
@@ -72,6 +77,8 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
         pub acc_type: String,
         pub pw: String,
         pub desc: Option<String>,
+        pub p: String,
+        pub p_id: Option<String>,
     }
 
     let acc_r = match Uuid::parse_str(id_or_email) {
@@ -93,6 +100,8 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
                     acc_type: r.acc_type,
                     pw: r.password_hash,
                     desc: r.description,
+                    p: r.provider,
+                    p_id: r.provider_id,
                 }
             } else {
                 return Err(Error::RowNotFound);
@@ -116,6 +125,8 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
                     acc_type: r.acc_type,
                     pw: r.password_hash,
                     desc: r.description,
+                    p: r.provider,
+                    p_id: r.provider_id,
                 }
             } else {
                 return Err(Error::RowNotFound);
@@ -147,6 +158,8 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
         password_hash: acc_r.pw,
         acc_type: acc_r.acc_type.as_str().into(),
         roles,
+        provider: acc_r.p.as_str().into(),
+        provider_id: acc_r.p_id,
         description: acc_r.desc,
     })
 }

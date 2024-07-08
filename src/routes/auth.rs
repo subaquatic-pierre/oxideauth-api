@@ -1,21 +1,29 @@
-use actix_web::web::{Data, Json};
-use actix_web::{web::scope, Scope};
+use actix_web::web::{Data, Json, Query};
+use actix_web::{
+    cookie::{time::Duration as ActixWebDuration, Cookie},
+    web::scope,
+    Scope,
+};
+use actix_web::{http::header, HttpResponse};
+use chrono::{prelude::*, Duration};
+use sqlx::Error;
 
-use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpRequest, Responder};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::app::AppData;
-use crate::db::queries::account::{create_account_db, get_account_db};
+use crate::db::queries::account::{self, create_account_db, get_account_db};
 use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
-use crate::lib::crypt::{hash_password, verify_password};
-use crate::lib::token::gen_token;
-use crate::models::account::{Account, AccountType};
+use crate::models::account::{Account, AccountProvider, AccountType};
 use crate::models::api::ApiError;
 use crate::models::role::Role;
 use crate::models::token::TokenClaims;
+use crate::utils::auth::{get_google_user, request_google_token};
+use crate::utils::crypt::{hash_password, verify_password};
+use crate::utils::token::gen_token;
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterReq {
@@ -50,7 +58,7 @@ pub async fn register_user(
     }
 
     let name = &body.username.clone().unwrap_or("".to_string());
-    let user = Account::new(&body.email, name, &password_hash, AccountType::User, vec![]);
+    let user = Account::new_local_user(&body.email, name, &password_hash);
 
     // update db
     let new_acc = match create_account_db(&app.db, &user).await {
@@ -163,6 +171,83 @@ pub async fn refresh_user_token(req: HttpRequest, body: Json<LogoutReq>) -> impl
     })
 }
 
+#[derive(Debug, Deserialize)]
+pub struct QueryCode {
+    pub code: String,
+    pub state: String,
+}
+
+// TODO: Implement refresh
+#[get("/oauth/google")]
+pub async fn google_oauth_handler(
+    req: HttpRequest,
+    query: Query<QueryCode>,
+    app: Data<AppData>,
+) -> impl Responder {
+    let code = &query.code;
+    let state = &query.state;
+
+    let google_token_res = match request_google_token(code.as_str(), &app.config)
+        .await
+        .map_err(|e| e.respond_to(&req))
+    {
+        Ok(t) => t,
+        Err(e) => return e.respond_to(&req),
+    };
+
+    let google_user =
+        match get_google_user(&google_token_res.access_token, &google_token_res.id_token).await {
+            Ok(u) => u,
+            Err(e) => return e.respond_to(&req),
+        };
+
+    info!("GOOGLE TOKEN: {google_token_res:?}, GOOGLE_USER: {google_user:?}");
+
+    let account = match get_account_db(&app.db, &google_user.email).await {
+        Ok(acc) => acc,
+        Err(e) => match e {
+            Error::RowNotFound => {
+                // create new user
+                let new_user = Account::new_provider_user(
+                    &google_user.email,
+                    &google_user.name,
+                    AccountProvider::Google,
+                    Some(google_user.id),
+                );
+
+                match create_account_db(&app.db, &new_user).await {
+                    Ok(acc) => acc,
+                    Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+                }
+            }
+            _ => return ApiError::new(&e.to_string()).respond_to(&req),
+        },
+    };
+
+    let exp = (Utc::now() + Duration::minutes(app.config.jwt_max_age)).timestamp() as usize;
+    let claims: TokenClaims = TokenClaims::new(&account, Some(exp));
+    let token = encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(app.config.jwt_secret.as_ref()),
+    )
+    .unwrap();
+
+    let mut response = HttpResponse::Found();
+    let redirect_location = format!(
+        "{}/loading-profile?token={}",
+        app.config.client_origin.to_string(),
+        token,
+    );
+    response.append_header((header::LOCATION, redirect_location));
+    // response.cookie(cookie);
+
+    response.finish()
+}
+
 pub fn register_auth_collection() -> Scope {
-    scope("/auth").service(login_user).service(register_user)
+    scope("/auth")
+        .service(login_user)
+        .service(register_user)
+        .service(google_oauth_handler)
 }

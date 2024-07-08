@@ -9,8 +9,8 @@ use crate::{
         account::get_account_db,
         role::{get_role_db, get_role_permissions_db},
     },
-    lib::token::get_token_from_req,
     models::api::ApiError,
+    utils::token::get_token_from_req,
 };
 
 use super::{account::Account, api::ApiResult, token::TokenClaims};
