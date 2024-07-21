@@ -16,11 +16,17 @@ pub struct EmailResult {
     pub message: String,
 }
 
+pub struct EmailVars {
+    pub key: String,
+    pub val: String,
+}
+
 pub async fn send_email(
     config: &AppConfig,
     to_email: &str,
     subject: &str,
-    body: &str,
+    template_name: &str,
+    vars: Vec<EmailVars>,
 ) -> ApiResult<EmailResult> {
     let tera = match Tera::new("templates/*.html") {
         Ok(t) => t,
@@ -28,9 +34,13 @@ pub async fn send_email(
     };
 
     let mut context = Context::new();
-    context.insert("name", "Amazing spider man");
 
-    let body = match tera.render("sign_up.html", &context) {
+    for var in vars.iter() {
+        context.insert(&var.key, &var.val);
+        // context.insert("confirm_link", "http://localhost:8081/auth/sign-in");
+    }
+
+    let body = match tera.render(template_name, &context) {
         Ok(body) => body,
         Err(e) => return Err(ApiError::new(&format!("Template render error: {}", e))),
     };

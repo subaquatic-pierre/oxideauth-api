@@ -17,7 +17,7 @@ use crate::db::queries::service::{
 use crate::models::api::ApiError;
 use crate::models::service::Service;
 use crate::models::token::TokenClaims;
-use crate::utils::email::send_email;
+use crate::utils::email::{send_email, EmailVars};
 
 #[derive(Debug, Deserialize)]
 pub struct SendEmailReq {
@@ -39,7 +39,33 @@ pub async fn send_email_req(
 ) -> impl Responder {
     // TODO: authorize request
 
-    match send_email(&app.config, &body.to_email, &body.subject, &body.body).await {
+    let vars = vec![
+        EmailVars {
+            key: "year".to_string(),
+            val: "2024".to_string(),
+        },
+        EmailVars {
+            key: "name".to_string(),
+            val: "Pierre Du Toit".to_string(),
+        },
+        EmailVars {
+            key: "confirm_link".to_string(),
+            val: "http://localhost:8081/auth/sign-in".to_string(),
+        },
+    ];
+
+    let template_name = "verify_email.html";
+    // let template_name = "confirm_email.html";
+
+    match send_email(
+        &app.config,
+        &body.to_email,
+        &body.subject,
+        &template_name,
+        vars,
+    )
+    .await
+    {
         Ok(res) => HttpResponse::Ok().json(SendEmailRes {
             message: res.message,
         }),

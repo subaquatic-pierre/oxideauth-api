@@ -9,22 +9,22 @@ use chrono::{prelude::*, Duration};
 use sqlx::Error;
 
 use actix_web::{get, post, web, HttpRequest, Responder};
-use jsonwebtoken::{encode, EncodingKey, Header};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::app::AppData;
-use crate::db::queries::account::{self, create_account_db, get_account_db};
+use crate::db::queries::account::{self, create_account_db, get_account_db, update_account_db};
 use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
 use crate::models::account::{Account, AccountProvider, AccountType};
 use crate::models::api::ApiError;
 use crate::models::oauth::GoogleOAuthState;
 use crate::models::role::Role;
-use crate::models::token::TokenClaims;
+use crate::models::token::{TokenClaims, TokenType};
 use crate::utils::auth::{get_google_user, request_google_token};
 use crate::utils::crypt::{hash_password, verify_password};
-use crate::utils::token::gen_token;
+use crate::utils::email::{send_email, EmailVars};
+use crate::utils::token::{gen_confirm_token, get_auth_token};
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterReq {
@@ -71,7 +71,7 @@ pub async fn register_user(
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
-    let token = match gen_token(&app.config, &user) {
+    let token = match get_auth_token(&app.config, &user) {
         Ok(t) => t,
         Err(e) => return e.respond_to(&req),
     };
@@ -87,6 +87,44 @@ pub async fn register_user(
         }
     };
 
+    let confirm_token = gen_confirm_token(&app.config, &new_acc).unwrap();
+
+    let confirm_url = format!(
+        "{}/confirm-email?token={}",
+        app.config.client_origin, confirm_token
+    );
+
+    // send confirm account email
+    let vars = vec![
+        EmailVars {
+            key: "year".to_string(),
+            val: "2024".to_string(),
+        },
+        EmailVars {
+            key: "name".to_string(),
+            val: new_acc.name.to_string(),
+        },
+        EmailVars {
+            key: "confirm_link".to_string(),
+            val: confirm_url.to_string(),
+        },
+    ];
+
+    match send_email(
+        &app.config,
+        &new_acc.email,
+        "Confirm Your Account | OxideAuth",
+        "confirm_email.html",
+        vars,
+    )
+    .await
+    {
+        Ok(res) => {}
+        Err(e) => {
+            error!("{e}")
+        }
+    }
+
     match bind_role_to_account_db(&app.db, &user, &role).await {
         Ok(_) => HttpResponse::Ok().json(RegisterRes {
             token: token,
@@ -95,6 +133,50 @@ pub async fn register_user(
         Err(e) => {
             error!("Unable to create new user, {user:?}");
             ApiError::new("Unable to bind Viewer role to account").respond_to(&req)
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConfirmAccountReq {
+    pub token: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConfirmAccountRes {
+    pub account: Account,
+}
+
+#[post("/confirm-account")]
+pub async fn confirm_account(
+    req: HttpRequest,
+    app: Data<AppData>,
+    body: Json<ConfirmAccountReq>,
+) -> impl Responder {
+    let claims = match TokenClaims::from_str(app.config.jwt_secret.as_ref(), &body.token) {
+        Ok(claims) => claims,
+        Err(e) => {
+            error!("Error building TokenClaims from string, {:?}", e);
+            return e.respond_to(&req);
+        }
+    };
+
+    if claims.token_type != TokenType::ConfirmAccount {
+        return ApiError::new("No user found").respond_to(&req);
+    }
+
+    let mut account = match get_account_db(&app.db, &claims.sub).await {
+        Ok(acc) => acc,
+        Err(e) => return ApiError::new("Unable to find account").respond_to(&req),
+    };
+
+    account.verified = true;
+
+    match update_account_db(&app.db, &account).await {
+        Ok(_) => HttpResponse::Ok().json(ConfirmAccountRes { account: account }),
+        Err(e) => {
+            error!("Unable updated account to verified, {account:?}, {e}");
+            ApiError::new("Unable updated account to verified").respond_to(&req)
         }
     }
 }
@@ -120,7 +202,7 @@ pub async fn login_user(
         Ok(user) => match verify_password(&user.password_hash, &body.password) {
             Ok(is_valid) => {
                 if is_valid {
-                    let token = match gen_token(&app.config, &user) {
+                    let token = match get_auth_token(&app.config, &user) {
                         Ok(t) => t,
                         Err(e) => return e.respond_to(&req),
                     };
@@ -243,17 +325,18 @@ pub async fn google_oauth_handler(
         },
     };
 
-    let exp = (Utc::now() + Duration::minutes(app.config.jwt_max_age)).timestamp() as usize;
-    let claims: TokenClaims = TokenClaims::new(&account, Some(exp));
-    let token = encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(app.config.jwt_secret.as_ref()),
-    )
-    .unwrap();
+    let token = get_auth_token(&app.config, &account).unwrap();
+    // let exp = (Utc::now() + Duration::minutes(app.config.jwt_max_age)).timestamp() as usize;
+    // let claims: TokenClaims = TokenClaims::new(&account, Some(exp));
+    // let token = encode(
+    //     &Header::default(),
+    //     &claims,
+    //     &EncodingKey::from_secret(app.config.jwt_secret.as_ref()),
+    // )
+    // .unwrap();
 
     let mut response = HttpResponse::Found();
-    let redirect_location = format!("{}?token={}", google_state.redirect_url, token,);
+    let redirect_location = format!("{}?token={}", google_state.redirect_url, token);
     response.append_header((header::LOCATION, redirect_location));
 
     response.finish()
@@ -263,5 +346,6 @@ pub fn register_auth_collection() -> Scope {
     scope("/auth")
         .service(login_user)
         .service(register_user)
+        .service(confirm_account)
         .service(google_oauth_handler)
 }

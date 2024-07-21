@@ -10,10 +10,11 @@ use super::{
     api::ApiResult,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Token {
-    pub user_id: Uuid,
-    pub data: String,
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub enum TokenType {
+    Auth,
+    ResetPassword,
+    ConfirmAccount,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -22,17 +23,30 @@ pub struct TokenClaims {
     exp: usize,
     iat: usize,
     acc_type: String,
+    pub token_type: TokenType,
 }
 
 impl TokenClaims {
-    pub fn new(account: &Account, exp: Option<usize>) -> Self {
+    pub fn new_auth_token(account: &Account, exp: Option<usize>) -> Self {
         let now = Utc::now();
         let iat = now.timestamp() as usize;
         Self {
             sub: account.id(),
             exp: 9999999999999999,
             iat,
-            // acc_type: principal.acc_type().to_string(),
+            token_type: TokenType::Auth,
+            acc_type: account.acc_type.to_string(),
+        }
+    }
+
+    pub fn new_confirm_token(account: &Account, exp: Option<usize>) -> Self {
+        let now = Utc::now();
+        let iat = now.timestamp() as usize;
+        Self {
+            sub: account.id(),
+            exp: 9999999999999999,
+            iat,
+            token_type: TokenType::ConfirmAccount,
             acc_type: account.acc_type.to_string(),
         }
     }
