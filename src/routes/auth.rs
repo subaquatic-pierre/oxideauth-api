@@ -19,6 +19,7 @@ use crate::db::queries::account::{self, create_account_db, get_account_db};
 use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
 use crate::models::account::{Account, AccountProvider, AccountType};
 use crate::models::api::ApiError;
+use crate::models::oauth::GoogleOAuthState;
 use crate::models::role::Role;
 use crate::models::token::TokenClaims;
 use crate::utils::auth::{get_google_user, request_google_token};
@@ -29,7 +30,7 @@ use crate::utils::token::gen_token;
 pub struct RegisterReq {
     pub email: String,
     pub password: String,
-    pub username: Option<String>,
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -57,8 +58,12 @@ pub async fn register_user(
         .respond_to(&req);
     }
 
-    let name = &body.username.clone().unwrap_or("".to_string());
-    let user = Account::new_local_user(&body.email, name, &password_hash);
+    let name = &body.name.clone().unwrap_or("".to_string());
+    let image_url = format!(
+        "{}/assets/images/users/default.png",
+        app.config.client_origin
+    );
+    let user = Account::new_local_user(&body.email, name, &password_hash, Some(image_url));
 
     // update db
     let new_acc = match create_account_db(&app.db, &user).await {
@@ -71,10 +76,10 @@ pub async fn register_user(
         Err(e) => return e.respond_to(&req),
     };
 
-    let role = match get_role_db(&app.db, "viewer").await {
+    let role = match get_role_db(&app.db, "Viewer").await {
         Ok(res) => res,
         Err(_e) => {
-            let viewer_role = Role::new("viewer", vec![]);
+            let viewer_role = Role::new("Viewer", vec![], None);
             if let Err(e) = create_role_db(&app.db, &viewer_role).await {
                 error!("Unable to create viewer role, {viewer_role:?}, {e}");
             }
@@ -89,7 +94,7 @@ pub async fn register_user(
         }),
         Err(e) => {
             error!("Unable to create new user, {user:?}");
-            ApiError::new("Unable to bind viewer role to account").respond_to(&req)
+            ApiError::new("Unable to bind Viewer role to account").respond_to(&req)
         }
     }
 }
@@ -174,7 +179,7 @@ pub async fn refresh_user_token(req: HttpRequest, body: Json<LogoutReq>) -> impl
 #[derive(Debug, Deserialize)]
 pub struct QueryCode {
     pub code: String,
-    pub state: String,
+    pub state: Option<String>,
 }
 
 // TODO: Implement refresh
@@ -186,6 +191,14 @@ pub async fn google_oauth_handler(
 ) -> impl Responder {
     let code = &query.code;
     let state = &query.state;
+
+    let google_state = GoogleOAuthState::from_state(state.clone());
+
+    info!("{google_state:?}");
+
+    if google_state.csrf_token != "secretToken" {
+        return HttpResponse::ExpectationFailed().json(json!({"message":"Incorrect CSRF token"}));
+    }
 
     let google_token_res = match request_google_token(code.as_str(), &app.config)
         .await
@@ -213,10 +226,16 @@ pub async fn google_oauth_handler(
                     &google_user.name,
                     AccountProvider::Google,
                     Some(google_user.id),
+                    google_user.picture,
                 );
 
                 match create_account_db(&app.db, &new_user).await {
-                    Ok(acc) => acc,
+                    Ok(acc) => {
+                        if let Ok(role) = get_role_db(&app.db, "Viewer").await {
+                            bind_role_to_account_db(&app.db, &acc, &role).await.ok();
+                        }
+                        acc
+                    }
                     Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
                 }
             }
@@ -234,13 +253,8 @@ pub async fn google_oauth_handler(
     .unwrap();
 
     let mut response = HttpResponse::Found();
-    let redirect_location = format!(
-        "{}/loading-profile?token={}",
-        app.config.client_origin.to_string(),
-        token,
-    );
+    let redirect_location = format!("{}?token={}", google_state.redirect_url, token,);
     response.append_header((header::LOCATION, redirect_location));
-    // response.cookie(cookie);
 
     response.finish()
 }

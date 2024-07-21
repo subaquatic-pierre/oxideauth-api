@@ -106,11 +106,13 @@ pub async fn update_service_db(pool: &PgPool, service: &Service) -> Result<Servi
         SET name = $1,
             endpoint = $2,
             description = $3
+        WHERE id = $4
         RETURNING *
       "#,
         service.name,
         service.endpoint,
-        service.description
+        service.description,
+        service.id
     )
     .fetch_one(pool)
     .await?;

@@ -14,27 +14,21 @@ pub async fn create_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
     debug!("Creating role: {role:?}");
     sqlx::query!(
         r#"
-        INSERT INTO roles (id, name)
-        VALUES ($1, $2)
+        INSERT INTO roles (id, name, description)
+        VALUES ($1, $2, $3)
         "#,
         role.id,
-        role.name
+        role.name,
+        role.description
     )
     .execute(pool)
     // .execute(&mut tx)
     .await?;
 
-    let existing_perms = get_all_permissions(pool).await?;
+    // let mut perms = vec![];
+    let perms: &Vec<String> = &role.permissions.clone().map(|el| el.clone()).collect();
 
-    debug!("Existing permissions: {existing_perms:?}");
-
-    let mut perms = vec![];
-
-    for perm in &role.permissions {
-        perms.push(perm.to_string());
-    }
-
-    bind_permissions_to_role(pool, role, &perms).await?;
+    bind_permissions_to_role(pool, role, perms).await?;
 
     get_role_db(pool, &role.name).await
 }
@@ -43,11 +37,13 @@ pub async fn update_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
     let r = sqlx::query!(
         r#"
         UPDATE roles
-            SET name = $1
-            WHERE id = $2
+            SET name = $1,
+                description = $2
+            WHERE id = $3
             RETURNING *
         "#,
         role.name,
+        role.description,
         role.id
     )
     // .execute(&mut tx)

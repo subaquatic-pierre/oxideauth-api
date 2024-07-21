@@ -17,24 +17,20 @@ use utils::auth::build_owner_account;
 
 use app::{new_app_data, register_all_services};
 
-const SERVER_HOST: (&str, u16) = ("127.0.0.1", 8080);
-
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     let app_data = new_app_data().await;
 
     env_logger::init();
 
-    info!(
-        "Server listening at {:}:{:}...",
-        SERVER_HOST.0, SERVER_HOST.1
-    );
+    let app_host = format!("{:}:{:}", app_data.config.host, app_data.config.port);
+    info!("Server listening at {app_host}...",);
 
     // CHnage again
 
     let owner_acc = build_owner_account();
 
-    init_db(&app_data.db, &owner_acc, true)
+    init_db(&app_data.db, &owner_acc, true, &app_data.config)
         .await
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 

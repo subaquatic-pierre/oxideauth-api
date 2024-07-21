@@ -12,8 +12,8 @@ pub async fn create_account_db(pool: &PgPool, acc: &Account) -> Result<Account> 
 
     let acc_r = sqlx::query!(
         r#"
-        INSERT INTO accounts (id, email, name, password_hash, acc_type, description, provider,provider_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO accounts (id, email, name, password_hash, acc_type, description, provider,provider_id, image_url, verified, enabled)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
       "#,
         acc.id,
@@ -23,7 +23,10 @@ pub async fn create_account_db(pool: &PgPool, acc: &Account) -> Result<Account> 
         acc_type,
         acc.description,
         provider,
-        acc.provider_id
+        acc.provider_id,
+        acc.image_url,
+        acc.verified,
+        acc.enabled
     )
     .fetch_optional(pool)
     .await?;
@@ -39,6 +42,9 @@ pub async fn create_account_db(pool: &PgPool, acc: &Account) -> Result<Account> 
             provider: record.provider.as_str().into(),
             provider_id: record.provider_id,
             description: record.description,
+            image_url: record.image_url,
+            verified: record.verified,
+            enabled: record.enabled,
         }),
         None => Err(Error::RowNotFound),
     }
@@ -52,14 +58,18 @@ pub async fn update_account_db(pool: &PgPool, account: &Account) -> Result<Accou
         SET email = $2,
             name = $3,
             description = $4,
-            password_hash = $5
+            password_hash = $5,
+            verified = $6,
+            enabled = $7
         WHERE id = $1
       "#,
         account.id,
         account.email,
         account.name,
         account.description,
-        account.password_hash
+        account.password_hash,
+        account.verified,
+        account.enabled
     )
     .execute(&mut *tx)
     .await?;
@@ -79,6 +89,9 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
         pub desc: Option<String>,
         pub p: String,
         pub p_id: Option<String>,
+        pub img_url: Option<String>,
+        pub ver: bool,
+        pub enabled: bool,
     }
 
     let acc_r = match Uuid::parse_str(id_or_email) {
@@ -102,6 +115,9 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
                     desc: r.description,
                     p: r.provider,
                     p_id: r.provider_id,
+                    img_url: r.image_url,
+                    ver: r.verified,
+                    enabled: r.enabled,
                 }
             } else {
                 return Err(Error::RowNotFound);
@@ -127,6 +143,9 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
                     desc: r.description,
                     p: r.provider,
                     p_id: r.provider_id,
+                    img_url: r.image_url,
+                    ver: r.verified,
+                    enabled: r.enabled,
                 }
             } else {
                 return Err(Error::RowNotFound);
@@ -161,6 +180,9 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
         provider: acc_r.p.as_str().into(),
         provider_id: acc_r.p_id,
         description: acc_r.desc,
+        image_url: acc_r.img_url,
+        enabled: acc_r.enabled,
+        verified: acc_r.ver,
     })
 }
 

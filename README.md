@@ -11,17 +11,24 @@ Rust - Actix Web authorization server
 
 ## TODO:
 
+### Accounts
+
+- add `verified` field to account
+- add `enabled` field to account
+
 ### API Error response
 
 - limit auth error response information
 - return correct error codes
+- return correct error messages
 
 ### Default Roles
 
-- prevent default roles and permission deletes
+- prevent default `roles` and `permissions` from being edited or deleted
 
 ### Authorization
 
+- validate account is enabled and verified
 - validate token expiry
 - check token_type claims against returned account type from database, ie. if claim is `service` then `Account::acc_type` should also be `service`
 - create validate permissions endpoint for services to check permissions again given user token
@@ -29,15 +36,9 @@ Rust - Actix Web authorization server
 
 ### OAuth
 
+- ensure cannot login with password if password_hash is empty in database
 - add provider field to account: `local` | `github` | `facebook` | `google` ...
 - create oath endpoints
-
-### Services
-
-- create service struct
-- implement services endpoints
-  - register/delete service
-  - list permissions from list of roles
 
 ### Caching
 

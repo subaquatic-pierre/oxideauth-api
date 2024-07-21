@@ -11,7 +11,7 @@ use crate::db::queries::account::get_account_db;
 use crate::db::queries::role::{
     bind_permissions_to_role, bind_role_to_account_db, create_permissions_db, create_role_db,
     delete_permissions_db, delete_role_db, get_all_permissions, get_all_roles_db, get_role_db,
-    remove_permissions_from_role_db, remove_role_binding_db,
+    remove_permissions_from_role_db, remove_role_binding_db, update_role_db,
 };
 use crate::models::account::Account;
 use crate::models::api::ApiError;
@@ -23,6 +23,7 @@ use log::{debug, error, info};
 #[derive(Debug, Deserialize)]
 pub struct CreateRoleReq {
     pub name: String,
+    pub description: Option<String>,
     pub permissions: Option<Vec<String>>,
 }
 
@@ -37,17 +38,56 @@ pub async fn create_role(
     app: Data<AppData>,
     body: Json<CreateRoleReq>,
 ) -> impl Responder {
-    debug!("{:?}", body);
-
     if let Ok(role) = get_role_db(&app.db, &body.name).await {
         return ApiError::new(&format!("Role '{:}' already exists", role.name)).respond_to(&req);
     }
 
     // create role
     let permissions = body.permissions.clone().unwrap_or(vec![]);
-    let new_role = Role::new(&body.name, permissions);
+    let new_role = Role::new(&body.name, permissions, body.description.clone());
     match create_role_db(&app.db, &new_role).await {
         Ok(role) => return HttpResponse::Ok().json(CreateRoleRes { role }),
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateRoleReq {
+    pub role: String,
+    pub name: Option<String>,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UpdateRoleRes {
+    pub role: Role,
+}
+
+#[post("/update-role")]
+pub async fn update_role(
+    req: HttpRequest,
+    app: Data<AppData>,
+    body: Json<UpdateRoleReq>,
+) -> impl Responder {
+    let mut role = match get_role_db(&app.db, &body.role).await {
+        Ok(role) => role,
+        Err(_) => {
+            return ApiError::new(&format!("Role '{:}' does not exist", &body.role))
+                .respond_to(&req);
+        }
+    };
+
+    if let Some(name) = &body.name {
+        role.name = name.to_string();
+    };
+
+    if let Some(desc) = &body.description {
+        role.description = Some(desc.to_string());
+    }
+
+    // create role
+    match update_role_db(&app.db, &role).await {
+        Ok(role) => return HttpResponse::Ok().json(UpdateRoleRes { role }),
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     }
 }
@@ -222,6 +262,7 @@ struct CreatePermissionsReq {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct CreatePermissionsRes {
     created_permissions: Vec<String>,
 }
@@ -276,6 +317,7 @@ struct DeletePermissionsReq {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct DeletePermissionsRes {
     deleted_permissions: Vec<String>,
 }
@@ -388,6 +430,7 @@ pub async fn remove_permissions(
 pub fn register_roles_collection() -> Scope {
     scope("/roles")
         .service(create_role)
+        .service(update_role)
         .service(list_roles)
         .service(describe_role)
         .service(delete_role)

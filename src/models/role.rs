@@ -55,17 +55,17 @@ pub struct Role {
     #[serde(flatten)]
     #[serde(skip_serializing_if = "RolePermissions::should_skip")]
     pub permissions: RolePermissions,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    // #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
 
 impl Role {
-    pub fn new(name: &str, permissions: Vec<String>) -> Self {
+    pub fn new(name: &str, permissions: Vec<String>, description: Option<String>) -> Self {
         Self {
             id: Uuid::new_v4(),
             name: name.to_string(),
             permissions: RolePermissions::new(permissions),
-            description: None,
+            description,
         }
     }
 

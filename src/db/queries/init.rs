@@ -3,6 +3,7 @@ use std::iter::Map;
 use sqlx::PgPool;
 
 use crate::{
+    app::AppConfig,
     models::{
         account::{Account, AccountProvider, AccountType},
         role::{Permission, Role},
@@ -56,7 +57,10 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             acc_type TEXT NOT NULL,
             provider TEXT NOT NULL,
             provider_id TEXT,
-            description TEXT
+            description TEXT,
+            image_url TEXT,
+            verified BOOLEAN DEFAULT FALSE NOT NULL,
+            enabled BOOLEAN DEFAULT TRUE NOT NULL
         )
         "#,
     )
@@ -213,7 +217,17 @@ const DEFAULT_VIEWER_PERMISSIONS: &'static [&str] = &[
     "auth.services.list",
 ];
 
-pub async fn create_defaults(pool: &PgPool, owner_acc: &Account) -> Result<(), sqlx::Error> {
+const DEFAULT_SA_PERMISSIONS: &'static [&str] = &[
+    // services
+    "auth.services.describe",
+    "auth.services.list",
+];
+
+pub async fn create_defaults(
+    pool: &PgPool,
+    owner_acc: &Account,
+    config: &AppConfig,
+) -> Result<(), sqlx::Error> {
     let perms = ALL_DEFAULT_PERMISSIONS
         .iter()
         .map(|el| Permission::new(el))
@@ -223,58 +237,94 @@ pub async fn create_defaults(pool: &PgPool, owner_acc: &Account) -> Result<(), s
 
     // create owner role
     let owner_role = Role::new(
-        "owner",
+        "Owner",
         ALL_DEFAULT_PERMISSIONS
             .iter()
             .map(|el| el.to_string())
             .collect(),
+        Some("Default Owner role created by OxideAuth".to_string()),
     );
     create_role_db(pool, &owner_role).await?;
 
     // create admin role
     let admin_role = Role::new(
-        "admin",
+        "Admin",
         DEFAULT_ADMIN_PERMISSIONS
             .iter()
             .map(|el| el.to_string())
             .collect(),
+        Some("Default Admin role created by OxideAuth".to_string()),
     );
     create_role_db(pool, &admin_role).await?;
 
     // create auditor role
     let auditor_role = Role::new(
-        "auditor",
+        "Auditor",
         DEFAULT_AUDITOR_PERMISSIONS
             .iter()
             .map(|el| el.to_string())
             .collect(),
+        Some("Default Auditor role created by OxideAuth".to_string()),
     );
     create_role_db(pool, &auditor_role).await?;
 
     // create viewer role
     let viewer_role = Role::new(
-        "viewer",
+        "Viewer",
         DEFAULT_VIEWER_PERMISSIONS
             .iter()
             .map(|el| el.to_string())
             .collect(),
+        Some("Default Viewer role created by OxideAuth".to_string()),
     );
     create_role_db(pool, &viewer_role).await?;
+
+    // create default service account role
+    let sa_role = Role::new(
+        "Service",
+        DEFAULT_SA_PERMISSIONS
+            .iter()
+            .map(|el| el.to_string())
+            .collect(),
+        Some("Default Service Account Role created by OxideAuth".to_string()),
+    );
+    create_role_db(pool, &sa_role).await?;
 
     // TODO: remove development accounts
     // ---
     let pw_hash = hash_password(&"password").unwrap();
-    let viewer_acc = Account::new_local_user("viewer@email.com", "viewer", &pw_hash);
+    let image_url = format!("{}/assets/images/users/default.png", config.client_origin);
+    let mut viewer_acc = Account::new_local_user(
+        "viewer@email.com",
+        "Default Viewer",
+        &pw_hash,
+        Some(image_url),
+    );
+    viewer_acc.description = Some("Default Viewer account created by OxideAuth".to_string());
+
     create_account_db(pool, &viewer_acc).await?;
     bind_role_to_account_db(pool, &viewer_acc, &viewer_role).await?;
     // ---
 
+    // create default service account
+    let sa = Account::new_service_account(
+        "service@email.com",
+        "OxideAuth Service Account",
+        Some("Default Service Account created by OxideAuth".to_string()),
+    );
+    create_account_db(pool, &sa).await?;
+    bind_role_to_account_db(pool, &sa, &sa_role).await?;
+
+    // create owner account
     create_account_db(pool, owner_acc).await?;
     bind_role_to_account_db(pool, owner_acc, &owner_role).await?;
 
+    // Create default Auth service
+
+    let auth_endpoint = format!("{}:{}", config.host, config.port);
     let auth_service = Service::new(
-        "Auth",
-        Some("/auth".to_string()),
+        "OxideAuth",
+        Some(auth_endpoint),
         Some("Default Auth service provided by OxideAuth".to_string()),
     );
     create_service_db(pool, &auth_service).await?;

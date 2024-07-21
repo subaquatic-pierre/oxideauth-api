@@ -31,7 +31,8 @@ pub fn build_owner_account() -> Account {
 
     let pw_hash = hash_password(&password).unwrap_or("unhashed_password".to_string());
 
-    let owner_acc = Account::new_local_user(&owner_email, "owner", &pw_hash);
+    let mut owner_acc = Account::new_local_user(&owner_email, "Owner", &pw_hash, None);
+    owner_acc.description = Some("Default Owner account created by OxideAuth".to_string());
     owner_acc
 }
 

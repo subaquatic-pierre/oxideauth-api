@@ -90,12 +90,12 @@ pub async fn update_service(
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
-    if service.name == "Auth" {
+    if service.name == "OxideAuth" {
         if body.description.is_some() {
-            return ApiError::new("Cannot change the description of the default Auth service")
+            return ApiError::new("Cannot change the description of the default OxideAuth service")
                 .respond_to(&req);
         }
-        return ApiError::new("Cannot change the name of the default Auth service")
+        return ApiError::new("Cannot change the name of the default OxideAuth service")
             .respond_to(&req);
     }
 
@@ -188,8 +188,8 @@ pub async fn delete_service(
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
-    if service.name == "Auth" {
-        return ApiError::new("Cannot delete Auth service").respond_to(&req);
+    if service.name == "OxideAuth" {
+        return ApiError::new("Cannot delete default OxideAuth service").respond_to(&req);
     }
 
     match delete_service_db(&app.db, &service).await {

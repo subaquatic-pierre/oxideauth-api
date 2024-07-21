@@ -22,6 +22,8 @@ pub struct AppConfig {
     pub google_oauth_client_id: String,
     pub google_oauth_client_secret: String,
     pub google_oauth_redirect_url: String,
+    pub host: String,
+    pub port: u16,
     // pub github_oauth_client_id: String,
     // pub github_oauth_client_secret: String,
     // pub github_oauth_redirect_url: String,
@@ -53,6 +55,13 @@ impl AppConfig {
 
         let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
+        let host = env::var("HOST").unwrap_or("http://localhost".to_string());
+
+        let port = env::var("PORT")
+            .unwrap_or("8080".to_string())
+            .parse::<u16>()
+            .expect("Unable to parse PORT from .env, value must be valid number");
+
         dotenv().ok();
         AppConfig {
             database_url,
@@ -64,9 +73,10 @@ impl AppConfig {
             google_oauth_client_id,
             google_oauth_client_secret,
             google_oauth_redirect_url,
-            // github_oauth_client_id,
-            // github_oauth_client_secret,
-            // github_oauth_redirect_url,
+            host,
+            port, // github_oauth_client_id,
+                  // github_oauth_client_secret,
+                  // github_oauth_redirect_url,
         }
     }
 }
