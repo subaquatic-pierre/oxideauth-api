@@ -12,6 +12,7 @@ use tera::{Context, Tera};
 use crate::app::AppConfig;
 use crate::models::api::{ApiError, ApiResult};
 
+#[derive(Debug)]
 pub struct EmailResult {
     pub message: String,
 }
@@ -28,7 +29,8 @@ pub async fn send_email(
     template_name: &str,
     vars: Vec<EmailVars>,
 ) -> ApiResult<EmailResult> {
-    let tera = match Tera::new("templates/*.html") {
+    let from_email = format!("🛡️ OxideAuth <{}>", config.aws_smtp_from);
+    let tera: Tera = match Tera::new("templates/*.html") {
         Ok(t) => t,
         Err(e) => return Err(ApiError::new(&format!("Parsing error: {}", e))),
     };
@@ -37,7 +39,6 @@ pub async fn send_email(
 
     for var in vars.iter() {
         context.insert(&var.key, &var.val);
-        // context.insert("confirm_link", "http://localhost:8081/auth/sign-in");
     }
 
     let body = match tera.render(template_name, &context) {
@@ -73,7 +74,7 @@ pub async fn send_email(
 
     let send_email_request = client
         .send_email()
-        .source(config.aws_smtp_from.clone())
+        .source(from_email)
         .destination(destination)
         .message(message)
         .send()

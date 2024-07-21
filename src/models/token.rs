@@ -51,6 +51,18 @@ impl TokenClaims {
         }
     }
 
+    pub fn new_reset_token(account: &Account, exp: Option<usize>) -> Self {
+        let now = Utc::now();
+        let iat = now.timestamp() as usize;
+        Self {
+            sub: account.id(),
+            exp: 9999999999999999,
+            iat,
+            token_type: TokenType::ResetPassword,
+            acc_type: account.acc_type.to_string(),
+        }
+    }
+
     pub fn from_str(jwt_secret: &str, token: &str) -> ApiResult<Self> {
         decode_token(jwt_secret, token)
     }

@@ -301,6 +301,7 @@ pub async fn create_defaults(
         Some(image_url),
     );
     viewer_acc.description = Some("Default Viewer account created by OxideAuth".to_string());
+    viewer_acc.verified = true;
 
     create_account_db(pool, &viewer_acc).await?;
     bind_role_to_account_db(pool, &viewer_acc, &viewer_role).await?;

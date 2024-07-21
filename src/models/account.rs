@@ -84,6 +84,7 @@ impl Account {
         provider: AccountProvider,
         provider_id: Option<String>,
         image_url: Option<String>,
+        verified: bool,
     ) -> Self {
         let id = Uuid::new_v4();
         Self {
@@ -97,7 +98,7 @@ impl Account {
             roles: vec![],
             description: None,
             image_url,
-            verified: false,
+            verified,
             enabled: true,
         }
     }
@@ -174,7 +175,7 @@ impl From<&str> for AccountType {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum AccountProvider {
     Local,

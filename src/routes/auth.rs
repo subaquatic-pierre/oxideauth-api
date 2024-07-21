@@ -24,7 +24,7 @@ use crate::models::token::{TokenClaims, TokenType};
 use crate::utils::auth::{get_google_user, request_google_token};
 use crate::utils::crypt::{hash_password, verify_password};
 use crate::utils::email::{send_email, EmailVars};
-use crate::utils::token::{gen_confirm_token, get_auth_token};
+use crate::utils::token::{gen_confirm_token, gen_reset_token, get_auth_token};
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterReq {
@@ -88,16 +88,20 @@ pub async fn register_user(
     };
 
     let confirm_token = gen_confirm_token(&app.config, &new_acc).unwrap();
+    // used to redirect to client page on successful confirmation
+    let redirect_url = format!("{}/auth/sign-in", app.config.client_origin);
 
+    let server_host = "http://localhost:8080";
     let confirm_url = format!(
-        "{}/confirm-email?token={}",
-        app.config.client_origin, confirm_token
+        "{}/auth/confirm-account?token={}&redirect_url={}",
+        server_host, confirm_token, redirect_url
     );
 
     // send confirm account email
     let vars = vec![
         EmailVars {
             key: "year".to_string(),
+            // TODO: change year to be dynamic
             val: "2024".to_string(),
         },
         EmailVars {
@@ -119,7 +123,9 @@ pub async fn register_user(
     )
     .await
     {
-        Ok(res) => {}
+        Ok(res) => {
+            info!("{res:?}")
+        }
         Err(e) => {
             error!("{e}")
         }
@@ -140,6 +146,7 @@ pub async fn register_user(
 #[derive(Debug, Deserialize)]
 pub struct ConfirmAccountReq {
     pub token: String,
+    pub redirect_url: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -147,11 +154,131 @@ pub struct ConfirmAccountRes {
     pub account: Account,
 }
 
-#[post("/confirm-account")]
+#[get("/confirm-account")]
 pub async fn confirm_account(
     req: HttpRequest,
     app: Data<AppData>,
-    body: Json<ConfirmAccountReq>,
+    query: Query<ConfirmAccountReq>,
+) -> impl Responder {
+    let claims = match TokenClaims::from_str(app.config.jwt_secret.as_ref(), &query.token) {
+        Ok(claims) => claims,
+        Err(e) => {
+            error!("Error building TokenClaims from string, {:?}", e);
+            return e.respond_to(&req);
+        }
+    };
+
+    if claims.token_type != TokenType::ConfirmAccount {
+        return ApiError::new("Incorrect Token type").respond_to(&req);
+    }
+
+    let mut account = match get_account_db(&app.db, &claims.sub).await {
+        Ok(acc) => acc,
+        Err(e) => {
+            error!("{e}");
+            return ApiError::new("Unable to find account").respond_to(&req);
+        }
+    };
+
+    account.verified = true;
+
+    match update_account_db(&app.db, &account).await {
+        Ok(_) => {
+            let mut response = HttpResponse::Found();
+            let redirect_url = format!(
+                "{}?message=User Account Confirmed&email={}",
+                query.redirect_url, account.email
+            );
+            response.append_header((header::LOCATION, redirect_url));
+
+            response.finish()
+        }
+
+        Err(e) => {
+            error!("Unable updated account to verified, {account:?}, {e}");
+            ApiError::new("Unable updated account to verified").respond_to(&req)
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResetEmailReq {
+    pub email: String,
+    pub redirect_url: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ResetEmailRes {
+    pub success: bool,
+}
+
+#[post("/reset-password")]
+pub async fn reset_password(
+    req: HttpRequest,
+    app: Data<AppData>,
+    body: Json<ResetEmailReq>,
+) -> impl Responder {
+    let account = match get_account_db(&app.db, &body.email).await {
+        Ok(acc) => acc,
+        Err(e) => {
+            error!("{e}");
+            return ApiError::new("Unable to find account").respond_to(&req);
+        }
+    };
+
+    let reset_token = gen_reset_token(&app.config, &account).unwrap();
+    let reset_url = format!("{}?token={}", body.redirect_url, reset_token);
+
+    // send confirm account email
+    let vars = vec![
+        EmailVars {
+            key: "year".to_string(),
+            // TODO: change year to be dynamic
+            val: "2024".to_string(),
+        },
+        EmailVars {
+            key: "reset_url".to_string(),
+            val: reset_url.to_string(),
+        },
+    ];
+
+    match send_email(
+        &app.config,
+        &account.email,
+        "Reset Your Password | OxideAuth",
+        "reset_password.html",
+        vars,
+    )
+    .await
+    {
+        Ok(res) => {
+            info!("{res:?}")
+        }
+        Err(e) => {
+            error!("{e}")
+        }
+    }
+
+    return HttpResponse::Ok().json(ResetEmailRes { success: true });
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdatePasswordReq {
+    pub token: String,
+    pub password: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UpdatePasswordRes {
+    pub account: Account,
+}
+
+#[post("/update-password")]
+pub async fn update_password(
+    req: HttpRequest,
+    app: Data<AppData>,
+    body: Json<UpdatePasswordReq>,
 ) -> impl Responder {
     let claims = match TokenClaims::from_str(app.config.jwt_secret.as_ref(), &body.token) {
         Ok(claims) => claims,
@@ -161,24 +288,104 @@ pub async fn confirm_account(
         }
     };
 
-    if claims.token_type != TokenType::ConfirmAccount {
-        return ApiError::new("No user found").respond_to(&req);
+    if claims.token_type != TokenType::ResetPassword {
+        return ApiError::new("Incorrect Token type").respond_to(&req);
     }
 
     let mut account = match get_account_db(&app.db, &claims.sub).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new("Unable to find account").respond_to(&req),
+        Err(e) => {
+            error!("{e}");
+            return ApiError::new("Unable to find account").respond_to(&req);
+        }
     };
 
-    account.verified = true;
+    let password_hash = match hash_password(&body.password) {
+        Ok(hash) => hash,
+        Err(e) => return e.respond_to(&req),
+    };
 
-    match update_account_db(&app.db, &account).await {
-        Ok(_) => HttpResponse::Ok().json(ConfirmAccountRes { account: account }),
+    account.password_hash = password_hash;
+
+    let updated_account = match update_account_db(&app.db, &account).await {
+        Ok(acc) => acc,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
+
+    HttpResponse::Ok().json(UpdatePasswordRes {
+        account: updated_account,
+    })
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResendConfirmReq {
+    pub email: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ResendConfirmRes {
+    pub success: bool,
+}
+
+#[post("/resend-confirm")]
+pub async fn resend_confirm(
+    req: HttpRequest,
+    app: Data<AppData>,
+    body: Json<ResendConfirmReq>,
+) -> impl Responder {
+    let account = match get_account_db(&app.db, &body.email).await {
+        Ok(acc) => acc,
         Err(e) => {
-            error!("Unable updated account to verified, {account:?}, {e}");
-            ApiError::new("Unable updated account to verified").respond_to(&req)
+            error!("{e}");
+            return ApiError::new("Unable to find account").respond_to(&req);
+        }
+    };
+
+    let confirm_token = gen_confirm_token(&app.config, &account).unwrap();
+    // used to redirect to client page on successful confirmation
+    let redirect_url = format!("{}/auth/sign-in", app.config.client_origin);
+
+    let server_host = "http://localhost:8080";
+    let confirm_url = format!(
+        "{}/auth/confirm-account?token={}&redirect_url={}",
+        server_host, confirm_token, redirect_url
+    );
+
+    // send confirm account email
+    let vars = vec![
+        EmailVars {
+            key: "year".to_string(),
+            // TODO: change year to be dynamic
+            val: "2024".to_string(),
+        },
+        EmailVars {
+            key: "name".to_string(),
+            val: account.name.to_string(),
+        },
+        EmailVars {
+            key: "confirm_link".to_string(),
+            val: confirm_url.to_string(),
+        },
+    ];
+
+    match send_email(
+        &app.config,
+        &account.email,
+        "Confirm Your Account | OxideAuth",
+        "confirm_email.html",
+        vars,
+    )
+    .await
+    {
+        Ok(res) => {
+            info!("{res:?}")
+        }
+        Err(e) => {
+            error!("{e}")
         }
     }
+
+    HttpResponse::Ok().json(ResendConfirmRes { success: true })
 }
 
 #[derive(Debug, Deserialize)]
@@ -189,6 +396,7 @@ pub struct LoginReq {
 
 #[derive(Debug, Serialize)]
 pub struct LoginRes {
+    pub account: Account,
     pub token: String,
 }
 
@@ -199,23 +407,32 @@ pub async fn login_user(
     body: Json<LoginReq>,
 ) -> impl Responder {
     match get_account_db(&app.db, &body.email).await {
-        Ok(user) => match verify_password(&user.password_hash, &body.password) {
-            Ok(is_valid) => {
-                if is_valid {
-                    let token = match get_auth_token(&app.config, &user) {
-                        Ok(t) => t,
-                        Err(e) => return e.respond_to(&req),
-                    };
-
-                    return HttpResponse::Ok().json(LoginRes { token });
-                } else {
-                    return ApiError::new("invalid password").respond_to(&req);
-                }
+        Ok(user) => {
+            if (user.password_hash == "" && user.provider != AccountProvider::Local) {
+                return ApiError::new("User account signed up with OAuth provider, please use 'forgot password' to create new password").respond_to(&req);
             }
-            Err(e) => return e.respond_to(&req),
-        },
+            match verify_password(&user.password_hash, &body.password) {
+                Ok(is_valid) => {
+                    if is_valid {
+                        let token = match get_auth_token(&app.config, &user) {
+                            Ok(t) => t,
+                            Err(e) => return e.respond_to(&req),
+                        };
+
+                        return HttpResponse::Ok().json(LoginRes {
+                            token,
+                            account: user,
+                        });
+                    } else {
+                        return ApiError::new("Invalid password").respond_to(&req);
+                    }
+                }
+
+                Err(e) => return e.respond_to(&req),
+            }
+        }
         _ => {
-            return ApiError::new("no user found").respond_to(&req);
+            return ApiError::new("No user found").respond_to(&req);
         }
     }
 }
@@ -296,8 +513,6 @@ pub async fn google_oauth_handler(
             Err(e) => return e.respond_to(&req),
         };
 
-    info!("GOOGLE TOKEN: {google_token_res:?}, GOOGLE_USER: {google_user:?}");
-
     let account = match get_account_db(&app.db, &google_user.email).await {
         Ok(acc) => acc,
         Err(e) => match e {
@@ -309,6 +524,7 @@ pub async fn google_oauth_handler(
                     AccountProvider::Google,
                     Some(google_user.id),
                     google_user.picture,
+                    google_user.verified_email,
                 );
 
                 match create_account_db(&app.db, &new_user).await {
@@ -326,14 +542,6 @@ pub async fn google_oauth_handler(
     };
 
     let token = get_auth_token(&app.config, &account).unwrap();
-    // let exp = (Utc::now() + Duration::minutes(app.config.jwt_max_age)).timestamp() as usize;
-    // let claims: TokenClaims = TokenClaims::new(&account, Some(exp));
-    // let token = encode(
-    //     &Header::default(),
-    //     &claims,
-    //     &EncodingKey::from_secret(app.config.jwt_secret.as_ref()),
-    // )
-    // .unwrap();
 
     let mut response = HttpResponse::Found();
     let redirect_location = format!("{}?token={}", google_state.redirect_url, token);
@@ -346,6 +554,9 @@ pub fn register_auth_collection() -> Scope {
     scope("/auth")
         .service(login_user)
         .service(register_user)
+        .service(resend_confirm)
         .service(confirm_account)
+        .service(reset_password)
+        .service(update_password)
         .service(google_oauth_handler)
 }

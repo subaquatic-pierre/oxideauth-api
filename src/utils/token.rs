@@ -25,6 +25,20 @@ pub fn get_auth_token(app_config: &AppConfig, user: &Account) -> ApiResult<Strin
     token
 }
 
+pub fn gen_reset_token(app_config: &AppConfig, user: &Account) -> ApiResult<String> {
+    let jwt_secret = &app_config.jwt_secret;
+
+    let token_claims = TokenClaims::new_reset_token(user, None);
+
+    let token = encode(
+        &Header::default(),
+        &token_claims,
+        &EncodingKey::from_secret(jwt_secret.as_ref()),
+    )
+    .map_err(|e| ApiError::new(&e.to_string()));
+    token
+}
+
 pub fn gen_confirm_token(app_config: &AppConfig, user: &Account) -> ApiResult<String> {
     let jwt_secret = &app_config.jwt_secret;
 
