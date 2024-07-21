@@ -5,6 +5,7 @@ use actix_web::Scope;
 use dotenv::dotenv;
 use sqlx::{PgPool, Pool};
 
+use crate::routes::utils::register_utils_services;
 use crate::{db::init::establish_connection, models::guard::AuthGuard};
 
 use crate::routes::accounts::register_accounts_collection;
@@ -12,6 +13,7 @@ use crate::routes::auth::register_auth_collection;
 use crate::routes::roles::register_roles_collection;
 use crate::routes::services::register_services_collection;
 
+#[derive(Debug)]
 pub struct AppConfig {
     pub client_origin: String,
     pub database_url: String,
@@ -24,9 +26,13 @@ pub struct AppConfig {
     pub google_oauth_redirect_url: String,
     pub host: String,
     pub port: u16,
-    // pub github_oauth_client_id: String,
-    // pub github_oauth_client_secret: String,
-    // pub github_oauth_redirect_url: String,
+    pub aws_smtp_host: String,
+    pub aws_smtp_username: String,
+    pub aws_smtp_password: String,
+    pub aws_smtp_from: String,
+    pub aws_region: String, // pub github_oauth_client_id: String,
+                            // pub github_oauth_client_secret: String,
+                            // pub github_oauth_redirect_url: String,
 }
 
 impl AppConfig {
@@ -62,6 +68,16 @@ impl AppConfig {
             .parse::<u16>()
             .expect("Unable to parse PORT from .env, value must be valid number");
 
+        let aws_smtp_host = env::var("AWS_SMTP_HOST").expect("AWS_SMTP_HOST must be set in .env");
+        let aws_smtp_username = env::var("AWS_SMTP_USERNAME")
+            .expect("AWS_SMTP_USERNAME credentials must be set in .env");
+        let aws_smtp_password = env::var("AWS_SMTP_PASSWORD")
+            .expect("AWS_SMTP_PASSWORD credentials must be set in .env");
+        let aws_smtp_from =
+            env::var("AWS_SMTP_FROM").expect("AWS_SMTP_FROM credentials must be set in .env");
+        let aws_region =
+            env::var("AWS_REGION").expect("AWS_REGION credentials must be set in .env");
+
         dotenv().ok();
         AppConfig {
             database_url,
@@ -74,9 +90,15 @@ impl AppConfig {
             google_oauth_client_secret,
             google_oauth_redirect_url,
             host,
-            port, // github_oauth_client_id,
-                  // github_oauth_client_secret,
-                  // github_oauth_redirect_url,
+            port,
+            aws_smtp_host,
+            aws_smtp_username,
+            aws_smtp_password,
+            aws_smtp_from,
+            aws_region,
+            // github_oauth_client_id,
+            // github_oauth_client_secret,
+            // github_oauth_redirect_url,
         }
     }
 }
@@ -106,4 +128,5 @@ pub fn register_all_services() -> Scope {
         .service(register_roles_collection())
         .service(register_services_collection())
         .service(register_accounts_collection())
+        .service(register_utils_services())
 }

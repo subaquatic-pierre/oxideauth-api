@@ -10,6 +10,7 @@ mod cli;
 mod db;
 mod models;
 mod routes;
+// mod templates;
 mod utils;
 
 use log::info;
