@@ -24,7 +24,7 @@ use crate::models::token::{TokenClaims, TokenType};
 use crate::utils::auth::{get_google_user, request_google_token};
 use crate::utils::crypt::{hash_password, verify_password};
 use crate::utils::email::{send_email, EmailVars};
-use crate::utils::token::{gen_confirm_token, gen_reset_token, get_auth_token};
+use crate::utils::token::gen_token;
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterReq {
@@ -71,7 +71,7 @@ pub async fn register_user(
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
-    let token = match get_auth_token(&app.config, &user) {
+    let token = match gen_token(&app.config, &user, TokenType::Auth) {
         Ok(t) => t,
         Err(e) => return e.respond_to(&req),
     };
@@ -87,7 +87,7 @@ pub async fn register_user(
         }
     };
 
-    let confirm_token = gen_confirm_token(&app.config, &new_acc).unwrap();
+    let confirm_token = gen_token(&app.config, &new_acc, TokenType::ConfirmAccount).unwrap();
     // used to redirect to client page on successful confirmation
     let redirect_url = format!("{}/auth/sign-in", app.config.client_origin);
 
@@ -227,7 +227,7 @@ pub async fn reset_password(
         }
     };
 
-    let reset_token = gen_reset_token(&app.config, &account).unwrap();
+    let reset_token = gen_token(&app.config, &account, TokenType::ResetPassword).unwrap();
     let reset_url = format!("{}?token={}", body.redirect_url, reset_token);
 
     // send confirm account email
@@ -341,7 +341,7 @@ pub async fn resend_confirm(
         }
     };
 
-    let confirm_token = gen_confirm_token(&app.config, &account).unwrap();
+    let confirm_token = gen_token(&app.config, &account, TokenType::ConfirmAccount).unwrap();
     // used to redirect to client page on successful confirmation
     let redirect_url = format!("{}/auth/sign-in", app.config.client_origin);
 
@@ -414,7 +414,7 @@ pub async fn login_user(
             match verify_password(&user.password_hash, &body.password) {
                 Ok(is_valid) => {
                     if is_valid {
-                        let token = match get_auth_token(&app.config, &user) {
+                        let token = match gen_token(&app.config, &user, TokenType::Auth) {
                             Ok(t) => t,
                             Err(e) => return e.respond_to(&req),
                         };
@@ -437,42 +437,29 @@ pub async fn login_user(
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct LogoutReq {
-    pub email: String,
-}
-
 #[derive(Debug, Serialize)]
-pub struct LogoutRes {
-    pub status: String,
+struct RefreshTokenRes {
+    token: String,
 }
 
-// TODO: Implement logout
-#[post("/logout")]
-pub async fn logout_user(req: HttpRequest, body: Json<LogoutReq>) -> impl Responder {
-    // verify token
+#[get("/refresh-token")]
+pub async fn refresh_token(req: HttpRequest, app: Data<AppData>) -> impl Responder {
+    let required_perms = [];
 
-    // remove token from DB
+    // TODO: verify token
+    let token = match app.guard.authorize_req(&req, &required_perms).await {
+        Ok(token) => token,
+        Err(e) => return e.respond_to(&req),
+    };
 
-    // respond
+    let account = match get_account_db(&app.db, &token.sub).await {
+        Ok(acc) => acc,
+        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+    };
 
-    HttpResponse::Ok().json(LogoutRes {
-        status: "ok".to_string(),
-    })
-}
+    let token = gen_token(&app.config, &account, TokenType::Auth).unwrap();
 
-// TODO: Implement refresh
-#[post("/refresh-token")]
-pub async fn refresh_user_token(req: HttpRequest, body: Json<LogoutReq>) -> impl Responder {
-    // verify token
-
-    // remove token from DB
-
-    // respond
-
-    HttpResponse::Ok().json(LogoutRes {
-        status: "ok".to_string(),
-    })
+    HttpResponse::Ok().json(RefreshTokenRes { token })
 }
 
 #[derive(Debug, Deserialize)]
@@ -541,7 +528,7 @@ pub async fn google_oauth_handler(
         },
     };
 
-    let token = get_auth_token(&app.config, &account).unwrap();
+    let token = gen_token(&app.config, &account, TokenType::Auth).unwrap();
 
     let mut response = HttpResponse::Found();
     let redirect_location = format!("{}?token={}", google_state.redirect_url, token);
@@ -558,5 +545,6 @@ pub fn register_auth_collection() -> Scope {
         .service(confirm_account)
         .service(reset_password)
         .service(update_password)
+        .service(refresh_token)
         .service(google_oauth_handler)
 }

@@ -1,4 +1,5 @@
 use actix_web::HttpRequest;
+use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use log::debug;
 
@@ -7,42 +8,19 @@ use crate::{
     models::{
         account::Account,
         api::{ApiError, ApiResult},
-        token::TokenClaims,
+        token::{TokenClaims, TokenType},
     },
 };
 
-pub fn get_auth_token(app_config: &AppConfig, user: &Account) -> ApiResult<String> {
+pub fn gen_token(
+    app_config: &AppConfig,
+    user: &Account,
+    token_type: TokenType,
+) -> ApiResult<String> {
     let jwt_secret = &app_config.jwt_secret;
+    let exp_future = gen_token_exp_time(app_config);
 
-    let token_claims = TokenClaims::new_auth_token(user, None);
-
-    let token = encode(
-        &Header::default(),
-        &token_claims,
-        &EncodingKey::from_secret(jwt_secret.as_ref()),
-    )
-    .map_err(|e| ApiError::new(&e.to_string()));
-    token
-}
-
-pub fn gen_reset_token(app_config: &AppConfig, user: &Account) -> ApiResult<String> {
-    let jwt_secret = &app_config.jwt_secret;
-
-    let token_claims = TokenClaims::new_reset_token(user, None);
-
-    let token = encode(
-        &Header::default(),
-        &token_claims,
-        &EncodingKey::from_secret(jwt_secret.as_ref()),
-    )
-    .map_err(|e| ApiError::new(&e.to_string()));
-    token
-}
-
-pub fn gen_confirm_token(app_config: &AppConfig, user: &Account) -> ApiResult<String> {
-    let jwt_secret = &app_config.jwt_secret;
-
-    let token_claims = TokenClaims::new_confirm_token(user, None);
+    let token_claims = TokenClaims::new_token(user, exp_future, token_type);
 
     let token = encode(
         &Header::default(),
@@ -83,4 +61,11 @@ pub fn get_token_from_req(req: &HttpRequest) -> Option<String> {
     }
 
     None
+}
+
+fn gen_token_exp_time(config: &AppConfig) -> usize {
+    let now = Utc::now();
+    let expire_duration = Duration::seconds(config.jwt_max_age);
+    let future_time = now + expire_duration;
+    future_time.timestamp() as usize
 }

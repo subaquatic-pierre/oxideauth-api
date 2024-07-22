@@ -27,6 +27,18 @@ pub struct TokenClaims {
 }
 
 impl TokenClaims {
+    pub fn new_token(account: &Account, exp: usize, token_type: TokenType) -> Self {
+        let now = Utc::now();
+        let iat = now.timestamp() as usize;
+        Self {
+            sub: account.id(),
+            exp,
+            iat,
+            token_type,
+            acc_type: account.acc_type.to_string(),
+        }
+    }
+
     pub fn new_auth_token(account: &Account, exp: Option<usize>) -> Self {
         let now = Utc::now();
         let iat = now.timestamp() as usize;

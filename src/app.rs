@@ -19,7 +19,6 @@ pub struct AppConfig {
     pub database_url: String,
     pub jwt_secret: String,
     pub default_sa_password: String,
-    pub jwt_expires_in: String,
     pub jwt_max_age: i64,
     pub google_oauth_client_id: String,
     pub google_oauth_client_secret: String,
@@ -30,9 +29,10 @@ pub struct AppConfig {
     pub aws_smtp_username: String,
     pub aws_smtp_password: String,
     pub aws_smtp_from: String,
-    pub aws_region: String, // pub github_oauth_client_id: String,
-                            // pub github_oauth_client_secret: String,
-                            // pub github_oauth_redirect_url: String,
+    pub aws_region: String,
+    // pub github_oauth_client_id: String,
+    // pub github_oauth_client_secret: String,
+    // pub github_oauth_redirect_url: String,
 }
 
 impl AppConfig {
@@ -40,8 +40,6 @@ impl AppConfig {
         dotenv().ok();
         let client_origin = std::env::var("CLIENT_ORIGIN").expect("CLIENT_ORIGIN must be set");
         let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-        let jwt_expires_in =
-            std::env::var("TOKEN_EXPIRED_IN").expect("TOKEN_EXPIRED_IN must be set");
         let jwt_max_age = std::env::var("TOKEN_MAXAGE").expect("TOKEN_MAXAGE must be set");
         let google_oauth_client_id =
             std::env::var("GOOGLE_OAUTH_CLIENT_ID").expect("GOOGLE_OAUTH_CLIENT_ID must be set");
@@ -84,7 +82,6 @@ impl AppConfig {
             default_sa_password,
             jwt_secret,
             client_origin,
-            jwt_expires_in,
             jwt_max_age: jwt_max_age.parse::<i64>().unwrap(),
             google_oauth_client_id,
             google_oauth_client_secret,
