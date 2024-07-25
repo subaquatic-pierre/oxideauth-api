@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n          SELECT * FROM accounts\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "password_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "acc_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "provider",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "provider_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "enabled",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "1b0fc02cda82a70f14fcbb0b03672563ca835528aa9ab7d5f1b4df196ad84125"
+}

@@ -30,6 +30,7 @@ pub struct AppConfig {
     pub aws_smtp_password: String,
     pub aws_smtp_from: String,
     pub aws_region: String,
+    pub drop_tables: bool,
     // pub github_oauth_client_id: String,
     // pub github_oauth_client_secret: String,
     // pub github_oauth_redirect_url: String,
@@ -76,6 +77,15 @@ impl AppConfig {
         let aws_region =
             env::var("AWS_REGION").expect("AWS_REGION credentials must be set in .env");
 
+        let mut s_drop_tables =
+            env::var("DROP_TABLES").expect("DROP_TABLES credentials must be set in .env");
+
+        let mut drop_tables = false;
+
+        if s_drop_tables == "true".to_string() {
+            drop_tables = true;
+        }
+
         dotenv().ok();
         AppConfig {
             database_url,
@@ -93,6 +103,7 @@ impl AppConfig {
             aws_smtp_password,
             aws_smtp_from,
             aws_region,
+            drop_tables,
             // github_oauth_client_id,
             // github_oauth_client_secret,
             // github_oauth_redirect_url,

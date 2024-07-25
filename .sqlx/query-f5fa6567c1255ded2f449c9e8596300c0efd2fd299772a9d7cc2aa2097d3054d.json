@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DROP TABLE IF EXISTS role_bindings;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "f5fa6567c1255ded2f449c9e8596300c0efd2fd299772a9d7cc2aa2097d3054d"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DROP TABLE IF EXISTS accounts;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d7c96e892e673c4d00f4dde18fefcc377acb3584dc2cc01f596253114068687a"
+}

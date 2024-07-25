@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DROP TABLE IF EXISTS permission_bindings;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "3aba3344c46d14c34a490c3d82bdafbe5209f755fa9d8daf32078741034d7671"
+}

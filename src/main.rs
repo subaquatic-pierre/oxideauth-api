@@ -31,9 +31,14 @@ async fn main() -> io::Result<()> {
 
     let owner_acc = build_owner_account();
 
-    init_db(&app_data.db, &owner_acc, true, &app_data.config)
-        .await
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+    init_db(
+        &app_data.db,
+        &owner_acc,
+        app_data.config.drop_tables,
+        &app_data.config,
+    )
+    .await
+    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     let server = HttpServer::new(move || {
         let cors = Cors::default()

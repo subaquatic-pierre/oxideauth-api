@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM role_bindings \n                WHERE role_id = $1 AND account_id = $2\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "35f050542921b24772c18c2c5f983a9f29571711a9c862612910cacf325cfa89"
+}

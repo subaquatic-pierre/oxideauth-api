@@ -11,7 +11,7 @@ build:
 	chmod +x ./oxideauth-server
 
 dev:
-	cargo watch -x "run --bin oxideauth-server" 
+	cargo watch -x "run --bin oxideauth" 
 
 # .PHONY: start-db
 # start-db:
