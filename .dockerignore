@@ -1,0 +1,7 @@
+/target
+/migrations
+.env
+server.pid
+db.*
+
+Dockerfile.prod

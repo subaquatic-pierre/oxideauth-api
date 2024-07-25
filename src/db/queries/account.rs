@@ -10,6 +10,8 @@ pub async fn create_account_db(pool: &PgPool, acc: &Account) -> Result<Account> 
     let acc_type = acc.acc_type.to_string();
     let provider = acc.provider.to_string();
 
+    info!("provider: {provider}");
+
     let acc_r = sqlx::query!(
         r#"
         INSERT INTO accounts (id, email, name, password_hash, acc_type, description, provider,provider_id, image_url, verified, enabled)
