@@ -147,7 +147,7 @@ impl Default for Account {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub enum AccountType {
     User,
@@ -211,7 +211,7 @@ impl Principal for Account {
         self.id.to_string()
     }
     fn acc_type(&self) -> AccountType {
-        self.acc_type()
+        self.acc_type
     }
 }
 
@@ -223,7 +223,7 @@ impl Principal for &Account {
         self.id.to_string()
     }
     fn acc_type(&self) -> AccountType {
-        self.acc_type()
+        self.acc_type
     }
 }
 
