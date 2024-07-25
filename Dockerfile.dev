@@ -11,21 +11,12 @@ WORKDIR /build
 
 COPY . /build/
 
-RUN mv .env.prod .env
-
 ENV SQLX_OFFLINE=true
 
-RUN cargo build --release --bin $APP_NAME 
-RUN cp ./target/release/$APP_NAME /bin/$APP_NAME
+RUN cargo build --bin $APP_NAME
+RUN cp ./target/debug/$APP_NAME /bin/$APP_NAME
 
 RUN chmod +x /bin/$APP_NAME 
 
 EXPOSE 8081
 CMD ["/bin/oxideauth"]
-
-
-# FROM rust:1.79.0-alpine AS final
-
-# ENV APP_NAME=oxideauth
-
-# COPY --from=build /bin/$APP_NAME /bin/$APP_NAME 

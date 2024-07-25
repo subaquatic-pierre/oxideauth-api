@@ -1,6 +1,5 @@
 /target
 /migrations
-.env
 server.pid
 db.*
 
