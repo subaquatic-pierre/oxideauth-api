@@ -41,15 +41,26 @@ async fn main() -> io::Result<()> {
     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     let server = HttpServer::new(move || {
+        // let cors = Cors::default()
+        //     .allowed_origin(&app_data.config.client_origin)
+        //     .allowed_origin("http://localhost:8000")
+        //     .allowed_methods(vec!["GET", "POST", "OPTIONS"])
+        //     .allowed_headers(vec![
+        //         header::CONTENT_TYPE,
+        //         header::AUTHORIZATION,
+        //         header::ACCEPT,
+        //     ])
+        //     .supports_credentials();
         let cors = Cors::default()
-            .allowed_origin(&app_data.config.client_origin)
+            .allow_any_origin()
+            .send_wildcard()
             .allowed_methods(vec!["GET", "POST", "OPTIONS"])
             .allowed_headers(vec![
                 header::CONTENT_TYPE,
                 header::AUTHORIZATION,
                 header::ACCEPT,
-            ])
-            .supports_credentials();
+            ]);
+
         App::new()
             .app_data(app_data.clone())
             .service(register_all_services())
