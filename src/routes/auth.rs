@@ -27,10 +27,12 @@ use crate::utils::email::{send_email, EmailVars};
 use crate::utils::token::gen_token;
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RegisterReq {
     pub email: String,
     pub password: String,
     pub name: Option<String>,
+    pub confirm_email_redirect_url: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -89,9 +91,12 @@ pub async fn register_user(
 
     let confirm_token = gen_token(&app.config, &new_acc, TokenType::ConfirmAccount).unwrap();
     // used to redirect to client page on successful confirmation
-    let redirect_url = format!("{}/auth/sign-in", app.config.client_origin);
+    let redirect_url = match &body.confirm_email_redirect_url {
+        Some(url) => url.clone(),
+        None => format!("{}/auth/sign-in", app.config.client_origin),
+    };
 
-    let server_host = "http://localhost:8080";
+    let server_host = format!("{}:{}", app.config.host.clone(), app.config.port.clone());
     let confirm_url = format!(
         "{}/auth/confirm-account?token={}&redirect_url={}",
         server_host, confirm_token, redirect_url
