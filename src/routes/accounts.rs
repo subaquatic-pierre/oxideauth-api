@@ -47,6 +47,8 @@ pub struct UpdateAccountReq {
     pub name: Option<String>,
     pub password: Option<String>,
     pub description: Option<String>,
+    pub verified: Option<bool>,
+    pub enabled: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -114,6 +116,13 @@ pub async fn update_account(
     }
     if let Some(d) = &body.description {
         account.description = Some(d.to_string())
+    }
+
+    if let Some(ver) = body.verified {
+        account.verified = ver
+    }
+    if let Some(enabled) = body.enabled {
+        account.enabled = enabled
     }
 
     let updated_account = match update_account_db(&app.db, &account).await {
