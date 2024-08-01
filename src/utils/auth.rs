@@ -1,4 +1,4 @@
-use actix_web::web::{scope, Data};
+use actix_web::web::{scope, Data, Json};
 use actix_web::{web, App, HttpServer, Scope};
 use log::info;
 use std::{collections::HashSet, env};
@@ -8,7 +8,7 @@ use dotenv::dotenv;
 use crate::app::AppConfig;
 use crate::models::api::{ApiError, ApiResult};
 use crate::routes::accounts::register_accounts_collection;
-use crate::routes::auth::register_auth_collection;
+use crate::routes::auth::{register_auth_collection, RegisterReq};
 use crate::routes::roles::register_roles_collection;
 use crate::routes::services::register_services_collection;
 
@@ -144,5 +144,47 @@ pub async fn get_google_user(access_token: &str, id_token: &str) -> ApiResult<Go
     } else {
         let message = "An error occurred while trying to retrieve user information.";
         Err(ApiError::new(message))
+    }
+}
+
+pub struct RegisterRedirectParams {
+    pub logo_url: String,
+    pub project_name: String,
+    pub confirm_url: String,
+}
+
+impl RegisterRedirectParams {
+    pub fn from_req(body: Json<RegisterReq>, config: &AppConfig, token: &str) -> Self {
+        let redirect_url = match (&body.redirect_host, &body.confirm_email_redirect_endpoint) {
+            (Some(host), Some(endpoint)) => format!("{}{}", host.clone(), endpoint.clone()),
+            _ => format!("{}/auth/sign-in", config.client_origin),
+        };
+
+        let dashboard_url = match (&body.redirect_host, &body.dashboard_endpoint) {
+            (Some(host), Some(endpoint)) => format!("{}{}", host.clone(), endpoint.clone()),
+            _ => format!("{}/dashboard", config.client_origin),
+        };
+
+        let logo_url = match &body.logo_url {
+            Some(url) => url.to_string(),
+            None => "https://oxideauth.nebuladev.io/brand/logoIconText.png".to_string(),
+        };
+
+        let project_name = match &body.project_name {
+            Some(name) => name.to_string(),
+            None => "OxideAuth".to_string(),
+        };
+
+        let server_host = format!("{}:{}", config.host.clone(), config.port.clone());
+        let confirm_url = format!(
+            "{}/auth/confirm-account?token={}&redirectUrl={}&dashboardUrl={}&logoUrl={}&projectName={}",
+            server_host, token, redirect_url, dashboard_url, logo_url, project_name
+        );
+
+        Self {
+            project_name,
+            logo_url,
+            confirm_url,
+        }
     }
 }

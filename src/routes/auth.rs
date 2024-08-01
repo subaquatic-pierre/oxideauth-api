@@ -21,7 +21,7 @@ use crate::models::api::ApiError;
 use crate::models::oauth::GoogleOAuthState;
 use crate::models::role::Role;
 use crate::models::token::{TokenClaims, TokenType};
-use crate::utils::auth::{get_google_user, request_google_token};
+use crate::utils::auth::{get_google_user, request_google_token, RegisterRedirectParams};
 use crate::utils::crypt::{hash_password, verify_password};
 use crate::utils::email::{send_email, EmailVars};
 use crate::utils::token::gen_token;
@@ -32,7 +32,11 @@ pub struct RegisterReq {
     pub email: String,
     pub password: String,
     pub name: Option<String>,
-    pub confirm_email_redirect_url: Option<String>,
+    pub redirect_host: Option<String>,
+    pub confirm_email_redirect_endpoint: Option<String>,
+    pub dashboard_endpoint: Option<String>,
+    pub logo_url: Option<String>,
+    pub project_name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -90,24 +94,18 @@ pub async fn register_user(
     };
 
     let confirm_token = gen_token(&app.config, &new_acc, TokenType::ConfirmAccount).unwrap();
-    // used to redirect to client page on successful confirmation
-    let redirect_url = match &body.confirm_email_redirect_url {
-        Some(url) => url.clone(),
-        None => format!("{}/auth/sign-in", app.config.client_origin),
-    };
 
-    let server_host = format!("{}:{}", app.config.host.clone(), app.config.port.clone());
-    let confirm_url = format!(
-        "{}/auth/confirm-account?token={}&redirect_url={}",
-        server_host, confirm_token, redirect_url
-    );
+    let confirm_params = RegisterRedirectParams::from_req(body, &app.config, &confirm_token);
 
     // send confirm account email
     let vars = vec![
         EmailVars {
-            key: "year".to_string(),
-            // TODO: change year to be dynamic
-            val: "2024".to_string(),
+            key: "logo_url".to_string(),
+            val: confirm_params.logo_url.to_string(),
+        },
+        EmailVars {
+            key: "project_name".to_string(),
+            val: confirm_params.project_name.to_string(),
         },
         EmailVars {
             key: "name".to_string(),
@@ -115,7 +113,12 @@ pub async fn register_user(
         },
         EmailVars {
             key: "confirm_link".to_string(),
-            val: confirm_url.to_string(),
+            val: confirm_params.confirm_url.to_string(),
+        },
+        EmailVars {
+            key: "year".to_string(),
+            // TODO: change year to be dynamic
+            val: "2024".to_string(),
         },
     ];
 
@@ -149,9 +152,15 @@ pub async fn register_user(
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ConfirmAccountReq {
     pub token: String,
     pub redirect_url: String,
+
+    // Next vars are used in welcome email
+    pub dashboard_url: String,
+    pub logo_url: String,
+    pub project_name: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -188,7 +197,49 @@ pub async fn confirm_account(
     account.verified = true;
 
     match update_account_db(&app.db, &account).await {
-        Ok(_) => {
+        Ok(acc) => {
+            // send welcome email
+            let vars = vec![
+                EmailVars {
+                    key: "logo_url".to_string(),
+                    val: query.logo_url.to_string(),
+                },
+                EmailVars {
+                    key: "project_name".to_string(),
+                    val: query.project_name.to_string(),
+                },
+                EmailVars {
+                    key: "name".to_string(),
+                    val: account.name.to_string(),
+                },
+                EmailVars {
+                    key: "dashboard_link".to_string(),
+                    val: query.dashboard_url.to_string(),
+                },
+                EmailVars {
+                    key: "year".to_string(),
+                    // TODO: change year to be dynamic
+                    val: "2024".to_string(),
+                },
+            ];
+
+            match send_email(
+                &app.config,
+                &acc.email,
+                &format!("Welcome to {}", query.project_name),
+                "welcome_email.html",
+                vars,
+            )
+            .await
+            {
+                Ok(res) => {
+                    info!("{res:?}")
+                }
+                Err(e) => {
+                    error!("{e}")
+                }
+            }
+
             let mut response = HttpResponse::Found();
             let redirect_url = format!(
                 "{}?message=User Account Confirmed&email={}",
@@ -483,7 +534,7 @@ pub async fn google_oauth_handler(
     let code = &query.code;
     let state = &query.state;
 
-    let google_state = GoogleOAuthState::from_state(state.clone());
+    let google_state = GoogleOAuthState::from_state(state.clone(), &app.config);
 
     info!("{google_state:?}");
 
@@ -524,6 +575,50 @@ pub async fn google_oauth_handler(
                         if let Ok(role) = get_role_db(&app.db, "Viewer").await {
                             bind_role_to_account_db(&app.db, &acc, &role).await.ok();
                         }
+                        // send welcome email if everything worked
+
+                        // send welcome email
+                        let vars = vec![
+                            EmailVars {
+                                key: "logo_url".to_string(),
+                                val: google_state.logo_url.to_string(),
+                            },
+                            EmailVars {
+                                key: "project_name".to_string(),
+                                val: google_state.project_name.to_string(),
+                            },
+                            EmailVars {
+                                key: "name".to_string(),
+                                val: acc.name.to_string(),
+                            },
+                            EmailVars {
+                                key: "dashboard_link".to_string(),
+                                val: google_state.dash_url.to_string(),
+                            },
+                            EmailVars {
+                                key: "year".to_string(),
+                                // TODO: change year to be dynamic
+                                val: "2024".to_string(),
+                            },
+                        ];
+
+                        match send_email(
+                            &app.config,
+                            &acc.email,
+                            &format!("Welcome to {}", google_state.project_name),
+                            "welcome_email.html",
+                            vars,
+                        )
+                        .await
+                        {
+                            Ok(res) => {
+                                info!("{res:?}")
+                            }
+                            Err(e) => {
+                                error!("{e}")
+                            }
+                        }
+
                         acc
                     }
                     Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),

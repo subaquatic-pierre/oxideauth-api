@@ -24,7 +24,7 @@ pub struct AppConfig {
     pub google_oauth_client_secret: String,
     pub google_oauth_redirect_url: String,
     pub host: String,
-    pub port: u16,
+    pub port: usize,
     pub aws_smtp_host: String,
     pub aws_smtp_username: String,
     pub aws_smtp_password: String,
@@ -64,7 +64,7 @@ impl AppConfig {
 
         let port = env::var("PORT")
             .unwrap_or("8080".to_string())
-            .parse::<u16>()
+            .parse::<usize>()
             .expect("Unable to parse PORT from .env, value must be valid number");
 
         let aws_smtp_host = env::var("AWS_SMTP_HOST").expect("AWS_SMTP_HOST must be set in .env");
