@@ -16,9 +16,14 @@ pub fn gen_token(
     app_config: &AppConfig,
     user: &Account,
     token_type: TokenType,
+    exp_future: Option<i64>,
 ) -> ApiResult<String> {
+    let jwt_max_age = match exp_future {
+        Some(num) => num,
+        None => app_config.jwt_max_age,
+    };
     let jwt_secret = &app_config.jwt_secret;
-    let exp_future = gen_token_exp_time(app_config);
+    let exp_future = gen_token_exp_time(jwt_max_age);
 
     let token_claims = TokenClaims::new_token(user, exp_future, token_type);
 
@@ -63,9 +68,9 @@ pub fn get_token_from_req(req: &HttpRequest) -> Option<String> {
     None
 }
 
-fn gen_token_exp_time(config: &AppConfig) -> usize {
+fn gen_token_exp_time(max_age: i64) -> usize {
     let now = Utc::now();
-    let expire_duration = Duration::seconds(config.jwt_max_age);
+    let expire_duration = Duration::seconds(max_age);
     let future_time = now + expire_duration;
     future_time.timestamp() as usize
 }
