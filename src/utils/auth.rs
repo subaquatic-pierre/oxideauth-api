@@ -86,7 +86,7 @@ pub async fn request_google_token(
         .send()
         .await
         .map_err(|e| {
-            ApiError::new(&format!(
+            ApiError::new_400(&format!(
                 "An error occurred while trying to retrieve access token, {e}"
             ))
         })?;
@@ -96,19 +96,19 @@ pub async fn request_google_token(
     match res.status().is_success() {
         true => match res.json::<OAuthResponse>().await {
             Ok(r) => Ok(r),
-            Err(e) => Err(ApiError::new(&format!(
+            Err(e) => Err(ApiError::new_400(&format!(
                 "An error occurred while trying to retrieve access token, {e}"
             ))),
         },
         false => {
             if let Ok(json) = res.json::<OAuthErrorResponse>().await {
-                Err(ApiError::new(&format!(
+                Err(ApiError::new_400(&format!(
                     "An error occurred while trying to retrieve access token, error: {}, description: {}",
                     json.error,
                     json.error_description
                 )))
             } else {
-                Err(ApiError::new(&format!(
+                Err(ApiError::new_400(&format!(
                     "An error occurred while trying to retrieve access token.",
                 )))
             }
@@ -129,21 +129,21 @@ pub async fn get_google_user(access_token: &str, id_token: &str) -> ApiResult<Go
         .send()
         .await
         .map_err(|e| {
-            ApiError::new(&format!(
+            ApiError::new_400(&format!(
                 "An error occurred while trying to retrieve access token, {e}"
             ))
         })?;
 
     if response.status().is_success() {
         let user_info = response.json::<GoogleUserResult>().await.map_err(|e| {
-            ApiError::new(&format!(
+            ApiError::new_400(&format!(
                 "An error occurred while trying to retrieve access token, {e}"
             ))
         })?;
         Ok(user_info)
     } else {
         let message = "An error occurred while trying to retrieve user information.";
-        Err(ApiError::new(message))
+        Err(ApiError::new_400(message))
     }
 }
 

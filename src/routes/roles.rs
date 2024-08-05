@@ -38,8 +38,12 @@ pub async fn create_role(
     app: Data<AppData>,
     body: Json<CreateRoleReq>,
 ) -> impl Responder {
+    if let Err(e) = app.guard.authorize_req(&req, &["auth.roles.create"]).await {
+        return e.respond_to(&req);
+    }
     if let Ok(role) = get_role_db(&app.db, &body.name).await {
-        return ApiError::new(&format!("Role '{:}' already exists", role.name)).respond_to(&req);
+        return ApiError::new_400(&format!("Role '{:}' already exists", role.name))
+            .respond_to(&req);
     }
 
     // create role
@@ -47,7 +51,7 @@ pub async fn create_role(
     let new_role = Role::new(&body.name, permissions, body.description.clone());
     match create_role_db(&app.db, &new_role).await {
         Ok(role) => return HttpResponse::Ok().json(CreateRoleRes { role }),
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     }
 }
 
@@ -69,10 +73,13 @@ pub async fn update_role(
     app: Data<AppData>,
     body: Json<UpdateRoleReq>,
 ) -> impl Responder {
+    if let Err(e) = app.guard.authorize_req(&req, &["auth.roles.update"]).await {
+        return e.respond_to(&req);
+    }
     let mut role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,
         Err(_) => {
-            return ApiError::new(&format!("Role '{:}' does not exist", &body.role))
+            return ApiError::new_400(&format!("Role '{:}' does not exist", &body.role))
                 .respond_to(&req);
         }
     };
@@ -88,7 +95,7 @@ pub async fn update_role(
     // create role
     match update_role_db(&app.db, &role).await {
         Ok(role) => return HttpResponse::Ok().json(UpdateRoleRes { role }),
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     }
 }
 
@@ -107,10 +114,16 @@ pub async fn describe_role(
     app: Data<AppData>,
     body: Json<DescribeRoleReq>,
 ) -> impl Responder {
-    // verify credentials
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.roles.describe"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
     match get_role_db(&app.db, &body.role).await {
         Ok(role) => HttpResponse::Ok().json(DescribeRoleRes { role }),
-        Err(e) => ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => ApiError::new_400(&e.to_string()).respond_to(&req),
     }
 }
 
@@ -121,10 +134,13 @@ pub struct ListRoleRes {
 
 #[get("/list-roles")]
 pub async fn list_roles(req: HttpRequest, app: Data<AppData>) -> impl Responder {
-    // verify credentials
+    if let Err(e) = app.guard.authorize_req(&req, &["auth.roles.list"]).await {
+        return e.respond_to(&req);
+    }
+
     match get_all_roles_db(&app.db).await {
         Ok(roles) => HttpResponse::Ok().json(ListRoleRes { roles }),
-        Err(e) => ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => ApiError::new_400(&e.to_string()).respond_to(&req),
     }
 }
 
@@ -144,18 +160,20 @@ pub async fn delete_role(
     app: Data<AppData>,
     body: Json<DeleteRoleReq>,
 ) -> impl Responder {
-    // verify credentials
+    if let Err(e) = app.guard.authorize_req(&req, &["auth.roles.delete"]).await {
+        return e.respond_to(&req);
+    }
 
     let role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     match delete_role_db(&app.db, &role).await {
         Ok(_) => HttpResponse::Ok().json(DeleteRoleRes {
             deleted_role: role.name,
         }),
-        Err(e) => ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => ApiError::new_400(&e.to_string()).respond_to(&req),
     }
 }
 
@@ -176,15 +194,13 @@ pub async fn assign_roles(
     app: Data<AppData>,
     body: Json<AssignRolesReq>,
 ) -> impl Responder {
-    // verify credentials
-
-    // update db
-
-    // respond
+    if let Err(e) = app.guard.authorize_req(&req, &["auth.roles.assign"]).await {
+        return e.respond_to(&req);
+    }
 
     let account = match get_account_db(&app.db, &body.account).await {
         Ok(role) => role,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     for role in &body.roles {
@@ -202,7 +218,7 @@ pub async fn assign_roles(
 
     let updated_acc = match get_account_db(&app.db, &body.account).await {
         Ok(role) => role,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     HttpResponse::Ok().json(AssignRoleRes {
@@ -227,9 +243,13 @@ pub async fn remove_roles(
     app: Data<AppData>,
     body: Json<RemoveRoleReq>,
 ) -> impl Responder {
+    if let Err(e) = app.guard.authorize_req(&req, &["auth.roles.remove"]).await {
+        return e.respond_to(&req);
+    }
+
     let account = match get_account_db(&app.db, &body.account).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     for role in &body.roles {
@@ -248,7 +268,7 @@ pub async fn remove_roles(
 
     let updated_account = match get_account_db(&app.db, &body.account).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     HttpResponse::Ok().json(RemoveRoleRes {
@@ -273,7 +293,13 @@ pub async fn create_permissions(
     app: Data<AppData>,
     body: Json<CreatePermissionsReq>,
 ) -> impl Responder {
-    // verify credentials
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.permissions.create"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
 
     let perms = body
         .permissions
@@ -285,7 +311,7 @@ pub async fn create_permissions(
     let created_permissions = match create_permissions_db(&app.db, perms).await {
         Ok(created_perms) => created_perms,
         Err(e) => {
-            return ApiError::new(&e.to_string()).respond_to(&req);
+            return ApiError::new_400(&e.to_string()).respond_to(&req);
         }
     };
 
@@ -301,11 +327,17 @@ struct ListPermissionsRes {
 
 #[get("/list-permissions")]
 pub async fn list_permissions(req: HttpRequest, app: Data<AppData>) -> impl Responder {
-    // verify credentials
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.permissions.list"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
 
     let permissions = match get_all_permissions(&app.db).await {
         Ok(perms) => perms,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     HttpResponse::Ok().json(ListPermissionsRes { permissions })
@@ -328,12 +360,18 @@ pub async fn delete_permissions(
     app: Data<AppData>,
     body: Json<DeletePermissionsReq>,
 ) -> impl Responder {
-    // verify credentials
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.permissions.delete"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
 
     // update db
     let deleted_permissions = match delete_permissions_db(&app.db, body.permissions.clone()).await {
         Ok(perms) => perms,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     HttpResponse::Ok().json(DeletePermissionsRes {
@@ -358,11 +396,17 @@ pub async fn assign_permissions(
     app: Data<AppData>,
     body: Json<AssignPermissionsReq>,
 ) -> impl Responder {
-    // verify credentials
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.permissions.assign"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
 
     let role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     let perms: Vec<String> = body.permissions.iter().map(|el| el.to_string()).collect();
@@ -378,7 +422,7 @@ pub async fn assign_permissions(
 
     let updated_role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     HttpResponse::Ok().json(AssignPermissionsRes { role: updated_role })
@@ -401,11 +445,17 @@ pub async fn remove_permissions(
     app: Data<AppData>,
     body: Json<RemovePermissionsReq>,
 ) -> impl Responder {
-    // verify credentials
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.permissions.remove"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
 
     let role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     let perms: Vec<String> = body.permissions.iter().map(|el| el.to_string()).collect();
@@ -421,7 +471,7 @@ pub async fn remove_permissions(
 
     let updated_role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     HttpResponse::Ok().json(RemovePermissionsRes { role: updated_role })

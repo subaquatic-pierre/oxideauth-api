@@ -14,7 +14,7 @@ use crate::db::queries::account::{
     create_account_db, delete_account_db, get_account_db, get_all_accounts_db, update_account_db,
 };
 use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
-use crate::models::account::Account;
+use crate::models::account::{Account, AccountType};
 use crate::models::api::ApiError;
 use crate::models::role::Role;
 use crate::models::token::TokenType;
@@ -28,7 +28,9 @@ pub struct ListAccountsRes {
 
 #[get("/list-accounts")]
 pub async fn list_accounts(req: HttpRequest, app: Data<AppData>) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app.guard.authorize_req(&req, &["auth.accounts.list"]).await {
+        return e.respond_to(&req);
+    }
     let accounts = match get_all_accounts_db(&app.db).await {
         Ok(mut accounts) => {
             accounts
@@ -36,7 +38,7 @@ pub async fn list_accounts(req: HttpRequest, app: Data<AppData>) -> impl Respond
                 .for_each(|el| el.set_skip_serialize_permissions(true));
             accounts
         }
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
     HttpResponse::Ok().json(ListAccountsRes { accounts })
@@ -66,18 +68,24 @@ pub async fn update_account(
 ) -> impl Responder {
     // TODO: logic to check external provider email change
     // if the user registers from OAuth provider, they shouldn't be able to change their email
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.accounts.update"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
 
-    // TODO: authorize request
     let mut account = match get_account_db(&app.db, &body.account).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
     // update account with new values
     if let Some(p) = &body.password {
         let hash = match hash_password(&p) {
             Ok(p) => p,
-            Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+            Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
         };
 
         account.password_hash = hash
@@ -129,7 +137,7 @@ pub async fn update_account(
 
     let updated_account = match update_account_db(&app.db, &account).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
     HttpResponse::Ok().json(UpdateAccountRes {
@@ -153,15 +161,21 @@ pub async fn delete_account(
     app: Data<AppData>,
     body: Json<DeleteAccountReq>,
 ) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.accounts.delete"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
     let account = match get_account_db(&app.db, &body.account).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
     match delete_account_db(&app.db, &account).await {
         Ok(_) => HttpResponse::Ok().json(DeleteAccountRes { deleted: true }),
-        Err(e) => ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => ApiError::new(&e.to_string(), 400).respond_to(&req),
     }
 }
 
@@ -181,10 +195,16 @@ pub async fn describe_account(
     app: Data<AppData>,
     body: Json<DescribeAccountReq>,
 ) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.accounts.describe"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
     let account = match get_account_db(&app.db, &body.account).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
     HttpResponse::Ok().json(DescribeAccountRes { account })
@@ -201,7 +221,7 @@ pub async fn describe_self(req: HttpRequest, app: Data<AppData>) -> impl Respond
 
     let account = match get_account_db(&app.db, &token.sub).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
     return HttpResponse::Ok().json(DescribeAccountRes { account });
@@ -237,14 +257,14 @@ pub async fn update_self(
 
     let mut account = match get_account_db(&app.db, &token.sub).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
     // update account with new values
     if let Some(p) = &body.password {
         let hash = match hash_password(&p) {
             Ok(p) => p,
-            Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+            Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
         };
 
         account.password_hash = hash
@@ -268,7 +288,7 @@ pub async fn update_self(
 
     let updated_account = match update_account_db(&app.db, &account).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
     HttpResponse::Ok().json(UpdateSelfRes {
@@ -294,13 +314,19 @@ pub async fn create_service_account(
     app: Data<AppData>,
     body: Json<CreateServiceAccountReq>,
 ) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.accounts.create"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
 
     if let Ok(_) = get_account_db(&app.db, &body.email).await {
-        return ApiError::new(&format!(
-            "Cannot create Account with email '{}'",
-            body.email
-        ))
+        return ApiError::new(
+            &format!("Cannot create Account with email '{}'", body.email),
+            400,
+        )
         .respond_to(&req);
     }
 
@@ -310,7 +336,7 @@ pub async fn create_service_account(
     // update db
     let new_acc = match create_account_db(&app.db, &service_account).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
     HttpResponse::Ok().json(CreateServiceAccountRes { account: new_acc })
@@ -319,6 +345,7 @@ pub async fn create_service_account(
 #[derive(Debug, Deserialize)]
 pub struct GetSaSecretKeyReq {
     pub account: String,
+    pub exp: Option<i64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -332,17 +359,39 @@ pub async fn get_sa_secret_key(
     app: Data<AppData>,
     body: Json<GetSaSecretKeyReq>,
 ) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.accounts.createServiceAccountSecretKey"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
 
     let acc = match get_account_db(&app.db, &body.account).await {
         Ok(acc) => acc,
         Err(e) => {
-            return ApiError::new(&format!("Cannot find Account '{}'", body.account))
+            return ApiError::new(&format!("Cannot find Account '{}'", body.account), 404)
                 .respond_to(&req);
         }
     };
 
-    let token = match gen_token(&app.config, &acc, TokenType::Auth, Some(999999999)) {
+    if acc.acc_type != AccountType::Service {
+        return ApiError::new(
+            &format!(
+                "Cannot create secret key for user Account '{}'",
+                body.account
+            ),
+            400,
+        )
+        .respond_to(&req);
+    }
+
+    let token = match gen_token(
+        &app.config,
+        &acc,
+        TokenType::Auth,
+        Some(body.exp.unwrap_or(999999999)),
+    ) {
         Ok(t) => t,
         Err(e) => return e.respond_to(&req),
     };
@@ -368,7 +417,13 @@ pub async fn create_user_account(
     app: Data<AppData>,
     body: Json<CreateUserAccountReq>,
 ) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.accounts.create"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
 
     let password_hash = match hash_password(&body.password) {
         Ok(hash) => hash,
@@ -376,10 +431,10 @@ pub async fn create_user_account(
     };
 
     if let Ok(_) = get_account_db(&app.db, &body.email).await {
-        return ApiError::new(&format!(
-            "Cannot create Account with email '{}'",
-            body.email
-        ))
+        return ApiError::new(
+            &format!("Cannot create Account with email '{}'", body.email),
+            400,
+        )
         .respond_to(&req);
     }
 
@@ -392,7 +447,7 @@ pub async fn create_user_account(
     // update db
     let new_acc = match create_account_db(&app.db, &user).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
     let role = match get_role_db(&app.db, "Viewer").await {
@@ -410,7 +465,7 @@ pub async fn create_user_account(
         Ok(_) => HttpResponse::Ok().json(CreateUserAccountRes { account: new_acc }),
         Err(e) => {
             error!("Unable to create new user, {user:?}");
-            ApiError::new("Unable to bind Viewer role to account").respond_to(&req)
+            ApiError::new("Unable to bind Viewer role to account", 400).respond_to(&req)
         }
     }
 }

@@ -137,34 +137,34 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-const ALL_DEFAULT_PERMISSIONS: &'static [&str] = &[
-    // accounts
-    "auth.accounts.create",
-    "auth.accounts.describe",
-    "auth.accounts.describeSelf",
-    "auth.accounts.updateSelf",
-    "auth.accounts.list",
-    "auth.accounts.update",
-    // services
-    "auth.services.create",
-    "auth.services.describe",
-    "auth.services.list",
-    "auth.services.update",
-    // roles
-    "auth.roles.create",
-    "auth.roles.describe",
-    "auth.roles.list",
-    "auth.roles.update",
-    "auth.roles.bind",
-    // permissions
-    "auth.permissions.create",
-    "auth.permissions.describe",
-    "auth.permissions.list",
-    "auth.permissions.update",
-    "auth.permissions.bind",
-];
+// const ALL_DEFAULT_PERMISSIONS: &'static [&str] = &[
+//     // accounts
+//     "auth.accounts.create",
+//     "auth.accounts.describe",
+//     "auth.accounts.describeSelf",
+//     "auth.accounts.updateSelf",
+//     "auth.accounts.list",
+//     "auth.accounts.update",
+//     // services
+//     "auth.services.create",
+//     "auth.services.describe",
+//     "auth.services.list",
+//     "auth.services.update",
+//     // roles
+//     "auth.roles.create",
+//     "auth.roles.describe",
+//     "auth.roles.list",
+//     "auth.roles.update",
+//     "auth.roles.bind",
+//     // permissions
+//     "auth.permissions.create",
+//     "auth.permissions.describe",
+//     "auth.permissions.list",
+//     "auth.permissions.update",
+//     "auth.permissions.bind",
+// ];
 
-const DEFAULT_ADMIN_PERMISSIONS: &'static [&str] = &[
+const DEFAULT_ALL_PERMISSIONS: &'static [&str] = &[
     // accounts
     "auth.accounts.create",
     "auth.accounts.describe",
@@ -172,23 +172,29 @@ const DEFAULT_ADMIN_PERMISSIONS: &'static [&str] = &[
     "auth.accounts.updateSelf",
     "auth.accounts.list",
     "auth.accounts.update",
+    "auth.accounts.createServiceAccountSecretKey",
     // services
     "auth.services.create",
     "auth.services.describe",
     "auth.services.list",
     "auth.services.update",
+    "auth.services.validatePermissions",
     //roles
     "auth.roles.create",
     "auth.roles.describe",
     "auth.roles.list",
     "auth.roles.update",
-    "auth.roles.bind",
+    "auth.roles.assign",
+    "auth.roles.remove",
     // permissions
     "auth.permissions.create",
     "auth.permissions.describe",
     "auth.permissions.list",
     "auth.permissions.update",
-    "auth.permissions.bind",
+    "auth.permissions.assign",
+    "auth.permissions.remove",
+    // utils
+    "auth.utils.sendEmail",
 ];
 
 const DEFAULT_AUDITOR_PERMISSIONS: &'static [&str] = &[
@@ -221,6 +227,7 @@ const DEFAULT_SA_PERMISSIONS: &'static [&str] = &[
     // services
     "auth.services.describe",
     "auth.services.list",
+    "auth.services.validatePermissions",
 ];
 
 pub async fn create_defaults(
@@ -228,7 +235,7 @@ pub async fn create_defaults(
     owner_acc: &Account,
     config: &AppConfig,
 ) -> Result<(), sqlx::Error> {
-    let perms = ALL_DEFAULT_PERMISSIONS
+    let perms = DEFAULT_ALL_PERMISSIONS
         .iter()
         .map(|el| Permission::new(el))
         .collect();
@@ -238,7 +245,7 @@ pub async fn create_defaults(
     // create owner role
     let owner_role = Role::new(
         "Owner",
-        ALL_DEFAULT_PERMISSIONS
+        DEFAULT_ALL_PERMISSIONS
             .iter()
             .map(|el| el.to_string())
             .collect(),
@@ -249,7 +256,7 @@ pub async fn create_defaults(
     // create admin role
     let admin_role = Role::new(
         "Admin",
-        DEFAULT_ADMIN_PERMISSIONS
+        DEFAULT_ALL_PERMISSIONS
             .iter()
             .map(|el| el.to_string())
             .collect(),

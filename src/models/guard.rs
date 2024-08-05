@@ -9,8 +9,8 @@ use crate::{
         account::get_account_db,
         role::{get_role_db, get_role_permissions_db},
     },
-    models::api::ApiError,
-    utils::token::get_token_from_req,
+    models::{api::ApiError, token::TokenType},
+    utils::token::{get_token_from_req, is_token_exp},
 };
 
 use super::{account::Account, api::ApiResult, token::TokenClaims};
@@ -49,7 +49,7 @@ impl AuthGuard {
 
         let token_str = match get_token_from_req(&req) {
             Some(token) => token,
-            None => return Err(ApiError::new("Unable to get token from request")),
+            None => return Err(ApiError::new("Unable to get token from request", 400)),
         };
 
         info!("Token: {token_str:?}");
@@ -65,19 +65,25 @@ impl AuthGuard {
         info!("Token Claims: {claims:?}");
 
         // TODO: validate token expiry
+        if is_token_exp(&claims) {
+            return Err(ApiError::new("Token is expired", 403));
+        }
 
         // check token type
+        if claims.token_type != TokenType::Auth {
+            return Err(ApiError::new("Invalid token type", 403));
+        }
 
         let account = match get_account_db(&self.db, &claims.sub).await {
             Ok(acc) => acc,
             Err(e) => match e {
                 Error::RowNotFound => {
-                    return Err(ApiError::new(&format!(
-                        "User not found for '{}'",
-                        claims.sub
-                    )))
+                    return Err(ApiError::new(
+                        &format!("User not found for '{}'", claims.sub),
+                        404,
+                    ))
                 }
-                _ => return Err(ApiError::new(&e.to_string())),
+                _ => return Err(ApiError::new(&e.to_string(), 400)),
             },
         };
 
@@ -96,9 +102,10 @@ impl AuthGuard {
 
         for perm in required_perms {
             if !account_permissions.contains(&perm.to_string()) {
-                return Err(ApiError::new(&format!(
-                    "Invalid token permissions, Token does not contain '{perm}'",
-                )));
+                return Err(ApiError::new(
+                    &format!("Invalid token permissions, Token does not contain '{perm}'",),
+                    403,
+                ));
             }
         }
 

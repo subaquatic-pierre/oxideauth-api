@@ -32,7 +32,7 @@ pub async fn send_email(
     let from_email = format!("🛡️ OxideAuth <{}>", config.aws_smtp_from);
     let tera: Tera = match Tera::new("templates/*.html") {
         Ok(t) => t,
-        Err(e) => return Err(ApiError::new(&format!("Parsing error: {}", e))),
+        Err(e) => return Err(ApiError::new_400(&format!("Parsing error: {}", e))),
     };
 
     let mut context = Context::new();
@@ -43,7 +43,7 @@ pub async fn send_email(
 
     let body = match tera.render(template_name, &context) {
         Ok(body) => body,
-        Err(e) => return Err(ApiError::new(&format!("Template render error: {}", e))),
+        Err(e) => return Err(ApiError::new_400(&format!("Template render error: {}", e))),
     };
 
     let region = Region::new(config.aws_region.clone());
@@ -90,7 +90,7 @@ pub async fn send_email(
         }
         Err(e) => {
             error!("Could not send email: {:?}", e);
-            Err(ApiError::new(&e.to_string()))
+            Err(ApiError::new_400(&e.to_string()))
         }
     }
 }
@@ -133,7 +133,7 @@ pub async fn send_email(
 //         }
 //         Err(e) => {
 //             error!("Could not send email: {:?}", e);
-//             Err(ApiError::new(&e.to_string()))
+//             Err(ApiError::new_400(&e.to_string()))
 //         }
 //     }
 // }
