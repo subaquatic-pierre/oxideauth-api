@@ -37,12 +37,22 @@ pub async fn send_email_req(
     app: Data<AppData>,
     body: Json<SendEmailReq>,
 ) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.utils.sendEmail"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
 
     let vars = vec![
         EmailVars {
-            key: "year".to_string(),
-            val: "2024".to_string(),
+            key: "logo_url".to_string(),
+            val: "logo.url".to_string(),
+        },
+        EmailVars {
+            key: "project_name".to_string(),
+            val: "OxideAuth".to_string(),
         },
         EmailVars {
             key: "name".to_string(),
@@ -52,10 +62,15 @@ pub async fn send_email_req(
             key: "confirm_link".to_string(),
             val: "http://localhost:8081/auth/sign-in".to_string(),
         },
+        EmailVars {
+            key: "year".to_string(),
+            // TODO: change year to be dynamic
+            val: "2024".to_string(),
+        },
     ];
 
-    let template_name = "verify_email.html";
-    // let template_name = "confirm_email.html";
+    // let template_name = "verify_email.html";
+    let template_name = "confirm_email.html";
 
     match send_email(
         &app.config,

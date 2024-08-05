@@ -18,7 +18,6 @@ pub struct AppConfig {
     pub client_origin: String,
     pub database_url: String,
     pub jwt_secret: String,
-    pub default_sa_password: String,
     pub jwt_max_age: i64,
     pub google_oauth_client_id: String,
     pub google_oauth_client_secret: String,
@@ -55,9 +54,6 @@ impl AppConfig {
         // let github_oauth_redirect_url = std::env::var("GITHUB_OAUTH_REDIRECT_URL")
         //     .expect("GITHUB_OAUTH_REDIRECT_URL must be set");
 
-        let default_sa_password = env::var("DEFAULT_SERVICE_ACCOUNT_PASSWORD")
-            .expect("DEFAULT_SERVICE_ACCOUNT_PASSWORD must be set");
-
         let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
         let host = env::var("HOST").unwrap_or("http://localhost".to_string());
@@ -89,7 +85,6 @@ impl AppConfig {
         dotenv().ok();
         AppConfig {
             database_url,
-            default_sa_password,
             jwt_secret,
             client_origin,
             jwt_max_age: jwt_max_age.parse::<i64>().unwrap(),
@@ -104,9 +99,6 @@ impl AppConfig {
             aws_smtp_from,
             aws_region,
             drop_tables,
-            // github_oauth_client_id,
-            // github_oauth_client_secret,
-            // github_oauth_redirect_url,
         }
     }
 }

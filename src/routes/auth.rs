@@ -57,7 +57,7 @@ pub async fn register_user(
     };
 
     if let Ok(_) = get_account_db(&app.db, &body.email).await {
-        return ApiError::new(&format!(
+        return ApiError::new_400(&format!(
             "Cannot create Account with email '{}'",
             body.email
         ))
@@ -74,7 +74,7 @@ pub async fn register_user(
     // update db
     let new_acc = match create_account_db(&app.db, &user).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     let token = match gen_token(&app.config, &user, TokenType::Auth, None) {
@@ -146,7 +146,7 @@ pub async fn register_user(
         }),
         Err(e) => {
             error!("Unable to create new user, {user:?}");
-            ApiError::new("Unable to bind Viewer role to account").respond_to(&req)
+            ApiError::new_400("Unable to bind Viewer role to account").respond_to(&req)
         }
     }
 }
@@ -183,14 +183,14 @@ pub async fn confirm_account(
     };
 
     if claims.token_type != TokenType::ConfirmAccount {
-        return ApiError::new("Incorrect Token type").respond_to(&req);
+        return ApiError::new_400("Incorrect Token type").respond_to(&req);
     }
 
     let mut account = match get_account_db(&app.db, &claims.sub).await {
         Ok(acc) => acc,
         Err(e) => {
             error!("{e}");
-            return ApiError::new("Unable to find account").respond_to(&req);
+            return ApiError::new_400("Unable to find account").respond_to(&req);
         }
     };
 
@@ -252,7 +252,7 @@ pub async fn confirm_account(
 
         Err(e) => {
             error!("Unable updated account to verified, {account:?}, {e}");
-            ApiError::new("Unable updated account to verified").respond_to(&req)
+            ApiError::new_400("Unable updated account to verified").respond_to(&req)
         }
     }
 }
@@ -279,7 +279,7 @@ pub async fn reset_password(
         Ok(acc) => acc,
         Err(e) => {
             error!("{e}");
-            return ApiError::new("Unable to find account").respond_to(&req);
+            return ApiError::new_400("Unable to find account").respond_to(&req);
         }
     };
 
@@ -345,14 +345,14 @@ pub async fn update_password(
     };
 
     if claims.token_type != TokenType::ResetPassword {
-        return ApiError::new("Incorrect Token type").respond_to(&req);
+        return ApiError::new_400("Incorrect Token type").respond_to(&req);
     }
 
     let mut account = match get_account_db(&app.db, &claims.sub).await {
         Ok(acc) => acc,
         Err(e) => {
             error!("{e}");
-            return ApiError::new("Unable to find account").respond_to(&req);
+            return ApiError::new_400("Unable to find account").respond_to(&req);
         }
     };
 
@@ -365,7 +365,7 @@ pub async fn update_password(
 
     let updated_account = match update_account_db(&app.db, &account).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     HttpResponse::Ok().json(UpdatePasswordRes {
@@ -393,7 +393,7 @@ pub async fn resend_confirm(
         Ok(acc) => acc,
         Err(e) => {
             error!("{e}");
-            return ApiError::new("Unable to find account").respond_to(&req);
+            return ApiError::new_400("Unable to find account").respond_to(&req);
         }
     };
 
@@ -465,7 +465,7 @@ pub async fn login_user(
     match get_account_db(&app.db, &body.email).await {
         Ok(user) => {
             if (user.password_hash == "" && user.provider != AccountProvider::Local) {
-                return ApiError::new("User account signed up with OAuth provider, please use 'forgot password' to create new password").respond_to(&req);
+                return ApiError::new_400("User account signed up with OAuth provider, please use 'forgot password' to create new password").respond_to(&req);
             }
             match verify_password(&user.password_hash, &body.password) {
                 Ok(is_valid) => {
@@ -480,7 +480,7 @@ pub async fn login_user(
                             account: user,
                         });
                     } else {
-                        return ApiError::new("Invalid password").respond_to(&req);
+                        return ApiError::new_400("Invalid password").respond_to(&req);
                     }
                 }
 
@@ -488,7 +488,7 @@ pub async fn login_user(
             }
         }
         _ => {
-            return ApiError::new("No user found").respond_to(&req);
+            return ApiError::new_400("No user found").respond_to(&req);
         }
     }
 }
@@ -502,7 +502,6 @@ struct RefreshTokenRes {
 pub async fn refresh_token(req: HttpRequest, app: Data<AppData>) -> impl Responder {
     let required_perms = [];
 
-    // TODO: verify token
     let token = match app.guard.authorize_req(&req, &required_perms).await {
         Ok(token) => token,
         Err(e) => return e.respond_to(&req),
@@ -510,7 +509,7 @@ pub async fn refresh_token(req: HttpRequest, app: Data<AppData>) -> impl Respond
 
     let account = match get_account_db(&app.db, &token.sub).await {
         Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     let token = gen_token(&app.config, &account, TokenType::Auth, None).unwrap();
@@ -524,7 +523,6 @@ pub struct QueryCode {
     pub state: Option<String>,
 }
 
-// TODO: Implement refresh
 #[get("/oauth/google")]
 pub async fn google_oauth_handler(
     req: HttpRequest,
@@ -621,10 +619,10 @@ pub async fn google_oauth_handler(
 
                         acc
                     }
-                    Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+                    Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
                 }
             }
-            _ => return ApiError::new(&e.to_string()).respond_to(&req),
+            _ => return ApiError::new_400(&e.to_string()).respond_to(&req),
         },
     };
 

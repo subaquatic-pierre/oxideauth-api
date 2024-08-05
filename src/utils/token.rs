@@ -32,7 +32,7 @@ pub fn gen_token(
         &token_claims,
         &EncodingKey::from_secret(jwt_secret.as_ref()),
     )
-    .map_err(|e| ApiError::new(&e.to_string()));
+    .map_err(|e| ApiError::new_400(&e.to_string()));
     token
 }
 
@@ -43,7 +43,7 @@ pub fn decode_token(jwt_secret: &str, token: &str) -> ApiResult<TokenClaims> {
         &Validation::new(Algorithm::HS256),
     )
     // TODO: remove {e} from error message, to obviscate actual error for user response
-    .map_err(|e| ApiError::new(&format!("Decoding token error, {e}")))?;
+    .map_err(|e| ApiError::new_400(&format!("Decoding token error, {e}")))?;
 
     debug!("{data:?}");
 
@@ -73,4 +73,13 @@ fn gen_token_exp_time(max_age: i64) -> usize {
     let expire_duration = Duration::seconds(max_age);
     let future_time = now + expire_duration;
     future_time.timestamp() as usize
+}
+
+pub fn is_token_exp(token: &TokenClaims) -> bool {
+    let now = Utc::now().timestamp() as usize;
+    if token.exp < now {
+        true
+    } else {
+        false
+    }
 }

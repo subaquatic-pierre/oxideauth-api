@@ -147,7 +147,7 @@ impl Default for Account {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum AccountType {
     User,

@@ -36,12 +36,19 @@ pub async fn create_service(
     app: Data<AppData>,
     body: Json<CreateServiceReq>,
 ) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.services.create"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
+
     let new_service = Service::new(&body.name, body.endpoint.clone(), body.description.clone());
 
     let created_service = match create_service_db(&app.db, &new_service).await {
         Ok(services) => services,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     HttpResponse::Ok().json(CreateServiceRes {
@@ -56,10 +63,13 @@ pub struct ListServicesRes {
 
 #[get("/list-services")]
 pub async fn list_services(req: HttpRequest, app: Data<AppData>) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app.guard.authorize_req(&req, &["auth.services.list"]).await {
+        return e.respond_to(&req);
+    }
+
     let services = match get_all_services_db(&app.db).await {
         Ok(services) => services,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     HttpResponse::Ok().json(ListServicesRes { services })
@@ -84,18 +94,27 @@ pub async fn update_service(
     app: Data<AppData>,
     body: Json<UpdateServiceReq>,
 ) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.services.update"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
+
     let mut service = match get_service_db(&app.db, &body.service).await {
         Ok(service) => service,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     if service.name == "OxideAuth" {
         if body.description.is_some() {
-            return ApiError::new("Cannot change the description of the default OxideAuth service")
-                .respond_to(&req);
+            return ApiError::new_400(
+                "Cannot change the description of the default OxideAuth service",
+            )
+            .respond_to(&req);
         }
-        return ApiError::new("Cannot change the name of the default OxideAuth service")
+        return ApiError::new_400("Cannot change the name of the default OxideAuth service")
             .respond_to(&req);
     }
 
@@ -106,16 +125,20 @@ pub async fn update_service(
             Ok(_) => {
                 if let Ok(existing_svc) = get_service_db(&app.db, &name).await {
                     if existing_svc.id != service.id {
-                        return ApiError::new(&format!("Cannot update service name to '{name}'"))
-                            .respond_to(&req);
+                        return ApiError::new_400(&format!(
+                            "Cannot update service name to '{name}'"
+                        ))
+                        .respond_to(&req);
                     }
                 }
             }
             Err(_) => {
                 if let Ok(existing_svc) = get_service_db(&app.db, &name).await {
                     if existing_svc.id != service.id {
-                        return ApiError::new(&format!("Cannot update service name to '{name}'"))
-                            .respond_to(&req);
+                        return ApiError::new_400(&format!(
+                            "Cannot update service name to '{name}'"
+                        ))
+                        .respond_to(&req);
                     }
                 }
             }
@@ -133,7 +156,7 @@ pub async fn update_service(
 
     let updated_service = match update_service_db(&app.db, &service).await {
         Ok(svc) => svc,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     HttpResponse::Ok().json(UpdateServiceRes {
@@ -157,10 +180,17 @@ pub async fn describe_service(
     app: Data<AppData>,
     body: Json<UpdateServiceReq>,
 ) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.services.describe"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
+
     let service = match get_service_db(&app.db, &body.service).await {
         Ok(service) => service,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     HttpResponse::Ok().json(DescribeServiceRes { service: service })
@@ -182,19 +212,26 @@ pub async fn delete_service(
     app: Data<AppData>,
     body: Json<UpdateServiceReq>,
 ) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.services.delete"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
+
     let service = match get_service_db(&app.db, &body.service).await {
         Ok(service) => service,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     if service.name == "OxideAuth" {
-        return ApiError::new("Cannot delete default OxideAuth service").respond_to(&req);
+        return ApiError::new_400("Cannot delete default OxideAuth service").respond_to(&req);
     }
 
     match delete_service_db(&app.db, &service).await {
         Ok(_) => HttpResponse::Ok().json(DeleteServiceRes { deleted: true }),
-        Err(e) => ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => ApiError::new_400(&e.to_string()).respond_to(&req),
     }
 }
 
@@ -216,7 +253,13 @@ pub async fn validate_permissions(
     app: Data<AppData>,
     body: Json<ValidatePermissionsReq>,
 ) -> impl Responder {
-    // TODO: authorize request
+    if let Err(e) = app
+        .guard
+        .authorize_req(&req, &["auth.services.validatePermissions"])
+        .await
+    {
+        return e.respond_to(&req);
+    }
 
     let requesting_claims = match app.guard.get_token_claims(&body.requesting_token).await {
         Ok(claims) => claims,
@@ -225,7 +268,7 @@ pub async fn validate_permissions(
 
     let requesting_account = match get_account_db(&app.db, &requesting_claims.sub).await {
         Ok(service) => service,
-        Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
+        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     let mut acc_perms = vec![];
