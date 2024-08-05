@@ -17,7 +17,9 @@ use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role
 use crate::models::account::Account;
 use crate::models::api::ApiError;
 use crate::models::role::Role;
+use crate::models::token::TokenType;
 use crate::utils::crypt::hash_password;
+use crate::utils::token::gen_token;
 
 #[derive(Debug, Serialize)]
 pub struct ListAccountsRes {
@@ -315,6 +317,40 @@ pub async fn create_service_account(
 }
 
 #[derive(Debug, Deserialize)]
+pub struct GetSaSecretKeyReq {
+    pub account: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetSaSecretKeyRes {
+    pub key: String,
+}
+
+#[post("/service-account-secret-key")]
+pub async fn get_sa_secret_key(
+    req: HttpRequest,
+    app: Data<AppData>,
+    body: Json<GetSaSecretKeyReq>,
+) -> impl Responder {
+    // TODO: authorize request
+
+    let acc = match get_account_db(&app.db, &body.account).await {
+        Ok(acc) => acc,
+        Err(e) => {
+            return ApiError::new(&format!("Cannot find Account '{}'", body.account))
+                .respond_to(&req);
+        }
+    };
+
+    let token = match gen_token(&app.config, &acc, TokenType::Auth, Some(999999999)) {
+        Ok(t) => t,
+        Err(e) => return e.respond_to(&req),
+    };
+
+    HttpResponse::Ok().json(GetSaSecretKeyRes { key: token })
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CreateUserAccountReq {
     pub name: String,
     pub email: String,
@@ -390,4 +426,5 @@ pub fn register_accounts_collection() -> Scope {
         .service(list_accounts)
         .service(create_service_account)
         .service(create_user_account)
+        .service(get_sa_secret_key)
 }

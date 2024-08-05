@@ -77,7 +77,7 @@ pub async fn register_user(
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
-    let token = match gen_token(&app.config, &user, TokenType::Auth) {
+    let token = match gen_token(&app.config, &user, TokenType::Auth, None) {
         Ok(t) => t,
         Err(e) => return e.respond_to(&req),
     };
@@ -93,7 +93,7 @@ pub async fn register_user(
         }
     };
 
-    let confirm_token = gen_token(&app.config, &new_acc, TokenType::ConfirmAccount).unwrap();
+    let confirm_token = gen_token(&app.config, &new_acc, TokenType::ConfirmAccount, None).unwrap();
 
     let confirm_params = RegisterRedirectParams::from_req(body, &app.config, &confirm_token);
 
@@ -283,7 +283,7 @@ pub async fn reset_password(
         }
     };
 
-    let reset_token = gen_token(&app.config, &account, TokenType::ResetPassword).unwrap();
+    let reset_token = gen_token(&app.config, &account, TokenType::ResetPassword, None).unwrap();
     let reset_url = format!("{}?token={}", body.redirect_url, reset_token);
 
     // send confirm account email
@@ -397,7 +397,7 @@ pub async fn resend_confirm(
         }
     };
 
-    let confirm_token = gen_token(&app.config, &account, TokenType::ConfirmAccount).unwrap();
+    let confirm_token = gen_token(&app.config, &account, TokenType::ConfirmAccount, None).unwrap();
     // used to redirect to client page on successful confirmation
     let redirect_url = format!("{}/auth/sign-in", app.config.client_origin);
 
@@ -470,7 +470,7 @@ pub async fn login_user(
             match verify_password(&user.password_hash, &body.password) {
                 Ok(is_valid) => {
                     if is_valid {
-                        let token = match gen_token(&app.config, &user, TokenType::Auth) {
+                        let token = match gen_token(&app.config, &user, TokenType::Auth, None) {
                             Ok(t) => t,
                             Err(e) => return e.respond_to(&req),
                         };
@@ -513,7 +513,7 @@ pub async fn refresh_token(req: HttpRequest, app: Data<AppData>) -> impl Respond
         Err(e) => return ApiError::new(&e.to_string()).respond_to(&req),
     };
 
-    let token = gen_token(&app.config, &account, TokenType::Auth).unwrap();
+    let token = gen_token(&app.config, &account, TokenType::Auth, None).unwrap();
 
     HttpResponse::Ok().json(RefreshTokenRes { token })
 }
@@ -628,7 +628,7 @@ pub async fn google_oauth_handler(
         },
     };
 
-    let token = gen_token(&app.config, &account, TokenType::Auth).unwrap();
+    let token = gen_token(&app.config, &account, TokenType::Auth, None).unwrap();
 
     let mut response = HttpResponse::Found();
     let redirect_location = format!("{}?token={}", google_state.redirect_url, token);
