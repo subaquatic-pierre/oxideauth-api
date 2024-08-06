@@ -52,7 +52,7 @@ impl AuthGuard {
             None => return Err(ApiError::new("Unable to get token from request", 400)),
         };
 
-        info!("Token: {token_str:?}");
+        // info!("Token: {token_str:?}");
 
         let claims = match TokenClaims::from_str(self.jwt_secret.as_ref(), &token_str) {
             Ok(claims) => claims,
@@ -62,7 +62,7 @@ impl AuthGuard {
             }
         };
 
-        info!("Token Claims: {claims:?}");
+        // info!("Token Claims: {claims:?}");
 
         // TODO: validate token expiry
         if is_token_exp(&claims) {
@@ -87,18 +87,18 @@ impl AuthGuard {
             },
         };
 
-        info!(
-            "Account returned from DB {account:?}, given TokenClaims.sub {}",
-            claims.sub
-        );
+        // info!(
+        //     "Account returned from DB {account:?}, given TokenClaims.sub {}",
+        //     claims.sub
+        // );
 
         let mut account_permissions: Vec<String> = vec![];
         for role in account.roles {
             account_permissions.extend(role.permissions)
         }
 
-        info!("Account permissions: {account_permissions:?}");
-        info!("Required permissions: {required_perms:?}");
+        // info!("Account permissions: {account_permissions:?}");
+        // info!("Required permissions: {required_perms:?}");
 
         for perm in required_perms {
             if !account_permissions.contains(&perm.to_string()) {
