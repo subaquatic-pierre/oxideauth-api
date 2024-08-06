@@ -167,6 +167,7 @@ pub async fn create_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
 const DEFAULT_ALL_PERMISSIONS: &'static [&str] = &[
     // accounts
     "auth.accounts.create",
+    "auth.accounts.delete",
     "auth.accounts.describe",
     "auth.accounts.describeSelf",
     "auth.accounts.updateSelf",
@@ -175,18 +176,21 @@ const DEFAULT_ALL_PERMISSIONS: &'static [&str] = &[
     "auth.accounts.createServiceAccountSecretKey",
     // services
     "auth.services.create",
+    "auth.services.delete",
     "auth.services.describe",
     "auth.services.list",
     "auth.services.update",
     "auth.services.validatePermissions",
     //roles
     "auth.roles.create",
+    "auth.roles.delete",
     "auth.roles.describe",
     "auth.roles.list",
     "auth.roles.update",
     "auth.roles.assign",
     "auth.roles.remove",
     // permissions
+    "auth.permissions.delete",
     "auth.permissions.create",
     "auth.permissions.describe",
     "auth.permissions.list",
