@@ -1,7 +1,7 @@
 use actix_web::web::{Data, Json};
 use actix_web::{web::scope, Scope};
 
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use log::error;
 use serde::{Deserialize, Serialize};
@@ -31,6 +31,7 @@ pub async fn list_accounts(req: HttpRequest, app: Data<AppData>) -> impl Respond
     if let Err(e) = app.guard.authorize_req(&req, &["auth.accounts.list"]).await {
         return e.respond_to(&req);
     }
+
     let accounts = match get_all_accounts_db(&app.db).await {
         Ok(mut accounts) => {
             accounts
@@ -168,6 +169,7 @@ pub async fn delete_account(
     {
         return e.respond_to(&req);
     }
+
     let account = match get_account_db(&app.db, &body.account).await {
         Ok(acc) => acc,
         Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
@@ -175,7 +177,7 @@ pub async fn delete_account(
 
     match delete_account_db(&app.db, &account).await {
         Ok(_) => HttpResponse::Ok().json(DeleteAccountRes { deleted: true }),
-        Err(e) => ApiError::new(&e.to_string(), 400).respond_to(&req),
+        Err(e) => ApiError::new_400(&e.to_string()).respond_to(&req),
     }
 }
 
@@ -202,6 +204,7 @@ pub async fn describe_account(
     {
         return e.respond_to(&req);
     }
+
     let account = match get_account_db(&app.db, &body.account).await {
         Ok(acc) => acc,
         Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
@@ -214,14 +217,9 @@ pub async fn describe_account(
 pub async fn describe_self(req: HttpRequest, app: Data<AppData>) -> impl Responder {
     let required_perms = ["auth.accounts.describeSelf"];
 
-    let token = match app.guard.authorize_req(&req, &required_perms).await {
+    let account = match app.guard.authorize_req(&req, &required_perms).await {
         Ok(token) => token,
         Err(e) => return e.respond_to(&req),
-    };
-
-    let account = match get_account_db(&app.db, &token.sub).await {
-        Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
     return HttpResponse::Ok().json(DescribeAccountRes { account });
@@ -250,14 +248,9 @@ pub async fn update_self(
 
     let required_perms = ["auth.accounts.updateSelf"];
 
-    let token = match app.guard.authorize_req(&req, &required_perms).await {
+    let mut account = match app.guard.authorize_req(&req, &required_perms).await {
         Ok(token) => token,
         Err(e) => return e.respond_to(&req),
-    };
-
-    let mut account = match get_account_db(&app.db, &token.sub).await {
-        Ok(acc) => acc,
-        Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
     // update account with new values
@@ -294,6 +287,21 @@ pub async fn update_self(
     HttpResponse::Ok().json(UpdateSelfRes {
         account: updated_account,
     })
+}
+
+#[delete("/delete-self")]
+pub async fn delete_self(req: HttpRequest, app: Data<AppData>) -> impl Responder {
+    let required_perms = ["auth.accounts.deleteSelf"];
+
+    let mut account = match app.guard.authorize_req(&req, &required_perms).await {
+        Ok(token) => token,
+        Err(e) => return e.respond_to(&req),
+    };
+
+    match delete_account_db(&app.db, &account).await {
+        Ok(_) => HttpResponse::Ok().json(DeleteAccountRes { deleted: true }),
+        Err(e) => ApiError::new_400(&e.to_string()).respond_to(&req),
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -474,6 +482,7 @@ pub fn register_accounts_collection() -> Scope {
     scope("/accounts")
         .service(describe_account)
         .service(describe_self)
+        .service(delete_self)
         .service(update_self)
         .service(update_account)
         .service(update_account)

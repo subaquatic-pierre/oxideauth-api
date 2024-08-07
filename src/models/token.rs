@@ -1,7 +1,10 @@
 use chrono::{prelude::*, Duration};
 use log::debug;
 
-use crate::{app::AppConfig, utils::token::decode_token};
+use crate::{
+    app::AppConfig,
+    utils::token::{decode_token, is_token_exp},
+};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -77,5 +80,9 @@ impl TokenClaims {
 
     pub fn from_str(jwt_secret: &str, token: &str) -> ApiResult<Self> {
         decode_token(jwt_secret, token)
+    }
+
+    pub fn is_expired(&self) -> bool {
+        is_token_exp(&self)
     }
 }

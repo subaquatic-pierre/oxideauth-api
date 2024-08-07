@@ -502,14 +502,9 @@ struct RefreshTokenRes {
 pub async fn refresh_token(req: HttpRequest, app: Data<AppData>) -> impl Responder {
     let required_perms = [];
 
-    let token = match app.guard.authorize_req(&req, &required_perms).await {
+    let account = match app.guard.authorize_req(&req, &required_perms).await {
         Ok(token) => token,
         Err(e) => return e.respond_to(&req),
-    };
-
-    let account = match get_account_db(&app.db, &token.sub).await {
-        Ok(acc) => acc,
-        Err(e) => return ApiError::new_400(&e.to_string()).respond_to(&req),
     };
 
     let token = gen_token(&app.config, &account, TokenType::Auth, None).unwrap();
