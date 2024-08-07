@@ -171,6 +171,7 @@ const DEFAULT_ALL_PERMISSIONS: &'static [&str] = &[
     "auth.accounts.describe",
     "auth.accounts.describeSelf",
     "auth.accounts.updateSelf",
+    "auth.accounts.deleteSelf",
     "auth.accounts.list",
     "auth.accounts.update",
     "auth.accounts.createServiceAccountSecretKey",
@@ -207,6 +208,7 @@ const DEFAULT_AUDITOR_PERMISSIONS: &'static [&str] = &[
     "auth.accounts.describe",
     "auth.accounts.describeSelf",
     "auth.accounts.updateSelf",
+    "auth.accounts.deleteSelf",
     // services
     "auth.services.describe",
     "auth.services.list",
@@ -222,6 +224,7 @@ const DEFAULT_VIEWER_PERMISSIONS: &'static [&str] = &[
     // accounts
     "auth.accounts.describeSelf",
     "auth.accounts.updateSelf",
+    "auth.accounts.deleteSelf",
     // services
     "auth.services.describe",
     "auth.services.list",

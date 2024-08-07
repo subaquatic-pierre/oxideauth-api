@@ -54,7 +54,7 @@ async fn main() -> io::Result<()> {
         let cors = Cors::default()
             .allow_any_origin()
             .send_wildcard()
-            .allowed_methods(vec!["GET", "POST", "OPTIONS"])
+            .allowed_methods(vec!["GET", "POST", "OPTIONS", "DELETE"])
             .allowed_headers(vec![
                 header::CONTENT_TYPE,
                 header::AUTHORIZATION,

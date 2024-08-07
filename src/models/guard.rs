@@ -44,15 +44,11 @@ impl AuthGuard {
         &self,
         req: &HttpRequest,
         required_perms: &[&str],
-    ) -> ApiResult<TokenClaims> {
-        // check user exists in DB
-
+    ) -> ApiResult<Account> {
         let token_str = match get_token_from_req(&req) {
             Some(token) => token,
             None => return Err(ApiError::new("Unable to get token from request", 400)),
         };
-
-        // info!("Token: {token_str:?}");
 
         let claims = match TokenClaims::from_str(self.jwt_secret.as_ref(), &token_str) {
             Ok(claims) => claims,
@@ -62,14 +58,10 @@ impl AuthGuard {
             }
         };
 
-        // info!("Token Claims: {claims:?}");
-
-        // TODO: validate token expiry
-        if is_token_exp(&claims) {
+        if claims.is_expired() {
             return Err(ApiError::new("Token is expired", 403));
         }
 
-        // check token type
         if claims.token_type != TokenType::Auth {
             return Err(ApiError::new("Invalid token type", 403));
         }
@@ -77,38 +69,30 @@ impl AuthGuard {
         let account = match get_account_db(&self.db, &claims.sub).await {
             Ok(acc) => acc,
             Err(e) => match e {
-                Error::RowNotFound => {
-                    return Err(ApiError::new(
-                        &format!("User not found for '{}'", claims.sub),
-                        404,
-                    ))
-                }
+                Error::RowNotFound => return Err(ApiError::new(&format!("User not found"), 404)),
                 _ => return Err(ApiError::new(&e.to_string(), 400)),
             },
         };
 
-        // info!(
-        //     "Account returned from DB {account:?}, given TokenClaims.sub {}",
-        //     claims.sub
-        // );
-
-        let mut account_permissions: Vec<String> = vec![];
-        for role in account.roles {
-            account_permissions.extend(role.permissions)
+        if !account.verified {
+            return Err(ApiError::new(&format!("Account not verified"), 403));
         }
 
-        // info!("Account permissions: {account_permissions:?}");
-        // info!("Required permissions: {required_perms:?}");
+        if !account.enabled {
+            return Err(ApiError::new(&format!("Account not enabled"), 403));
+        }
+
+        let mut account_permissions: Vec<String> = vec![];
+        for role in &account.roles {
+            account_permissions.extend(role.permissions.clone())
+        }
 
         for perm in required_perms {
             if !account_permissions.contains(&perm.to_string()) {
-                return Err(ApiError::new(
-                    &format!("Invalid token permissions, Token does not contain '{perm}'",),
-                    403,
-                ));
+                return Err(ApiError::new(&format!("Invalid token permissions",), 403));
             }
         }
 
-        Ok(claims)
+        Ok(account)
     }
 }

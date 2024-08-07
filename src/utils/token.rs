@@ -43,7 +43,7 @@ pub fn decode_token(jwt_secret: &str, token: &str) -> ApiResult<TokenClaims> {
         &Validation::new(Algorithm::HS256),
     )
     // TODO: remove {e} from error message, to obviscate actual error for user response
-    .map_err(|e| ApiError::new_400(&format!("Decoding token error, {e}")))?;
+    .map_err(|e| ApiError::new_400(&format!("Decoding token error")))?;
 
     debug!("{data:?}");
 
