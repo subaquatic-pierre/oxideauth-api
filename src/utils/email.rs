@@ -29,7 +29,7 @@ pub async fn send_email(
     template_name: &str,
     vars: Vec<EmailVars>,
 ) -> ApiResult<EmailResult> {
-    let from_email = format!("🛡️ OxideAuth <{}>", config.aws_smtp_from);
+    let from_email = format!("🛡️ OxideAuth <{}>", config.aws_ses_from);
     let tera: Tera = match Tera::new("templates/*.html") {
         Ok(t) => t,
         Err(e) => return Err(ApiError::new_400(&format!("Parsing error: {}", e))),
@@ -49,8 +49,8 @@ pub async fn send_email(
     let region = Region::new(config.aws_region.clone());
 
     let credentials = Credentials::new(
-        config.aws_smtp_username.clone(),
-        config.aws_smtp_password.clone(),
+        config.aws_ses_access_key.clone(),
+        config.aws_ses_secret_key.clone(),
         None,
         None,
         "custom",
@@ -102,8 +102,8 @@ pub async fn send_email(
 //     body: &str,
 // ) -> ApiResult<EmailResult> {
 //     let email = Message::builder()
-//         .from(config.aws_smtp_from.parse().unwrap())
-//         .reply_to(config.aws_smtp_from.parse().unwrap())
+//         .from(config.aws_ses_from.parse().unwrap())
+//         .reply_to(config.aws_ses_from.parse().unwrap())
 //         .to(to_email.parse().unwrap())
 //         .subject(subject.to_string())
 //         .header(header::ContentType::TEXT_HTML)
@@ -112,12 +112,12 @@ pub async fn send_email(
 
 //     info!("{config:?}");
 //     let creds = Credentials::new(
-//         config.aws_smtp_username.to_string(),
-//         config.aws_smtp_password.to_string(),
+//         config.aws_ses_access_key.to_string(),
+//         config.aws_ses_secret_key.to_string(),
 //     );
 
 //     // Open a remote connection to an SMTP relay server
-//     let mailer = SmtpTransports::relay(&config.aws_smtp_host)
+//     let mailer = SmtpTransports::relay(&config.aws_ses_host)
 //         .unwrap()
 //         .port(465)
 //         .credentials(creds)

@@ -89,6 +89,28 @@ pub async fn send_email_req(
     }
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetFileReq {
+    pub filename: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetFileRes {
+    pub content: String,
+}
+
+#[post("/get-file")]
+pub async fn get_file(
+    req: HttpRequest,
+    app: Data<AppData>,
+    body: Json<GetFileReq>,
+) -> impl Responder {
+    HttpResponse::Ok().json(GetFileRes {
+        content: "".to_string(),
+    })
+}
+
 pub fn register_utils_services() -> Scope {
-    scope("/utils").service(send_email_req)
+    scope("/utils").service(send_email_req).service(get_file)
 }
