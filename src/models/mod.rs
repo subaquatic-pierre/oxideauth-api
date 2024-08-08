@@ -1,7 +1,9 @@
 pub mod account;
 pub mod api;
+pub mod email;
 pub mod guard;
 pub mod oauth;
 pub mod role;
 pub mod service;
+pub mod storage;
 pub mod token;
