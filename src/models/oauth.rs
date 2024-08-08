@@ -5,13 +5,12 @@ pub struct GoogleOAuthState {
     pub csrf_token: String,
     pub redirect_url: String,
     pub dash_url: String,
-    pub logo_url: String,
     pub project_name: String,
 }
 
 impl GoogleOAuthState {
     pub fn from_state(state: Option<String>, config: &AppConfig) -> Self {
-        let (redirect_url, csrf_token, dash_url, logo_url, project_name) = match state {
+        let (redirect_url, csrf_token, dash_url, project_name) = match state {
             Some(s) => {
                 let split: Vec<&str> = s.split("&").collect();
 
@@ -26,15 +25,7 @@ impl GoogleOAuthState {
                     None => format!("{}/dashboard", config.client_origin).to_string(),
                 };
 
-                let logo_url = match split.get(3) {
-                    Some(&str) => {
-                        let split: Vec<&str> = str.split("=").collect();
-                        split[1].to_string()
-                    }
-                    None => "https://oxideauth.nebuladev.io/brand/logoIconText.png".to_string(),
-                };
-
-                let project_name = match split.get(4) {
+                let project_name = match split.get(3) {
                     Some(&str) => {
                         let split: Vec<&str> = str.split("=").collect();
                         split[1].to_string()
@@ -46,12 +37,10 @@ impl GoogleOAuthState {
                     url_split[1].to_string(),
                     token_split[1].to_string(),
                     dash_url,
-                    logo_url,
                     project_name,
                 )
             }
             None => (
-                "".to_string(),
                 "".to_string(),
                 "".to_string(),
                 "".to_string(),
@@ -63,7 +52,6 @@ impl GoogleOAuthState {
             redirect_url,
             csrf_token,
             dash_url,
-            logo_url,
             project_name,
         }
     }

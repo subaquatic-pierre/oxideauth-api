@@ -18,24 +18,25 @@ use crate::db::queries::account::{self, create_account_db, get_account_db, updat
 use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
 use crate::models::account::{Account, AccountProvider, AccountType};
 use crate::models::api::ApiError;
+use crate::models::email::{EmailService, EmailVars};
 use crate::models::oauth::GoogleOAuthState;
 use crate::models::role::Role;
+use crate::models::storage::S3StorageService;
 use crate::models::token::{TokenClaims, TokenType};
 use crate::utils::auth::{get_google_user, request_google_token, RegisterRedirectParams};
 use crate::utils::crypt::{hash_password, verify_password};
-use crate::utils::email::{send_email, EmailVars};
+use crate::utils::time::get_year;
 use crate::utils::token::gen_token;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RegisterReq {
     pub email: String,
-    pub password: String,
+    pub password: Option<String>,
     pub name: Option<String>,
     pub redirect_host: Option<String>,
     pub confirm_email_redirect_endpoint: Option<String>,
     pub dashboard_endpoint: Option<String>,
-    pub logo_url: Option<String>,
     pub project_name: Option<String>,
 }
 
@@ -51,7 +52,11 @@ pub async fn register_user(
     app: Data<AppData>,
     body: Json<RegisterReq>,
 ) -> impl Responder {
-    let password_hash = match hash_password(&body.password) {
+    if (body.password.is_none()) {
+        return ApiError::new_400(&format!("Password required",)).respond_to(&req);
+    }
+
+    let password_hash = match hash_password(&body.password.clone().unwrap()) {
         Ok(hash) => hash,
         Err(e) => return e.respond_to(&req),
     };
@@ -94,15 +99,10 @@ pub async fn register_user(
     };
 
     let confirm_token = gen_token(&app.config, &new_acc, TokenType::ConfirmAccount, None).unwrap();
-
     let confirm_params = RegisterRedirectParams::from_req(body, &app.config, &confirm_token);
 
     // send confirm account email
     let vars = vec![
-        EmailVars {
-            key: "logo_url".to_string(),
-            val: confirm_params.logo_url.to_string(),
-        },
         EmailVars {
             key: "project_name".to_string(),
             val: confirm_params.project_name.to_string(),
@@ -117,19 +117,22 @@ pub async fn register_user(
         },
         EmailVars {
             key: "year".to_string(),
-            // TODO: change year to be dynamic
-            val: "2024".to_string(),
+            val: get_year().to_string(),
         },
     ];
 
-    match send_email(
-        &app.config,
-        &new_acc.email,
-        "Confirm Your Account | OxideAuth",
-        "confirm_email.html",
-        vars,
-    )
-    .await
+    let template_name = format!("{}/confirm_email.html", confirm_params.project_name);
+    let storage = Box::new(S3StorageService::new("oxideauth-emails", &app.config));
+    let email_service = EmailService::new(&app.config, storage);
+
+    match email_service
+        .send_email(
+            &new_acc.email,
+            "Confirm Your Account | OxideAuth",
+            &template_name,
+            vars,
+        )
+        .await
     {
         Ok(res) => {
             info!("{res:?}")
@@ -159,7 +162,6 @@ pub struct ConfirmAccountReq {
 
     // Next vars are used in welcome email
     pub dashboard_url: String,
-    pub logo_url: String,
     pub project_name: String,
 }
 
@@ -201,10 +203,6 @@ pub async fn confirm_account(
             // send welcome email
             let vars = vec![
                 EmailVars {
-                    key: "logo_url".to_string(),
-                    val: query.logo_url.to_string(),
-                },
-                EmailVars {
                     key: "project_name".to_string(),
                     val: query.project_name.to_string(),
                 },
@@ -218,19 +216,22 @@ pub async fn confirm_account(
                 },
                 EmailVars {
                     key: "year".to_string(),
-                    // TODO: change year to be dynamic
-                    val: "2024".to_string(),
+                    val: get_year().to_string(),
                 },
             ];
 
-            match send_email(
-                &app.config,
-                &acc.email,
-                &format!("Welcome to {}", query.project_name),
-                "welcome_email.html",
-                vars,
-            )
-            .await
+            let template_name = format!("{}/welcome_email.html", query.project_name);
+            let storage = Box::new(S3StorageService::new("oxideauth-emails", &app.config));
+            let email_service = EmailService::new(&app.config, storage);
+
+            match email_service
+                .send_email(
+                    &acc.email,
+                    &format!("Welcome to {}", query.project_name),
+                    &template_name,
+                    vars,
+                )
+                .await
             {
                 Ok(res) => {
                     info!("{res:?}")
@@ -262,6 +263,7 @@ pub async fn confirm_account(
 pub struct ResetEmailReq {
     pub email: String,
     pub redirect_url: String,
+    pub project_name: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -290,8 +292,7 @@ pub async fn reset_password(
     let vars = vec![
         EmailVars {
             key: "year".to_string(),
-            // TODO: change year to be dynamic
-            val: "2024".to_string(),
+            val: get_year().to_string(),
         },
         EmailVars {
             key: "reset_url".to_string(),
@@ -299,14 +300,18 @@ pub async fn reset_password(
         },
     ];
 
-    match send_email(
-        &app.config,
-        &account.email,
-        "Reset Your Password | OxideAuth",
-        "reset_password.html",
-        vars,
-    )
-    .await
+    let template_name = format!("{}/reset_email.html", &body.project_name);
+    let storage = Box::new(S3StorageService::new("oxideauth-emails", &app.config));
+    let email_service = EmailService::new(&app.config, storage);
+
+    match email_service
+        .send_email(
+            &account.email,
+            &format!("Reset Your Password | {}", &body.project_name),
+            &template_name,
+            vars,
+        )
+        .await
     {
         Ok(res) => {
             info!("{res:?}")
@@ -373,11 +378,6 @@ pub async fn update_password(
     })
 }
 
-#[derive(Debug, Deserialize)]
-pub struct ResendConfirmReq {
-    pub email: String,
-}
-
 #[derive(Debug, Serialize)]
 pub struct ResendConfirmRes {
     pub success: bool,
@@ -387,7 +387,7 @@ pub struct ResendConfirmRes {
 pub async fn resend_confirm(
     req: HttpRequest,
     app: Data<AppData>,
-    body: Json<ResendConfirmReq>,
+    body: Json<RegisterReq>,
 ) -> impl Responder {
     let account = match get_account_db(&app.db, &body.email).await {
         Ok(acc) => acc,
@@ -398,21 +398,13 @@ pub async fn resend_confirm(
     };
 
     let confirm_token = gen_token(&app.config, &account, TokenType::ConfirmAccount, None).unwrap();
-    // used to redirect to client page on successful confirmation
-    let redirect_url = format!("{}/auth/sign-in", app.config.client_origin);
-
-    let server_host = "http://localhost:8080";
-    let confirm_url = format!(
-        "{}/auth/confirm-account?token={}&redirect_url={}",
-        server_host, confirm_token, redirect_url
-    );
+    let confirm_params = RegisterRedirectParams::from_req(body, &app.config, &confirm_token);
 
     // send confirm account email
     let vars = vec![
         EmailVars {
-            key: "year".to_string(),
-            // TODO: change year to be dynamic
-            val: "2024".to_string(),
+            key: "project_name".to_string(),
+            val: confirm_params.project_name.to_string(),
         },
         EmailVars {
             key: "name".to_string(),
@@ -420,18 +412,26 @@ pub async fn resend_confirm(
         },
         EmailVars {
             key: "confirm_link".to_string(),
-            val: confirm_url.to_string(),
+            val: confirm_params.confirm_url.to_string(),
+        },
+        EmailVars {
+            key: "year".to_string(),
+            val: get_year().to_string(),
         },
     ];
 
-    match send_email(
-        &app.config,
-        &account.email,
-        "Confirm Your Account | OxideAuth",
-        "confirm_email.html",
-        vars,
-    )
-    .await
+    let template_name = format!("{}/confirm_email.html", confirm_params.project_name);
+    let storage = Box::new(S3StorageService::new("oxideauth-emails", &app.config));
+    let email_service = EmailService::new(&app.config, storage);
+
+    match email_service
+        .send_email(
+            &account.email,
+            "Confirm Your Account | OxideAuth",
+            &template_name,
+            vars,
+        )
+        .await
     {
         Ok(res) => {
             info!("{res:?}")
@@ -573,10 +573,6 @@ pub async fn google_oauth_handler(
                         // send welcome email
                         let vars = vec![
                             EmailVars {
-                                key: "logo_url".to_string(),
-                                val: google_state.logo_url.to_string(),
-                            },
-                            EmailVars {
                                 key: "project_name".to_string(),
                                 val: google_state.project_name.to_string(),
                             },
@@ -590,20 +586,34 @@ pub async fn google_oauth_handler(
                             },
                             EmailVars {
                                 key: "year".to_string(),
-                                // TODO: change year to be dynamic
-                                val: "2024".to_string(),
+                                val: get_year().to_string(),
                             },
                         ];
 
-                        match send_email(
-                            &app.config,
-                            &acc.email,
-                            &format!("Welcome to {}", google_state.project_name),
-                            "welcome_email.html",
-                            vars,
-                        )
-                        .await
+                        let template_name =
+                            format!("{}/welcome_email.html", google_state.project_name);
+                        let storage =
+                            Box::new(S3StorageService::new("oxideauth-emails", &app.config));
+                        let email_service = EmailService::new(&app.config, storage);
+
+                        match email_service
+                            .send_email(
+                                &acc.email,
+                                &format!("Welcome to {}", google_state.project_name),
+                                &template_name,
+                                vars,
+                            )
+                            .await
                         {
+                            // match send_email(
+                            //     &app.config,
+                            //     &acc.email,
+                            //     &format!("Welcome to {}", google_state.project_name),
+                            //     "welcome_email.html",
+                            //     vars,
+                            // )
+                            // .await
+                            // {
                             Ok(res) => {
                                 info!("{res:?}")
                             }
