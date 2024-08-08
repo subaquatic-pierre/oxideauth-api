@@ -300,7 +300,7 @@ pub async fn reset_password(
         },
     ];
 
-    let template_name = format!("{}/reset_email.html", &body.project_name);
+    let template_name = format!("{}/reset_password.html", &body.project_name);
     let storage = Box::new(S3StorageService::new("oxideauth-emails", &app.config));
     let email_service = EmailService::new(&app.config, storage);
 
@@ -397,6 +397,10 @@ pub async fn resend_confirm(
         }
     };
 
+    if account.verified {
+        return ApiError::new_400("Account already confirmed").respond_to(&req);
+    }
+
     let confirm_token = gen_token(&app.config, &account, TokenType::ConfirmAccount, None).unwrap();
     let confirm_params = RegisterRedirectParams::from_req(body, &app.config, &confirm_token);
 
@@ -427,7 +431,7 @@ pub async fn resend_confirm(
     match email_service
         .send_email(
             &account.email,
-            "Confirm Your Account | OxideAuth",
+            &format!("Confirm Your Account | {}", confirm_params.project_name),
             &template_name,
             vars,
         )
@@ -605,15 +609,6 @@ pub async fn google_oauth_handler(
                             )
                             .await
                         {
-                            // match send_email(
-                            //     &app.config,
-                            //     &acc.email,
-                            //     &format!("Welcome to {}", google_state.project_name),
-                            //     "welcome_email.html",
-                            //     vars,
-                            // )
-                            // .await
-                            // {
                             Ok(res) => {
                                 info!("{res:?}")
                             }

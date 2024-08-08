@@ -46,9 +46,10 @@ impl EmailService {
             .build();
 
         let client = SesClient::from_conf(ses_config);
+        let from_email = format!("🛡️ OxideAuth <{}>", config.aws_ses_from);
         Self {
             ses_client: client,
-            from_email: config.aws_ses_from.clone(),
+            from_email,
             storage: storage,
         }
     }
@@ -60,11 +61,6 @@ impl EmailService {
         template_name: &str,
         vars: Vec<EmailVars>,
     ) -> ApiResult<EmailResult> {
-        // let tera: Tera = match Tera::new("templates/*.html") {
-        //     Ok(t) => t,
-        //     Err(e) => return Err(ApiError::new_400(&format!("Parsing error: {}", e))),
-        // };
-
         let content = match self.storage.get_file(template_name).await {
             Ok(s) => s.to_string(),
             Err(e) => {
