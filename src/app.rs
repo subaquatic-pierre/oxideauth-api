@@ -15,24 +15,29 @@ use crate::routes::services::register_services_collection;
 
 #[derive(Debug)]
 pub struct AppConfig {
+    pub host: String,
+    pub port: usize,
+    pub drop_tables: bool,
+
     pub client_origin: String,
     pub database_url: String,
     pub jwt_secret: String,
     pub jwt_max_age: i64,
+
     pub google_oauth_client_id: String,
     pub google_oauth_client_secret: String,
     pub google_oauth_redirect_url: String,
-    pub host: String,
-    pub port: usize,
-    pub aws_smtp_host: String,
-    pub aws_smtp_username: String,
-    pub aws_smtp_password: String,
-    pub aws_smtp_from: String,
+
     pub aws_region: String,
-    pub drop_tables: bool,
-    // pub github_oauth_client_id: String,
-    // pub github_oauth_client_secret: String,
-    // pub github_oauth_redirect_url: String,
+
+    pub aws_ses_from: String,
+    pub aws_ses_host: String,
+
+    pub aws_ses_access_key: String,
+    pub aws_ses_secret_key: String,
+
+    pub aws_s3_access_key: String,
+    pub aws_s3_secret_key: String,
 }
 
 impl AppConfig {
@@ -63,13 +68,19 @@ impl AppConfig {
             .parse::<usize>()
             .expect("Unable to parse PORT from .env, value must be valid number");
 
-        let aws_smtp_host = env::var("AWS_SMTP_HOST").expect("AWS_SMTP_HOST must be set in .env");
-        let aws_smtp_username = env::var("AWS_SMTP_USERNAME")
-            .expect("AWS_SMTP_USERNAME credentials must be set in .env");
-        let aws_smtp_password = env::var("AWS_SMTP_PASSWORD")
-            .expect("AWS_SMTP_PASSWORD credentials must be set in .env");
-        let aws_smtp_from =
-            env::var("AWS_SMTP_FROM").expect("AWS_SMTP_FROM credentials must be set in .env");
+        let aws_ses_host = env::var("AWS_SES_HOST").expect("AWS_SES_HOST must be set in .env");
+        let aws_ses_access_key = env::var("AWS_SES_ACCESS_KEY")
+            .expect("AWS_SES_ACCESS_KEY credentials must be set in .env");
+        let aws_ses_secret_key = env::var("AWS_SES_SECRET_KEY")
+            .expect("AWS_SES_SECRET_KEY credentials must be set in .env");
+
+        let aws_s3_access_key = env::var("AWS_S3_ACCESS_KEY")
+            .expect("AWS_SES_ACCESS_KEY credentials must be set in .env");
+        let aws_s3_secret_key = env::var("AWS_S3_SECRET_KEY")
+            .expect("AWS_SES_SECRET_KEY credentials must be set in .env");
+
+        let aws_ses_from =
+            env::var("AWS_SES_FROM").expect("AWS_SES_FROM credentials must be set in .env");
         let aws_region =
             env::var("AWS_REGION").expect("AWS_REGION credentials must be set in .env");
 
@@ -93,11 +104,13 @@ impl AppConfig {
             google_oauth_redirect_url,
             host,
             port,
-            aws_smtp_host,
-            aws_smtp_username,
-            aws_smtp_password,
-            aws_smtp_from,
+            aws_ses_host,
+            aws_ses_access_key,
+            aws_ses_secret_key,
+            aws_ses_from,
             aws_region,
+            aws_s3_access_key,
+            aws_s3_secret_key,
             drop_tables,
         }
     }

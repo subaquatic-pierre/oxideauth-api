@@ -1,6 +1,6 @@
 /target
 /migrations
-.env
+.env*
 server.pid
 db.*
 .sqlx

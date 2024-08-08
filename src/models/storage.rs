@@ -7,6 +7,8 @@ use std::path::Path;
 use aws_sdk_s3::config::Credentials;
 use aws_sdk_s3::config::{Builder, Region};
 use aws_sdk_s3::Client as S3Client;
+
+use crate::app::AppConfig;
 pub trait StorageService {
     async fn get_template(&self, template_name: &str) -> Result<String, Box<dyn Error>>;
 }
@@ -41,16 +43,16 @@ pub struct S3Storage {
 }
 
 impl S3Storage {
-    pub async fn new(bucket_name: &str, access_key: &str, secret_key: &str, region: &str) -> Self {
+    pub async fn new(bucket_name: &str, config: AppConfig) -> Self {
         let credentials = Credentials::new(
-            access_key.to_string(),
-            secret_key.to_string(),
+            config.aws_s3_access_key.to_string(),
+            config.aws_s3_secret_key.to_string(),
             None,
             None,
             "custom",
         );
 
-        let region = Region::new(region.to_string());
+        let region = Region::new(config.aws_region.to_string());
 
         let s3_config = Builder::new()
             .region(region)
