@@ -15,9 +15,13 @@ use crate::db::queries::service::{
     update_service_db,
 };
 use crate::models::api::ApiError;
+use crate::models::email::{EmailService, EmailVars};
 use crate::models::service::Service;
+use crate::models::storage::{
+    LocalStorageService, S3StorageService, StorageService, StorageServiceType,
+};
 use crate::models::token::TokenClaims;
-use crate::utils::email::{send_email, EmailVars};
+use log::{debug, error, info};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,16 +75,14 @@ pub async fn send_email_req(
     ];
 
     // let template_name = "verify_email.html";
-    let template_name = "confirm_email.html";
+    let project_name = "OxideAuth";
+    let template_name = format!("{project_name}/confirm_email.html");
+    let storage = Box::new(S3StorageService::new("oxideauth-emails", &app.config));
+    let email_service = EmailService::new(&app.config, storage);
 
-    match send_email(
-        &app.config,
-        &body.to_email,
-        &body.subject,
-        &template_name,
-        vars,
-    )
-    .await
+    match email_service
+        .send_email(&body.to_email, &body.subject, &template_name, vars)
+        .await
     {
         Ok(res) => HttpResponse::Ok().json(SendEmailRes {
             message: res.message,
@@ -93,6 +95,7 @@ pub async fn send_email_req(
 #[serde(rename_all = "camelCase")]
 pub struct GetFileReq {
     pub filename: String,
+    pub storage_type: StorageServiceType,
 }
 
 #[derive(Debug, Serialize)]
@@ -106,9 +109,20 @@ pub async fn get_file(
     app: Data<AppData>,
     body: Json<GetFileReq>,
 ) -> impl Responder {
-    HttpResponse::Ok().json(GetFileRes {
-        content: "".to_string(),
-    })
+    let storage: Box<dyn StorageService> = match body.storage_type {
+        StorageServiceType::S3 => Box::new(S3StorageService::new("oxideauth-emails", &app.config)),
+        StorageServiceType::Local => Box::new(LocalStorageService::new("data")),
+    };
+
+    let contents = match storage.get_file(&body.filename).await {
+        Ok(s) => s.to_string(),
+        Err(e) => {
+            error!("Error reading file, {}, {e}", &body.filename);
+            e.to_string()
+        }
+    };
+
+    HttpResponse::Ok().json(GetFileRes { content: contents })
 }
 
 pub fn register_utils_services() -> Scope {

@@ -9,15 +9,27 @@ use tera::{Context, Tera};
 
 use crate::app::AppConfig;
 
-use super::api::ApiError;
+use super::api::{ApiError, ApiResult};
+use super::storage::StorageService;
+
+#[derive(Debug)]
+pub struct EmailResult {
+    pub message: String,
+}
+
+pub struct EmailVars {
+    pub key: String,
+    pub val: String,
+}
 
 pub struct EmailService {
     ses_client: SesClient,
     from_email: String,
+    storage: Box<dyn StorageService>,
 }
 
 impl EmailService {
-    fn new(config: AppConfig) -> Self {
+    pub fn new(config: &AppConfig, storage: Box<dyn StorageService>) -> Self {
         let region = Region::new(config.aws_region.clone());
 
         let credentials = Credentials::new(
@@ -36,56 +48,75 @@ impl EmailService {
         let client = SesClient::from_conf(ses_config);
         Self {
             ses_client: client,
-            from_email: config.aws_ses_from,
+            from_email: config.aws_ses_from.clone(),
+            storage: storage,
         }
     }
 
-    fn send_email(&self) {
+    pub async fn send_email(
+        &self,
+        to_email: &str,
+        subject: &str,
+        template_name: &str,
+        vars: Vec<EmailVars>,
+    ) -> ApiResult<EmailResult> {
         // let tera: Tera = match Tera::new("templates/*.html") {
         //     Ok(t) => t,
         //     Err(e) => return Err(ApiError::new_400(&format!("Parsing error: {}", e))),
         // };
 
-        // let mut context = Context::new();
+        let content = match self.storage.get_file(template_name).await {
+            Ok(s) => s.to_string(),
+            Err(e) => {
+                error!("Error reading file, {}, {e}", template_name);
+                "".to_string()
+            }
+        };
 
-        // for var in vars.iter() {
-        //     context.insert(&var.key, &var.val);
-        // }
+        let mut tera = Tera::default();
+        tera.add_raw_template(template_name, &content);
 
-        // let body = match tera.render(template_name, &context) {
-        //     Ok(body) => body,
-        //     Err(e) => return Err(ApiError::new_400(&format!("Template render error: {}", e))),
-        // };
+        let mut context = Context::new();
 
-        // let destination = Destination::builder().to_addresses(to_email).build();
+        for var in vars.iter() {
+            context.insert(&var.key, &var.val);
+        }
 
-        // let subject = Content::builder().data(subject).build().unwrap();
-        // let body = Body::builder()
-        //     .html(Content::builder().data(body).build().unwrap())
-        //     .build();
+        let body = match tera.render(template_name, &context) {
+            Ok(body) => body,
+            Err(e) => return Err(ApiError::new_400(&format!("Template render error: {}", e))),
+        };
 
-        // let message = Message::builder().subject(subject).body(body).build();
+        let destination = Destination::builder().to_addresses(to_email).build();
 
-        // let send_email_request = client
-        //     .send_email()
-        //     .source(from_email)
-        //     .destination(destination)
-        //     .message(message)
-        //     .send()
-        //     .await;
+        let subject = Content::builder().data(subject).build().unwrap();
+        let body = Body::builder()
+            .html(Content::builder().data(body).build().unwrap())
+            .build();
 
-        // // Send the email
-        // match send_email_request {
-        //     Ok(res) => {
-        //         info!("Send email Result: {res:?}");
-        //         Ok(EmailResult {
-        //             message: "Email sent successfully!".to_string(),
-        //         })
-        //     }
-        //     Err(e) => {
-        //         error!("Could not send email: {:?}", e);
-        //         Err(ApiError::new_400(&e.to_string()))
-        //     }
-        // }
+        let message = Message::builder().subject(subject).body(body).build();
+
+        let send_email_request = self
+            .ses_client
+            .send_email()
+            .source(&self.from_email)
+            .destination(destination)
+            .message(message)
+            .send()
+            .await;
+
+        // Send the email
+        match send_email_request {
+            Ok(res) => {
+                info!("Send email Result: {res:?}");
+                Ok(EmailResult {
+                    message: "Email sent successfully!".to_string(),
+                })
+            }
+            Err(e) => {
+                error!("Could not send email: {:?}", e);
+                Err(ApiError::new_400(&e.to_string()))
+            }
+        }
     }
 }

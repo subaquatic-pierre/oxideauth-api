@@ -148,7 +148,6 @@ pub async fn get_google_user(access_token: &str, id_token: &str) -> ApiResult<Go
 }
 
 pub struct RegisterRedirectParams {
-    pub logo_url: String,
     pub project_name: String,
     pub confirm_url: String,
 }
@@ -165,11 +164,6 @@ impl RegisterRedirectParams {
             _ => format!("{}/dashboard", config.client_origin),
         };
 
-        let logo_url = match &body.logo_url {
-            Some(url) => url.to_string(),
-            None => "https://oxideauth.nebuladev.io/brand/logoIconText.png".to_string(),
-        };
-
         let project_name = match &body.project_name {
             Some(name) => name.to_string(),
             None => "OxideAuth".to_string(),
@@ -177,13 +171,12 @@ impl RegisterRedirectParams {
 
         let server_host = format!("{}:{}", config.host.clone(), config.port.clone());
         let confirm_url = format!(
-            "{}/auth/confirm-account?token={}&redirectUrl={}&dashboardUrl={}&logoUrl={}&projectName={}",
-            server_host, token, redirect_url, dashboard_url, logo_url, project_name
+            "{}/auth/confirm-account?token={}&redirectUrl={}&dashboardUrl={}&projectName={}",
+            server_host, token, redirect_url, dashboard_url, project_name
         );
 
         Self {
             project_name,
-            logo_url,
             confirm_url,
         }
     }
