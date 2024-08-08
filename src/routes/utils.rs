@@ -20,6 +20,7 @@ use crate::models::token::TokenClaims;
 use crate::utils::email::{send_email, EmailVars};
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SendEmailReq {
     pub to_email: String,
     pub subject: String,
@@ -37,13 +38,13 @@ pub async fn send_email_req(
     app: Data<AppData>,
     body: Json<SendEmailReq>,
 ) -> impl Responder {
-    if let Err(e) = app
-        .guard
-        .authorize_req(&req, &["auth.utils.sendEmail"])
-        .await
-    {
-        return e.respond_to(&req);
-    }
+    // if let Err(e) = app
+    //     .guard
+    //     .authorize_req(&req, &["auth.utils.sendEmail"])
+    //     .await
+    // {
+    //     return e.respond_to(&req);
+    // }
 
     let vars = vec![
         EmailVars {

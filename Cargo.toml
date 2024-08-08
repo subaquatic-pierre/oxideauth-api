@@ -24,8 +24,9 @@ reqwest = {version="0.12.5", features=["json"]}
 chrono = {version="0.4.38", features = ["serde"]}
 lettre = "0.11.7"
 lettre_email = "0.9.4"
-aws-sdk-ses = {version="1.36.0", features = ["behavior-version-latest"]}
 tera = "1.20.0"
+aws-sdk-ses = {version="1.36.0", features = ["behavior-version-latest"]}
+aws-sdk-s3 = {version="1.42.0",features = ["behavior-version-latest"]}
 
 [dev-dependencies]
 cargo-watch = "7.8"
