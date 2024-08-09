@@ -9,17 +9,12 @@ use tera::{Context, Tera};
 
 use crate::app::AppConfig;
 
-use super::api::{ApiError, ApiResult};
 use super::storage::StorageService;
+use crate::models::api::{ApiError, ApiResult};
 
 #[derive(Debug)]
 pub struct EmailResult {
     pub message: String,
-}
-
-pub struct EmailVars {
-    pub key: String,
-    pub val: String,
 }
 
 pub struct EmailService {
@@ -59,7 +54,7 @@ impl EmailService {
         to_email: &str,
         subject: &str,
         template_name: &str,
-        vars: Vec<EmailVars>,
+        context: Context,
     ) -> ApiResult<EmailResult> {
         let content = match self.storage.get_file(template_name).await {
             Ok(s) => s.to_string(),
@@ -71,12 +66,6 @@ impl EmailService {
 
         let mut tera = Tera::default();
         tera.add_raw_template(template_name, &content);
-
-        let mut context = Context::new();
-
-        for var in vars.iter() {
-            context.insert(&var.key, &var.val);
-        }
 
         let body = match tera.render(template_name, &context) {
             Ok(body) => body,

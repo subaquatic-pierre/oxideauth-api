@@ -12,17 +12,18 @@ use actix_web::{get, post, web, HttpRequest, Responder};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tera::Context;
 
 use crate::app::AppData;
 use crate::db::queries::account::{self, create_account_db, get_account_db, update_account_db};
 use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
 use crate::models::account::{Account, AccountProvider, AccountType};
 use crate::models::api::ApiError;
-use crate::models::email::{EmailService, EmailVars};
 use crate::models::oauth::GoogleOAuthState;
 use crate::models::role::Role;
-use crate::models::storage::S3StorageService;
 use crate::models::token::{TokenClaims, TokenType};
+use crate::services::email::EmailService;
+use crate::services::storage::S3StorageService;
 use crate::utils::auth::{get_google_user, request_google_token, RegisterRedirectParams};
 use crate::utils::crypt::{hash_password, verify_password};
 use crate::utils::time::get_year;
@@ -102,24 +103,12 @@ pub async fn register_user(
     let confirm_params = RegisterRedirectParams::from_req(body, &app.config, &confirm_token);
 
     // send confirm account email
-    let vars = vec![
-        EmailVars {
-            key: "project_name".to_string(),
-            val: confirm_params.project_name.to_string(),
-        },
-        EmailVars {
-            key: "name".to_string(),
-            val: new_acc.name.to_string(),
-        },
-        EmailVars {
-            key: "confirm_link".to_string(),
-            val: confirm_params.confirm_url.to_string(),
-        },
-        EmailVars {
-            key: "year".to_string(),
-            val: get_year().to_string(),
-        },
-    ];
+    let mut context = Context::new();
+
+    context.insert("project_name", &confirm_params.project_name);
+    context.insert("name", &new_acc.name);
+    context.insert("confirm_link", &confirm_params.confirm_url);
+    context.insert("year", &get_year().to_string());
 
     let template_name = format!("{}/confirm_email.html", confirm_params.project_name);
     let storage = Box::new(S3StorageService::new("oxideauth-emails", &app.config));
@@ -130,7 +119,7 @@ pub async fn register_user(
             &new_acc.email,
             "Confirm Your Account | OxideAuth",
             &template_name,
-            vars,
+            context,
         )
         .await
     {
@@ -200,25 +189,12 @@ pub async fn confirm_account(
 
     match update_account_db(&app.db, &account).await {
         Ok(acc) => {
-            // send welcome email
-            let vars = vec![
-                EmailVars {
-                    key: "project_name".to_string(),
-                    val: query.project_name.to_string(),
-                },
-                EmailVars {
-                    key: "name".to_string(),
-                    val: account.name.to_string(),
-                },
-                EmailVars {
-                    key: "dashboard_link".to_string(),
-                    val: query.dashboard_url.to_string(),
-                },
-                EmailVars {
-                    key: "year".to_string(),
-                    val: get_year().to_string(),
-                },
-            ];
+            let mut context = Context::new();
+
+            context.insert("project_name", &query.project_name);
+            context.insert("name", &account.name);
+            context.insert("dashboard_link", &query.dashboard_url);
+            context.insert("year", &get_year().to_string());
 
             let template_name = format!("{}/welcome_email.html", query.project_name);
             let storage = Box::new(S3StorageService::new("oxideauth-emails", &app.config));
@@ -229,7 +205,7 @@ pub async fn confirm_account(
                     &acc.email,
                     &format!("Welcome to {}", query.project_name),
                     &template_name,
-                    vars,
+                    context,
                 )
                 .await
             {
@@ -288,17 +264,10 @@ pub async fn reset_password(
     let reset_token = gen_token(&app.config, &account, TokenType::ResetPassword, None).unwrap();
     let reset_url = format!("{}?token={}", body.redirect_url, reset_token);
 
-    // send confirm account email
-    let vars = vec![
-        EmailVars {
-            key: "year".to_string(),
-            val: get_year().to_string(),
-        },
-        EmailVars {
-            key: "reset_url".to_string(),
-            val: reset_url.to_string(),
-        },
-    ];
+    let mut context = Context::new();
+
+    context.insert("year", &get_year().to_string());
+    context.insert("reset_url", &reset_url);
 
     let template_name = format!("{}/reset_password.html", &body.project_name);
     let storage = Box::new(S3StorageService::new("oxideauth-emails", &app.config));
@@ -309,7 +278,7 @@ pub async fn reset_password(
             &account.email,
             &format!("Reset Your Password | {}", &body.project_name),
             &template_name,
-            vars,
+            context,
         )
         .await
     {
@@ -405,24 +374,12 @@ pub async fn resend_confirm(
     let confirm_params = RegisterRedirectParams::from_req(body, &app.config, &confirm_token);
 
     // send confirm account email
-    let vars = vec![
-        EmailVars {
-            key: "project_name".to_string(),
-            val: confirm_params.project_name.to_string(),
-        },
-        EmailVars {
-            key: "name".to_string(),
-            val: account.name.to_string(),
-        },
-        EmailVars {
-            key: "confirm_link".to_string(),
-            val: confirm_params.confirm_url.to_string(),
-        },
-        EmailVars {
-            key: "year".to_string(),
-            val: get_year().to_string(),
-        },
-    ];
+    let mut context = Context::new();
+
+    context.insert("project_name", &confirm_params.project_name);
+    context.insert("name", &account.name);
+    context.insert("confirm_link", &confirm_params.confirm_url);
+    context.insert("year", &get_year().to_string());
 
     let template_name = format!("{}/confirm_email.html", confirm_params.project_name);
     let storage = Box::new(S3StorageService::new("oxideauth-emails", &app.config));
@@ -433,7 +390,7 @@ pub async fn resend_confirm(
             &account.email,
             &format!("Confirm Your Account | {}", confirm_params.project_name),
             &template_name,
-            vars,
+            context,
         )
         .await
     {
@@ -572,27 +529,13 @@ pub async fn google_oauth_handler(
                         if let Ok(role) = get_role_db(&app.db, "Viewer").await {
                             bind_role_to_account_db(&app.db, &acc, &role).await.ok();
                         }
-                        // send welcome email if everything worked
-
                         // send welcome email
-                        let vars = vec![
-                            EmailVars {
-                                key: "project_name".to_string(),
-                                val: google_state.project_name.to_string(),
-                            },
-                            EmailVars {
-                                key: "name".to_string(),
-                                val: acc.name.to_string(),
-                            },
-                            EmailVars {
-                                key: "dashboard_link".to_string(),
-                                val: google_state.dash_url.to_string(),
-                            },
-                            EmailVars {
-                                key: "year".to_string(),
-                                val: get_year().to_string(),
-                            },
-                        ];
+                        let mut context = Context::new();
+
+                        context.insert("project_name", &google_state.project_name);
+                        context.insert("name", &acc.name);
+                        context.insert("dashboard_link", &google_state.dash_url);
+                        context.insert("year", &get_year().to_string());
 
                         let template_name =
                             format!("{}/welcome_email.html", google_state.project_name);
@@ -605,7 +548,7 @@ pub async fn google_oauth_handler(
                                 &acc.email,
                                 &format!("Welcome to {}", google_state.project_name),
                                 &template_name,
-                                vars,
+                                context,
                             )
                             .await
                         {
