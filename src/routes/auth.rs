@@ -151,7 +151,7 @@ pub struct ConfirmAccountReq {
 
     // Next vars are used in welcome email
     pub dashboard_url: String,
-    pub project_name: String,
+    pub project_name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -191,19 +191,24 @@ pub async fn confirm_account(
         Ok(acc) => {
             let mut context = Context::new();
 
+            let project_name = &query
+                .project_name
+                .clone()
+                .unwrap_or("OxideAuth".to_string());
+
             context.insert("project_name", &query.project_name);
             context.insert("name", &account.name);
             context.insert("dashboard_link", &query.dashboard_url);
             context.insert("year", &get_year().to_string());
 
-            let template_name = format!("{}/welcome_email.html", query.project_name);
+            let template_name = format!("{}/welcome_email.html", project_name);
             let storage = Box::new(S3StorageService::new("oxideauth-emails", &app.config));
             let email_service = EmailService::new(&app.config, storage);
 
             match email_service
                 .send_email(
                     &acc.email,
-                    &format!("Welcome to {}", query.project_name),
+                    &format!("Welcome to {}", project_name),
                     &template_name,
                     context,
                 )
