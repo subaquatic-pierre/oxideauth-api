@@ -239,7 +239,7 @@ pub async fn confirm_account(
 pub struct ResetEmailReq {
     pub email: String,
     pub redirect_url: String,
-    pub project_name: String,
+    pub project_name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -269,14 +269,16 @@ pub async fn reset_password(
     context.insert("year", &get_year().to_string());
     context.insert("reset_url", &reset_url);
 
-    let template_name = format!("{}/reset_password.html", &body.project_name);
+    let project_name = &body.project_name.clone().unwrap_or("OxideAuth".to_string());
+
+    let template_name = format!("{}/reset_password.html", project_name);
     let storage = Box::new(S3StorageService::new("oxideauth-emails", &app.config));
     let email_service = EmailService::new(&app.config, storage);
 
     match email_service
         .send_email(
             &account.email,
-            &format!("Reset Your Password | {}", &body.project_name),
+            &format!("Reset Your Password | {}", &project_name),
             &template_name,
             context,
         )
