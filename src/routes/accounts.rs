@@ -45,7 +45,7 @@ pub async fn list_accounts(req: HttpRequest, app: Data<AppData>) -> impl Respond
     HttpResponse::Ok().json(ListAccountsRes { accounts })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateAccountReq {
     pub account: String,
     // pub email: Option<String>,
@@ -146,7 +146,7 @@ pub async fn update_account(
     })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DeleteAccountReq {
     pub account: String,
 }

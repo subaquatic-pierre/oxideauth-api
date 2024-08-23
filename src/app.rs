@@ -38,6 +38,7 @@ pub struct AppConfig {
 
     pub aws_s3_access_key: String,
     pub aws_s3_secret_key: String,
+    pub email_dry_mode: bool,
 }
 
 impl AppConfig {
@@ -112,6 +113,7 @@ impl AppConfig {
             aws_s3_access_key,
             aws_s3_secret_key,
             drop_tables,
+            email_dry_mode: false,
         }
     }
 }
@@ -139,6 +141,7 @@ pub async fn new_test_app_data() -> Data<AppData> {
     let mut config = AppConfig::from_env();
 
     config.drop_tables = true;
+    config.email_dry_mode = true;
     config.database_url = "postgres://test_user:password@localhost/test_db".to_string();
 
     let db: PgPool = establish_connection(&config.database_url).await;
