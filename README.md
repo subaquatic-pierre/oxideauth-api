@@ -4,6 +4,7 @@ Rust - Actix Web authorization server
 
 ## Psql Commands
 
+- reset database: `sqlx database reset`
 - connets: `psql -h localhost -p 5432 -W -U test_user -d test_db`
 - list databases: `\l`
 - list tables: `\dt`
