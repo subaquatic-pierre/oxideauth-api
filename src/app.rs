@@ -135,6 +135,23 @@ pub async fn new_app_data() -> Data<AppData> {
     })
 }
 
+pub async fn new_test_app_data() -> Data<AppData> {
+    let mut config = AppConfig::from_env();
+
+    config.drop_tables = true;
+    config.database_url = "postgres://test_user:password@localhost/test_db".to_string();
+
+    let db: PgPool = establish_connection(&config.database_url).await;
+    let arc_db = Arc::new(db);
+    let guard = AuthGuard::new(&config.jwt_secret, arc_db.clone());
+
+    Data::new(AppData {
+        db: arc_db.clone(),
+        config,
+        guard,
+    })
+}
+
 pub fn register_all_services() -> Scope {
     scope("")
         .service(register_auth_collection())

@@ -28,9 +28,11 @@ tera = "1.20.0"
 aws-sdk-ses = {version="1.36.0", features = ["behavior-version-latest"]}
 aws-sdk-s3 = {version="1.42.0",features = ["behavior-version-latest"]}
 async-trait = "0.1.81"
+actix-http = "3.9.0"
 
 [dev-dependencies]
 cargo-watch = "7.8"
+actix-rt = "2.5"
 
 [lints.rust]
 unused = "allow"
