@@ -107,3 +107,12 @@ pub enum StorageServiceType {
     Local,
     S3,
 }
+
+pub struct MockStorageService {}
+
+#[async_trait]
+impl StorageService for MockStorageService {
+    async fn get_file(&self, filename: &str) -> Result<String, Box<dyn Error>> {
+        Ok("contents".to_string())
+    }
+}

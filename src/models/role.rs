@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct RolePermissions {
     pub permissions: Vec<String>,
     #[serde(skip)]
@@ -52,7 +52,7 @@ impl<'a> IntoIterator for &'a RolePermissions {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone, PartialEq)]
 pub struct Role {
     pub id: Uuid,
     pub name: String,
@@ -111,5 +111,89 @@ impl Permission {
             id: Uuid::new_v4(),
             name: name.to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use uuid::Uuid;
+
+    #[test]
+    fn test_role_permissions_new() {
+        let permissions = vec!["read".to_string(), "write".to_string()];
+        let role_permissions = RolePermissions::new(permissions.clone());
+
+        assert_eq!(role_permissions.permissions, permissions);
+        assert_eq!(role_permissions.should_skip(), false);
+    }
+
+    #[test]
+    fn test_role_permissions_contains() {
+        let permissions = vec!["read".to_string(), "write".to_string()];
+        let role_permissions = RolePermissions::new(permissions);
+
+        assert!(role_permissions.contains(&"read".to_string()));
+        assert!(!role_permissions.contains(&"delete".to_string()));
+    }
+
+    #[test]
+    fn test_role_permissions_iterator() {
+        let permissions = vec!["read".to_string(), "write".to_string()];
+        let mut role_permissions = RolePermissions::new(permissions);
+
+        assert_eq!(role_permissions.next(), Some("read".to_string()));
+        assert_eq!(role_permissions.next(), Some("write".to_string()));
+        assert_eq!(role_permissions.next(), None);
+    }
+
+    #[test]
+    fn test_role_new() {
+        let name = "Admin";
+        let permissions = vec!["read".to_string(), "write".to_string()];
+        let description = Some("Administrator role".to_string());
+
+        let role = Role::new(name, permissions.clone(), description.clone());
+
+        assert_eq!(role.name, name);
+        assert_eq!(role.permissions.permissions, permissions);
+        assert_eq!(role.description, description);
+    }
+
+    #[test]
+    fn test_role_id_str() {
+        let role = Role::default();
+
+        assert_eq!(role.id_str().len(), 36); // UUID length
+    }
+
+    #[test]
+    fn test_role_set_skip_serialize_permissions() {
+        let mut role = Role::default();
+
+        assert_eq!(role.permissions.should_skip(), false);
+
+        role.set_skip_serialize_permissions(true);
+        assert_eq!(role.permissions.should_skip(), true);
+    }
+
+    #[test]
+    fn test_user_role_binding() {
+        let user_id = Uuid::new_v4();
+        let role_id = Uuid::new_v4();
+
+        let binding = UserRoleBinding { user_id, role_id };
+
+        assert_eq!(binding.user_id, user_id);
+        assert_eq!(binding.role_id, role_id);
+    }
+
+    #[test]
+    fn test_permission_new() {
+        let name = "read";
+        let permission = Permission::new(name);
+
+        assert_eq!(permission.name, name);
+        assert_eq!(permission.id.to_string().len(), 36); // UUID length
     }
 }

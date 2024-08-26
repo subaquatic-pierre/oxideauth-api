@@ -114,3 +114,35 @@ impl EmailService {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::services::storage::MockStorageService;
+
+    use super::*;
+    use async_trait::async_trait;
+    use aws_sdk_ses::types::Body;
+    use aws_sdk_ses::types::Content;
+    use aws_sdk_ses::types::Destination;
+    use aws_sdk_ses::types::Message;
+    use mockall::{mock, predicate::*};
+    use tera::Context;
+
+    #[tokio::test]
+    async fn test_send_email_success() {
+        let mut mock_storage = MockStorageService {};
+
+        let config = AppConfig::mock_config();
+        // Mocking SES client can be more complex, might need to use `mockito` or similar library if required
+
+        let service = EmailService::new(&config, Box::new(mock_storage));
+
+        let context = Context::new();
+        let result = service
+            .send_email("test@example.com", "Test Subject", "test_template", context)
+            .await;
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().message, "Email sent successfully!");
+    }
+}

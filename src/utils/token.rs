@@ -50,6 +50,19 @@ pub fn decode_token(jwt_secret: &str, token: &str) -> ApiResult<TokenClaims> {
     Ok(data.claims)
 }
 
+pub fn encode_token(jwt_secret: &str, claims: &TokenClaims) -> ApiResult<String> {
+    if jwt_secret.is_empty() {
+        return Err(ApiError::new_400("Invalid secret"));
+    }
+    let token = encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(jwt_secret.as_ref()),
+    )
+    .map_err(|e| ApiError::new_400(&e.to_string()));
+    token
+}
+
 pub fn get_token_from_req(req: &HttpRequest) -> Option<String> {
     let headers = req.headers();
 
@@ -175,5 +188,37 @@ mod tests {
         };
 
         assert!(is_token_exp(&expired_claims), "Token should be expired");
+    }
+
+    // Helper function to create a mock token claims
+    fn mock_token_claims() -> TokenClaims {
+        let account =
+            Account::new_local_user("test@example.com", "Test User", "hashed_password", None);
+        TokenClaims::new_auth_token(&account, None)
+    }
+
+    #[test]
+    fn test_encode_token_success() {
+        let jwt_secret = "supersecretkey";
+        let claims = mock_token_claims();
+        let token = encode_token(jwt_secret, &claims).unwrap();
+
+        // Decode the token to verify it is properly encoded
+        let decoded_claims = TokenClaims::from_str(jwt_secret, &token).unwrap();
+
+        // Verify the claims are as expected
+        assert_eq!(decoded_claims.sub, claims.sub.clone());
+        assert_eq!(decoded_claims.token_type, claims.token_type);
+        assert_eq!(decoded_claims.acc_type, claims.acc_type);
+    }
+
+    #[test]
+    fn test_encode_token_failure() {
+        let jwt_secret = ""; // Invalid secret
+        let claims = mock_token_claims();
+        let result = encode_token(jwt_secret, &claims);
+
+        // Check that encoding fails and returns an error
+        assert!(result.is_err());
     }
 }
