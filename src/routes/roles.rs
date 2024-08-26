@@ -20,14 +20,14 @@ use crate::models::token::TokenClaims;
 use crate::utils::token::get_token_from_req;
 use log::{debug, error, info};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CreateRoleReq {
     pub name: String,
     pub description: Option<String>,
     pub permissions: Option<Vec<String>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreateRoleRes {
     pub role: Role,
 }
@@ -55,14 +55,14 @@ pub async fn create_role(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateRoleReq {
     pub role: String,
     pub name: Option<String>,
     pub description: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateRoleRes {
     pub role: Role,
 }
@@ -76,6 +76,7 @@ pub async fn update_role(
     if let Err(e) = app.guard.authorize_req(&req, &["auth.roles.update"]).await {
         return e.respond_to(&req);
     }
+
     let mut role = match get_role_db(&app.db, &body.role).await {
         Ok(role) => role,
         Err(_) => {
@@ -103,7 +104,7 @@ pub async fn update_role(
 pub struct DescribeRoleReq {
     pub role: String,
 }
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DescribeRoleRes {
     pub role: Role,
 }
@@ -144,12 +145,12 @@ pub async fn list_roles(req: HttpRequest, app: Data<AppData>) -> impl Responder 
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DeleteRoleReq {
     pub role: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DeleteRoleRes {
     pub deleted_role: String,
 }
@@ -177,13 +178,13 @@ pub async fn delete_role(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct AssignRolesReq {
     pub account: String,
     pub roles: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AssignRoleRes {
     pub account: Account,
 }
@@ -308,7 +309,7 @@ pub async fn create_permissions(
         .collect();
 
     // update db
-    let created_permissions = match create_permissions_db(&app.db, perms).await {
+    let created_permissions = match create_permissions_db(&app.db, &perms).await {
         Ok(created_perms) => created_perms,
         Err(e) => {
             return ApiError::new_400(&e.to_string()).respond_to(&req);

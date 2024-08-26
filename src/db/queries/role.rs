@@ -26,9 +26,18 @@ pub async fn create_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
     .await?;
 
     // let mut perms = vec![];
-    let perms: &Vec<String> = &role.permissions.clone().map(|el| el.clone()).collect();
 
-    bind_permissions_to_role(pool, role, perms).await?;
+    let perms = role
+        .permissions
+        .clone()
+        .map(|el| Permission::new(&el))
+        .collect();
+
+    create_permissions_db(pool, &perms).await?;
+
+    let perms: Vec<String> = perms.iter().map(|el| el.name.clone()).collect();
+
+    bind_permissions_to_role(pool, role, &perms).await?;
 
     get_role_db(pool, &role.name).await
 }
@@ -192,7 +201,7 @@ pub async fn get_all_roles_db(pool: &PgPool) -> Result<Vec<Role>> {
     Ok(roles)
 }
 
-pub async fn create_permissions_db(pool: &PgPool, perms: Vec<Permission>) -> Result<Vec<String>> {
+pub async fn create_permissions_db(pool: &PgPool, perms: &Vec<Permission>) -> Result<Vec<String>> {
     let existing_perms = get_all_permissions(pool).await?;
     let mut created_perms = vec![];
     // let mut tx = pool

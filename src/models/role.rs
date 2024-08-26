@@ -22,6 +22,10 @@ impl RolePermissions {
     pub fn should_skip(&self) -> bool {
         self.skip
     }
+
+    pub fn contains(&self, val: &String) -> bool {
+        self.permissions.contains(val)
+    }
 }
 
 impl Iterator for RolePermissions {
