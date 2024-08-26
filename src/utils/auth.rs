@@ -13,7 +13,7 @@ use crate::routes::roles::register_roles_collection;
 use crate::routes::services::register_services_collection;
 
 use reqwest::{Client, Url};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 use crate::models::{
@@ -37,7 +37,7 @@ pub fn build_owner_account() -> Account {
     owner_acc
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Serialize)]
 pub struct OAuthResponse {
     pub access_token: String,
     pub id_token: String,
@@ -49,7 +49,7 @@ pub struct OAuthErrorResponse {
     pub error_description: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Serialize)]
 pub struct GoogleUserResult {
     pub id: String,
     pub email: String,
@@ -179,5 +179,60 @@ impl RegisterRedirectParams {
             project_name,
             confirm_url,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::web::Json;
+    use actix_web::{test, App};
+    use dotenv::dotenv;
+    use serde_json::json;
+    use std::env;
+
+    // Mock configurations for testing
+    fn mock_config() -> AppConfig {
+        AppConfig::mock_config()
+    }
+
+    // Test `build_owner_account` function
+    #[actix_web::test]
+    async fn test_build_owner_account() {
+        dotenv().ok();
+
+        env::set_var("OWNER_EMAIL", "test_owner@example.com");
+        env::set_var("OWNER_PASSWORD", "test_password");
+
+        let account = build_owner_account();
+        assert_eq!(account.email, "test_owner@example.com");
+        assert_eq!(
+            account.description.unwrap(),
+            "Default Owner account created by OxideAuth"
+        );
+        assert!(account.verified);
+    }
+
+    // Test `RegisterRedirectParams::from_req`
+    #[actix_web::test]
+    async fn test_register_redirect_params_from_req() {
+        dotenv().ok();
+
+        let config = mock_config();
+        let token = "mock_token";
+
+        let body = Json(RegisterReq {
+            email: "Test@email.com".to_string(),
+            password: None,
+            name: None,
+            project_name: Some("Test Project".to_string()),
+            redirect_host: Some("http://redirect.com".to_string()),
+            confirm_email_redirect_endpoint: Some("/confirm".to_string()),
+            dashboard_endpoint: Some("/dashboard".to_string()),
+        });
+
+        let params = RegisterRedirectParams::from_req(body, &config, token);
+        assert_eq!(params.project_name, "Test Project");
+        assert_eq!(params.confirm_url, "127.0.0.1:8080/auth/confirm-account?token=mock_token&redirectUrl=http://redirect.com/confirm&dashboardUrl=http://redirect.com/dashboard&projectName=Test Project");
     }
 }

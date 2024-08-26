@@ -1,6 +1,7 @@
 use actix_web::dev::ServiceResponse;
 use actix_web::http::header::{HeaderValue, AUTHORIZATION};
 use actix_web::{http::StatusCode, test, App};
+use oxideauth::db::queries::account::get_account_db;
 use oxideauth::models::account::Account;
 use oxideauth::routes::accounts::{DeleteAccountReq, UpdateAccountReq};
 use oxideauth::routes::auth::login_user;
@@ -20,7 +21,6 @@ async fn test_list_accounts() {
     let login_res = login_owner(&mut app).await;
     let token = login_res["token"].as_str().unwrap();
 
-    println!("{token}");
     let value = format!("Bearer {token}");
 
     let header = format!("Authorization: Bearer {token}");
@@ -69,7 +69,6 @@ async fn test_update_account() {
     assert_eq!(resp.status(), StatusCode::OK);
 
     let body: serde_json::Value = test::read_body_json(resp).await;
-    println!("body: {body:?}");
 }
 
 #[actix_web::test]
@@ -98,9 +97,6 @@ async fn test_delete_account() {
     let resp = test::call_service(&mut app, req).await;
 
     assert_eq!(resp.status(), StatusCode::OK);
-
-    let body: serde_json::Value = test::read_body_json(resp).await;
-    println!("body: {body:?}");
 }
 
 #[actix_web::test]
@@ -112,16 +108,15 @@ async fn test_describe_account() {
     let token = login_res["token"].as_str().unwrap();
     let value = format!("Bearer {token}");
 
-    let req = test::TestRequest::get()
-        .uri("/accounts/describe-account?account=test@example.com")
+    let req = test::TestRequest::post()
+        .uri("/accounts/describe-account")
+        .set_json(json!({"account":"viewer@email.com"}))
         .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
         .to_request();
 
     let resp = test::call_service(&mut app, req).await;
 
     assert_eq!(resp.status(), StatusCode::OK);
-
-    let body: serde_json::Value = test::read_body_json(resp).await;
 }
 
 #[actix_web::test]
@@ -185,7 +180,7 @@ async fn test_delete_self() {
     let token = login_res["token"].as_str().unwrap();
     let value = format!("Bearer {token}");
 
-    let req = test::TestRequest::post()
+    let req = test::TestRequest::delete()
         .uri("/accounts/delete-self")
         .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
         .to_request();
@@ -193,8 +188,6 @@ async fn test_delete_self() {
     let resp = test::call_service(&mut app, req).await;
 
     assert_eq!(resp.status(), StatusCode::OK);
-
-    let body: serde_json::Value = test::read_body_json(resp).await;
 }
 
 #[actix_web::test]
@@ -207,9 +200,8 @@ async fn test_create_service_account() {
     let value = format!("Bearer {token}");
 
     let create_req = json!({
-        "account": "new_service_account@example.com",
+        "email": "new_service_account@example.com",
         "name": "Service Account",
-        "password": "password",
     });
 
     let req = test::TestRequest::post()
@@ -220,9 +212,7 @@ async fn test_create_service_account() {
 
     let resp = test::call_service(&mut app, req).await;
 
-    assert_eq!(resp.status(), StatusCode::CREATED);
-
-    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert_eq!(resp.status(), StatusCode::OK);
 }
 
 #[actix_web::test]
@@ -235,7 +225,7 @@ async fn test_create_user_account() {
     let value = format!("Bearer {token}");
 
     let create_req = json!({
-        "account": "new_user_account@example.com",
+        "email": "new_user_account@example.com",
         "name": "User Account",
         "password": "password",
     });
@@ -248,9 +238,7 @@ async fn test_create_user_account() {
 
     let resp = test::call_service(&mut app, req).await;
 
-    assert_eq!(resp.status(), StatusCode::CREATED);
-
-    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert_eq!(resp.status(), StatusCode::OK);
 }
 
 #[actix_web::test]
@@ -262,8 +250,15 @@ async fn test_get_sa_secret_key() {
     let token = login_res["token"].as_str().unwrap();
     let value = format!("Bearer {token}");
 
-    let req = test::TestRequest::get()
-        .uri("/accounts/get-sa-secret-key?account=new_service_account@example.com")
+    let sa = get_account_db(&data.db, "service@email.com").await.unwrap();
+
+    let payload = json!({
+        "account": sa.id.to_string()
+    });
+
+    let req = test::TestRequest::post()
+        .uri("/accounts/service-account-secret-key")
+        .set_json(payload)
         .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
         .to_request();
 
