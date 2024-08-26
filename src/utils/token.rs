@@ -83,3 +83,97 @@ pub fn is_token_exp(token: &TokenClaims) -> bool {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::account::{Account, AccountType};
+    use crate::models::token::TokenType;
+    use actix_web::test::TestRequest;
+    use chrono::{Duration, Utc};
+    use std::collections::HashMap;
+
+    fn mock_app_config() -> AppConfig {
+        AppConfig::mock_config()
+    }
+
+    fn mock_account() -> Account {
+        Account::default()
+    }
+
+    #[test]
+    fn test_gen_token() {
+        let config = mock_app_config();
+        let account = mock_account();
+        let token_type = TokenType::Auth;
+
+        let token = gen_token(&config, &account, token_type, None).unwrap();
+        assert!(!token.is_empty(), "Generated token should not be empty");
+    }
+
+    #[test]
+    fn test_decode_token() {
+        let config = mock_app_config();
+        let account = mock_account();
+        let token_type = TokenType::Auth;
+
+        let token = gen_token(&config, &account, token_type, None).unwrap();
+        let decoded_claims = decode_token(&config.jwt_secret, &token).unwrap();
+
+        assert_eq!(decoded_claims.sub, account.id.to_string());
+        assert_eq!(decoded_claims.token_type, token_type);
+    }
+
+    #[test]
+    fn test_decode_invalid_token() {
+        let config = mock_app_config();
+        let invalid_token = "invalid.token.here";
+
+        let result = decode_token(&config.jwt_secret, invalid_token);
+        assert!(
+            result.is_err(),
+            "Decoding invalid token should return an error"
+        );
+    }
+
+    #[test]
+    fn test_get_token_from_req() {
+        let token = "Bearer some_valid_token";
+        let req = TestRequest::default()
+            .insert_header(("Authorization", token))
+            .to_http_request();
+
+        let extracted_token = get_token_from_req(&req);
+        assert_eq!(extracted_token, Some("some_valid_token".to_string()));
+    }
+
+    #[test]
+    fn test_get_token_from_req_missing_header() {
+        let req = TestRequest::default().to_http_request();
+        let extracted_token = get_token_from_req(&req);
+
+        assert_eq!(
+            extracted_token, None,
+            "Should return None if Authorization header is missing"
+        );
+    }
+
+    #[test]
+    fn test_is_token_exp() {
+        let config = mock_app_config();
+        let account = mock_account();
+        let token_type = TokenType::Auth;
+        let token = gen_token(&config, &account, token_type, None).unwrap();
+        let claims = decode_token(&config.jwt_secret, &token).unwrap();
+
+        assert!(!is_token_exp(&claims), "Token should not be expired");
+
+        // Simulate an expired token by setting exp time in the past
+        let expired_claims = TokenClaims {
+            exp: (Utc::now() - Duration::seconds(10)).timestamp() as usize,
+            ..claims
+        };
+
+        assert!(is_token_exp(&expired_claims), "Token should be expired");
+    }
+}

@@ -25,6 +25,10 @@ dev:
 #     @make stop-db
 
 test:
+	cargo test --lib
+
+# All tests include integration tests under test/ directory
+test-all:
 	cargo test -- --test-threads=1
 
 clean:

@@ -13,7 +13,7 @@ use super::{
     api::ApiResult,
 };
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum TokenType {
     Auth,
     ResetPassword,
@@ -24,8 +24,8 @@ pub enum TokenType {
 pub struct TokenClaims {
     pub sub: String,
     pub exp: usize,
-    iat: usize,
-    acc_type: String,
+    pub iat: usize,
+    pub acc_type: String,
     pub token_type: TokenType,
 }
 
