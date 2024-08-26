@@ -104,22 +104,172 @@ async fn test_delete_account() {
 }
 
 #[actix_web::test]
-async fn test_describe_account() {}
+async fn test_describe_account() {
+    let data = new_test_app_data().await;
+    let mut app = setup_test_server().await;
+
+    let login_res = login_owner(&mut app).await;
+    let token = login_res["token"].as_str().unwrap();
+    let value = format!("Bearer {token}");
+
+    let req = test::TestRequest::get()
+        .uri("/accounts/describe-account?account=test@example.com")
+        .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
+        .to_request();
+
+    let resp = test::call_service(&mut app, req).await;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+}
 
 #[actix_web::test]
-async fn test_describe_self() {}
+async fn test_describe_self() {
+    let data = new_test_app_data().await;
+    let mut app = setup_test_server().await;
+
+    let login_res = login_owner(&mut app).await;
+    let token = login_res["token"].as_str().unwrap();
+    let value = format!("Bearer {token}");
+
+    let req = test::TestRequest::get()
+        .uri("/accounts/describe-self")
+        .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
+        .to_request();
+
+    let resp = test::call_service(&mut app, req).await;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+}
 
 #[actix_web::test]
-async fn test_update_self() {}
+async fn test_update_self() {
+    let data = new_test_app_data().await;
+    let mut app = setup_test_server().await;
+
+    let login_res = login_owner(&mut app).await;
+    let token = login_res["token"].as_str().unwrap();
+    let value = format!("Bearer {token}");
+
+    let update_req = UpdateAccountReq {
+        account: "owner@example.com".into(),
+        name: Some("Updated Owner".into()),
+        password: Some("new_owner_password".into()),
+        description: None,
+        verified: None,
+        enabled: None,
+    };
+
+    let req = test::TestRequest::post()
+        .uri("/accounts/update-self")
+        .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
+        .set_json(&update_req)
+        .to_request();
+
+    let resp = test::call_service(&mut app, req).await;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+}
 
 #[actix_web::test]
-async fn test_delete_self() {}
+async fn test_delete_self() {
+    let data = new_test_app_data().await;
+    let mut app = setup_test_server().await;
+
+    let login_res = login_owner(&mut app).await;
+    let token = login_res["token"].as_str().unwrap();
+    let value = format!("Bearer {token}");
+
+    let req = test::TestRequest::post()
+        .uri("/accounts/delete-self")
+        .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
+        .to_request();
+
+    let resp = test::call_service(&mut app, req).await;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+}
 
 #[actix_web::test]
-async fn test_create_service_account() {}
+async fn test_create_service_account() {
+    let data = new_test_app_data().await;
+    let mut app = setup_test_server().await;
+
+    let login_res = login_owner(&mut app).await;
+    let token = login_res["token"].as_str().unwrap();
+    let value = format!("Bearer {token}");
+
+    let create_req = json!({
+        "account": "new_service_account@example.com",
+        "name": "Service Account",
+        "password": "password",
+    });
+
+    let req = test::TestRequest::post()
+        .uri("/accounts/create-service-account")
+        .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
+        .set_json(&create_req)
+        .to_request();
+
+    let resp = test::call_service(&mut app, req).await;
+
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+}
 
 #[actix_web::test]
-async fn test_create_user_account() {}
+async fn test_create_user_account() {
+    let data = new_test_app_data().await;
+    let mut app = setup_test_server().await;
+
+    let login_res = login_owner(&mut app).await;
+    let token = login_res["token"].as_str().unwrap();
+    let value = format!("Bearer {token}");
+
+    let create_req = json!({
+        "account": "new_user_account@example.com",
+        "name": "User Account",
+        "password": "password",
+    });
+
+    let req = test::TestRequest::post()
+        .uri("/accounts/create-user-account")
+        .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
+        .set_json(&create_req)
+        .to_request();
+
+    let resp = test::call_service(&mut app, req).await;
+
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+}
 
 #[actix_web::test]
-async fn test_get_sa_secret_key() {}
+async fn test_get_sa_secret_key() {
+    let data = new_test_app_data().await;
+    let mut app = setup_test_server().await;
+
+    let login_res = login_owner(&mut app).await;
+    let token = login_res["token"].as_str().unwrap();
+    let value = format!("Bearer {token}");
+
+    let req = test::TestRequest::get()
+        .uri("/accounts/get-sa-secret-key?account=new_service_account@example.com")
+        .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
+        .to_request();
+
+    let resp = test::call_service(&mut app, req).await;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+}
