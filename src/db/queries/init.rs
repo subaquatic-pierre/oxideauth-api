@@ -242,12 +242,12 @@ pub async fn create_defaults(
     owner_acc: &Account,
     config: &AppConfig,
 ) -> Result<(), sqlx::Error> {
-    let perms = DEFAULT_ALL_PERMISSIONS
+    let perms: Vec<Permission> = DEFAULT_ALL_PERMISSIONS
         .iter()
         .map(|el| Permission::new(el))
         .collect();
 
-    create_permissions_db(pool, perms).await?;
+    create_permissions_db(pool, &perms).await?;
 
     // create owner role
     let owner_role = Role::new(
