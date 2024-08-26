@@ -227,13 +227,13 @@ pub async fn assign_roles(
     })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RemoveRoleReq {
     pub account: String,
     pub roles: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RemoveRoleRes {
     pub account: Account,
 }
@@ -277,15 +277,15 @@ pub async fn remove_roles(
     })
 }
 
-#[derive(Debug, Deserialize)]
-struct CreatePermissionsReq {
-    permissions: Vec<String>,
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CreatePermissionsReq {
+    pub permissions: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct CreatePermissionsRes {
-    created_permissions: Vec<String>,
+pub struct CreatePermissionsRes {
+    pub created_permissions: Vec<String>,
 }
 
 #[post("/create-permissions")]
@@ -321,9 +321,9 @@ pub async fn create_permissions(
     })
 }
 
-#[derive(Debug, Serialize)]
-struct ListPermissionsRes {
-    permissions: Vec<String>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListPermissionsRes {
+    pub permissions: Vec<String>,
 }
 
 #[get("/list-permissions")]
@@ -344,9 +344,9 @@ pub async fn list_permissions(req: HttpRequest, app: Data<AppData>) -> impl Resp
     HttpResponse::Ok().json(ListPermissionsRes { permissions })
 }
 
-#[derive(Debug, Deserialize)]
-struct DeletePermissionsReq {
-    permissions: Vec<String>,
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DeletePermissionsReq {
+    pub permissions: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]

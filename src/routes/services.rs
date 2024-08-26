@@ -18,14 +18,14 @@ use crate::models::api::ApiError;
 use crate::models::service::Service;
 use crate::models::token::TokenClaims;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CreateServiceReq {
     pub name: String,
     pub endpoint: Option<String>,
     pub description: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreateServiceRes {
     pub service: Service,
 }
@@ -56,7 +56,7 @@ pub async fn create_service(
     })
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ListServicesRes {
     pub services: Vec<Service>,
 }
@@ -75,7 +75,7 @@ pub async fn list_services(req: HttpRequest, app: Data<AppData>) -> impl Respond
     HttpResponse::Ok().json(ListServicesRes { services })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateServiceReq {
     pub service: String,
     pub name: Option<String>,
@@ -83,7 +83,7 @@ pub struct UpdateServiceReq {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateServiceRes {
     pub service: Service,
 }
@@ -144,7 +144,7 @@ pub async fn update_service(
             }
         }
 
-        service.name = name.clone();
+        service.name = name.to_string();
     };
 
     if body.endpoint.is_some() {
@@ -164,12 +164,12 @@ pub async fn update_service(
     })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DescribeServiceReq {
     pub service: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DescribeServiceRes {
     pub service: Service,
 }
@@ -196,12 +196,12 @@ pub async fn describe_service(
     HttpResponse::Ok().json(DescribeServiceRes { service: service })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DeleteServiceReq {
     pub service: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DeleteServiceRes {
     pub deleted: bool,
 }
@@ -235,14 +235,14 @@ pub async fn delete_service(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidatePermissionsReq {
     pub requesting_token: String,
     pub required_permissions: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ValidatePermissionsRes {
     pub authorized: bool,
 }

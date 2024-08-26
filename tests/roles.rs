@@ -6,8 +6,9 @@ use oxideauth::db::queries::account::get_account_db;
 use oxideauth::models::account::Principal;
 use oxideauth::models::role::Role;
 use oxideauth::routes::roles::{
-    AssignRoleRes, AssignRolesReq, CreateRoleReq, CreateRoleRes, DeleteRoleReq, DeleteRoleRes,
-    DescribeRoleRes, UpdateRoleReq, UpdateRoleRes,
+    AssignRoleRes, AssignRolesReq, CreatePermissionsReq, CreatePermissionsRes, CreateRoleReq,
+    CreateRoleRes, DeletePermissionsReq, DeleteRoleReq, DeleteRoleRes, DescribeRoleRes,
+    ListPermissionsRes, RemoveRoleReq, RemoveRoleRes, UpdateRoleReq, UpdateRoleRes,
 };
 use oxideauth::utils::test_utils::{login_owner, setup_test_server};
 use serde_json::json;
@@ -252,4 +253,124 @@ async fn test_assign_roles() {
     }
 
     assert!(roles.contains(&role_id.to_string()));
+}
+
+#[actix_web::test]
+#[serial]
+async fn test_remove_roles() {
+    let data = new_test_app_data().await;
+    let mut app = setup_test_server().await;
+
+    // Login as the owner to get the authorization token
+    let login_res = login_owner(&mut app).await;
+    let token = login_res["token"].as_str().unwrap();
+    let value = format!("Bearer {token}");
+
+    // Assuming a role and account exist, assign a role first
+    let role_name = "viewer";
+    // Assign the role to an account (assuming account_id is available)
+    let account = get_account_db(&data.db, "viewer@email.com").await.unwrap();
+
+    // Simulate assigning the role to the account (you might need a separate test for this)
+    // After assigning the role, now test removing it
+    let remove_payload = RemoveRoleReq {
+        account: account.id.to_string(),
+        roles: vec![role_name.to_string()],
+    };
+
+    let req = test::TestRequest::post()
+        .uri("/roles/remove-roles")
+        .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
+        .set_json(&remove_payload)
+        .to_request();
+
+    let resp: ServiceResponse = test::call_service(&mut app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // let body: RemoveRoleRes = test::read_body_json(resp).await;
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    let mut roles = vec![];
+    for r in body["account"]["roles"].as_array().unwrap().iter() {
+        let id = r["id"].as_str().unwrap().to_string();
+        roles.push(id)
+    }
+
+    assert!(!roles.contains(&role_name.to_string()));
+}
+
+#[actix_web::test]
+#[serial]
+async fn test_create_permissions() {
+    let data = new_test_app_data().await;
+    let mut app = setup_test_server().await;
+
+    // Login as the owner to get the authorization token
+    let login_res = login_owner(&mut app).await;
+    let token = login_res["token"].as_str().unwrap();
+    let value = format!("Bearer {token}");
+
+    let create_payload = CreatePermissionsReq {
+        permissions: vec!["perm1".to_string(), "perm2".to_string()],
+    };
+
+    let req = test::TestRequest::post()
+        .uri("/roles/create-permissions")
+        .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
+        .set_json(&create_payload)
+        .to_request();
+
+    let resp: ServiceResponse = test::call_service(&mut app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: CreatePermissionsRes = test::read_body_json(resp).await;
+    assert!(body.created_permissions.contains(&"perm1".to_string()));
+    assert!(body.created_permissions.contains(&"perm2".to_string()));
+}
+
+#[actix_web::test]
+#[serial]
+async fn test_list_permissions() {
+    let data = new_test_app_data().await;
+    let mut app = setup_test_server().await;
+
+    // Login as the owner to get the authorization token
+    let login_res = login_owner(&mut app).await;
+    let token = login_res["token"].as_str().unwrap();
+    let value = format!("Bearer {token}");
+
+    let req = test::TestRequest::get()
+        .uri("/roles/list-permissions")
+        .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
+        .to_request();
+
+    let resp: ServiceResponse = test::call_service(&mut app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: ListPermissionsRes = test::read_body_json(resp).await;
+    assert!(body.permissions.len() > 0); // Check that permissions exist
+}
+
+#[actix_web::test]
+#[serial]
+async fn test_delete_permissions() {
+    let data = new_test_app_data().await;
+    let mut app = setup_test_server().await;
+
+    // Login as the owner to get the authorization token
+    let login_res = login_owner(&mut app).await;
+    let token = login_res["token"].as_str().unwrap();
+    let value = format!("Bearer {token}");
+
+    let delete_payload = DeletePermissionsReq {
+        permissions: vec!["perm1".to_string()],
+    };
+
+    let req = test::TestRequest::post()
+        .uri("/roles/delete-permissions")
+        .insert_header((AUTHORIZATION, HeaderValue::from_str(&value).unwrap()))
+        .set_json(&delete_payload)
+        .to_request();
+
+    let resp: ServiceResponse = test::call_service(&mut app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
 }

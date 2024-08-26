@@ -116,6 +116,29 @@ impl AppConfig {
             email_dry_mode: false,
         }
     }
+
+    pub fn mock_config() -> Self {
+        Self {
+            host: "127.0.0.1".to_string(),
+            port: 8080,
+            drop_tables: false,
+            client_origin: "http://localhost:3000".to_string(),
+            database_url: "postgres://user:password@localhost/test_db".to_string(),
+            jwt_secret: "supersecretkey".to_string(),
+            jwt_max_age: 3600,
+            google_oauth_client_id: "mock-client-id".to_string(),
+            google_oauth_client_secret: "mock-client-secret".to_string(),
+            google_oauth_redirect_url: "http://localhost:3000/oauth2callback".to_string(),
+            aws_region: "us-east-1".to_string(),
+            aws_ses_from: "no-reply@example.com".to_string(),
+            aws_ses_host: "email-smtp.us-east-1.amazonaws.com".to_string(),
+            aws_ses_access_key: "mock-access-key".to_string(),
+            aws_ses_secret_key: "mock-secret-key".to_string(),
+            aws_s3_access_key: "mock-s3-access-key".to_string(),
+            aws_s3_secret_key: "mock-s3-secret-key".to_string(),
+            email_dry_mode: true,
+        }
+    }
 }
 
 pub struct AppData {

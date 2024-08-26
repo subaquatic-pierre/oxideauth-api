@@ -94,7 +94,12 @@ pub async fn create_service_db(pool: &PgPool, service: &Service) -> Result<Servi
     .fetch_one(pool)
     .await?;
 
-    let service = Service::new(&r.name, r.endpoint, r.description);
+    let service = Service {
+        id: r.id,
+        name: r.name,
+        endpoint: r.endpoint,
+        description: r.description,
+    };
 
     Ok(service)
 }

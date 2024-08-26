@@ -25,7 +25,7 @@ dev:
 #     @make stop-db
 
 test:
-	cargo test
+	cargo test -- --test-threads=1
 
 clean:
 	cargo clean
