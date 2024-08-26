@@ -56,3 +56,39 @@ impl GoogleOAuthState {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::AppConfig;
+
+    fn default_config() -> AppConfig {
+        AppConfig::mock_config()
+    }
+
+    #[test]
+    fn test_from_state_with_valid_data() {
+        let config = default_config();
+        let state = Some("redirect_url=http://example.com&csrf_token=abc123&dash_url=http://dashboard.com&project_name=TestProject".to_string());
+
+        let google_oauth_state = GoogleOAuthState::from_state(state, &config);
+
+        assert_eq!(google_oauth_state.redirect_url, "http://example.com");
+        assert_eq!(google_oauth_state.csrf_token, "abc123");
+        assert_eq!(google_oauth_state.dash_url, "http://dashboard.com");
+        assert_eq!(google_oauth_state.project_name, "TestProject");
+    }
+
+    #[test]
+    fn test_from_state_with_empty_state() {
+        let config = default_config();
+        let state = None;
+
+        let google_oauth_state = GoogleOAuthState::from_state(state, &config);
+
+        assert_eq!(google_oauth_state.redirect_url, "");
+        assert_eq!(google_oauth_state.csrf_token, "");
+        assert_eq!(google_oauth_state.dash_url, "");
+        assert_eq!(google_oauth_state.project_name, "");
+    }
+}
