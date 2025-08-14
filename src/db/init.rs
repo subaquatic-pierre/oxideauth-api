@@ -16,15 +16,15 @@ pub async fn init_db(
     drop: bool,
     config: &AppConfig,
 ) -> Result<(), sqlx::Error> {
-    if drop {
-        drop_tables(pool).await?;
-    }
+    // if drop {
+    //     drop_tables(pool).await?;
+    // }
 
-    create_tables(pool).await?;
+    // create_tables(pool).await?;
 
-    if drop {
-        create_defaults(pool, owner_acc, config).await?;
-    }
+    // if drop {
+    //     create_defaults(pool, owner_acc, config).await?;
+    // }
 
     Ok(())
 }

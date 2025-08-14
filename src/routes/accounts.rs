@@ -82,16 +82,15 @@ pub async fn update_account(
         Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
-    // NOTE: update user password currently not allowed
     // update account with new values
-    // if let Some(p) = &body.password {
-    //     let hash = match hash_password(&p) {
-    //         Ok(p) => p,
-    //         Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
-    //     };
+    if let Some(p) = &body.password {
+        let hash = match hash_password(&p) {
+            Ok(p) => p,
+            Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
+        };
 
-    //     account.password_hash = hash
-    // }
+        account.password_hash = hash
+    }
 
     // NOTE: update user email currently not allowed
     // if let Some(email) = &body.email {

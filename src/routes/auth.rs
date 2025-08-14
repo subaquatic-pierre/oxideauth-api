@@ -150,7 +150,7 @@ pub struct ConfirmAccountReq {
     pub redirect_url: String,
 
     // Next vars are used in welcome email
-    pub dashboard_url: String,
+    pub dashboard_url: Option<String>,
     pub project_name: Option<String>,
 }
 
