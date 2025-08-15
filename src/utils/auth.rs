@@ -8,9 +8,9 @@ use dotenv::dotenv;
 use crate::app::AppConfig;
 use crate::models::api::{ApiError, ApiResult};
 use crate::routes::accounts::register_accounts_collection;
-use crate::routes::auth::{register_auth_collection, RegisterReq};
-use crate::routes::roles::register_roles_collection;
-use crate::routes::services::register_services_collection;
+// use crate::routes::auth::{register_auth_collection, RegisterReq};
+// use crate::routes::roles::register_roles_collection;
+// use crate::routes::services::register_services_collection;
 
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
@@ -22,6 +22,18 @@ use crate::models::{
 };
 
 use super::crypt::hash_password;
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegisterReq {
+    pub email: String,
+    pub password: Option<String>,
+    pub name: Option<String>,
+    pub redirect_host: Option<String>,
+    pub confirm_email_redirect_endpoint: Option<String>,
+    pub dashboard_endpoint: Option<String>,
+    pub project_name: Option<String>,
+}
 
 pub fn build_owner_account() -> Account {
     dotenv().ok();

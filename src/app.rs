@@ -2,16 +2,21 @@ use std::{env, sync::Arc};
 
 use actix_web::web::{scope, Data};
 use actix_web::Scope;
+use diesel::r2d2::{ConnectionManager, Pool};
 use dotenv::dotenv;
-use sqlx::{PgPool, Pool};
 
-use crate::routes::utils::register_utils_services;
-use crate::{db::init::establish_connection, models::guard::AuthGuard};
+// use sqlx::{PgPool, Pool};
+
+use crate::{
+    db::init::{establish_connection, PgPool},
+    models::guard::AuthGuard,
+};
 
 use crate::routes::accounts::register_accounts_collection;
-use crate::routes::auth::register_auth_collection;
-use crate::routes::roles::register_roles_collection;
-use crate::routes::services::register_services_collection;
+// use crate::routes::utils::register_utils_services;
+// use crate::routes::auth::register_auth_collection;
+// use crate::routes::roles::register_roles_collection;
+// use crate::routes::services::register_services_collection;
 
 #[derive(Debug)]
 pub struct AppConfig {
@@ -180,9 +185,9 @@ pub async fn new_test_app_data() -> Data<AppData> {
 
 pub fn register_all_services() -> Scope {
     scope("")
-        .service(register_auth_collection())
-        .service(register_roles_collection())
-        .service(register_services_collection())
+        // .service(register_auth_collection())
+        // .service(register_roles_collection())
+        // .service(register_services_collection())
+        // .service(register_utils_services())
         .service(register_accounts_collection())
-        .service(register_utils_services())
 }

@@ -19,7 +19,7 @@ env_logger = "0.10.0"
 log = "0.4.18"
 actix-cors = "0.7.0"
 reqwest = {version="0.12.5", features=["json"]}
-chrono = {version="0.4.38", features = ["serde"]}
+chrono = {version="0.4.38", features = ["serde","clock"]}
 lettre = "0.11.7"
 lettre_email = "0.9.4"
 tera = "1.20.0"
@@ -36,7 +36,9 @@ sqlx = { version = "0.8.0", features = ["postgres","sqlite","uuid", "runtime-tok
 
 diesel = { version = "2", features = ["postgres", "r2d2", "chrono", "uuid", "serde_json"] }
 diesel_migrations = "2"
+diesel_async = { version = "0.5", features = ["postgres", "tokio"] }
 r2d2 = "0.8"
+anyhow = "1"
 
 [dev-dependencies]
 mockall = "0.13.0"

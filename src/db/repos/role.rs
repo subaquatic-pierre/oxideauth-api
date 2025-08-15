@@ -1,14 +1,15 @@
 use log::{debug, error};
-use sqlx::{Error, PgPool, Postgres, Result};
+
+use anyhow::Result;
 use uuid::Uuid;
 
+use super::account::get_account_db;
+use crate::db::init::PgPool;
 use crate::models::{
     account::Account,
     api::{ApiError, ApiResult},
     role::{Permission, Role, RolePermissions},
 };
-
-use super::account::get_account_db;
 
 pub async fn create_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
     debug!("Creating role: {role:?}");
