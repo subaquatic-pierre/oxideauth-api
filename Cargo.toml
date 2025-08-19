@@ -28,17 +28,23 @@ aws-sdk-s3 = {version="1.42.0",features = ["behavior-version-latest"]}
 async-trait = "0.1.81"
 actix-http = "3.9.0"
 mockito = "1.5.0"
+anyhow = "1"
 
 serde = "1.0.203"
 serde_json = "1.0.119"
 
-sqlx = { version = "0.8.0", features = ["postgres","sqlite","uuid", "runtime-tokio", "tls-native-tls", "macros"] }
+sqlx = { version = "0.8.6", features = [
+    "runtime-tokio-rustls", # Tokio + rustls TLS
+    "postgres",             # Postgres driver
+    "uuid",                 # UUID (for id columns)
+    "chrono",               # Date/Time support
+    "migrate"               # Enable sqlx::migrate!()
+] }
 
-diesel = { version = "2", features = ["postgres", "r2d2", "chrono", "uuid", "serde_json"] }
-diesel_migrations = "2"
-diesel_async = { version = "0.5", features = ["postgres", "tokio"] }
-r2d2 = "0.8"
-anyhow = "1"
+# diesel = { version = "2", features = ["postgres", "r2d2", "chrono", "uuid", "serde_json"] }
+# diesel_migrations = "2"
+# diesel-async = { version = "0.6.1", features = ["postgres", "tokio", "bb8"] }
+# r2d2 = "0.8"
 
 [dev-dependencies]
 mockall = "0.13.0"

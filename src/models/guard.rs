@@ -1,16 +1,13 @@
 use std::sync::Arc;
 
 use actix_web::{HttpRequest, HttpResponse, Responder};
-use diesel::r2d2::{ConnectionManager, Pool};
 use log::{debug, error, info};
+use sqlx::{Error, PgPool, Pool};
 
 use crate::{
-    db::{
-        init::PgPool,
-        repos::{
-            account::get_account_db,
-            role::{get_role_db, get_role_permissions_db},
-        },
+    db::queries::{
+        account::get_account_db,
+        role::{get_role_db, get_role_permissions_db},
     },
     models::{api::ApiError, token::TokenType},
     utils::token::{get_token_from_req, is_token_exp},
@@ -72,6 +69,7 @@ impl AuthGuard {
         let account = match get_account_db(&self.db, &claims.sub).await {
             Ok(acc) => acc,
             Err(e) => match e {
+                Error::RowNotFound => return Err(ApiError::new(&format!("User not found"), 404)),
                 _ => return Err(ApiError::new(&e.to_string(), 400)),
             },
         };

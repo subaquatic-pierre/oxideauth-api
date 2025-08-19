@@ -1,100 +1,83 @@
-use anyhow::Context;
-use diesel::connection::SimpleConnection;
-use diesel::pg::PgConnection;
-use diesel::r2d2::{ConnectionManager, Pool};
-use diesel_migrations::{embed_migrations, MigrationHarness};
+// src/db/init.rs
+use anyhow::{Context, Result};
+use sqlx::postgres::PgPoolOptions;
+use sqlx::{Pool, Postgres};
 
 use crate::{app::AppConfig, models::account::Account};
 
-use diesel_async::{pooled_connection::bb8::Pool, AsyncPgConnection};
-
-pub type PgPool = Pool<AsyncPgConnection>;
-
-// use super::queries::init::{create_defaults, create_tables, drop_tables};
-
-// pub async fn establish_connection(database_url: &str) -> PgPool {
-//     PgPool::connect(database_url)
-//         .await
-//         .expect("Failed to create pool")
-// }
-
-// pub async fn init_db(
-//     pool: &PgPool,
-//     owner_acc: &Account,
-//     drop: bool,
-//     config: &AppConfig,
-// ) -> Result<(), sqlx::Error> {
-//     // if drop {
-//     //     drop_tables(pool).await?;
-//     // }
-
-//     // create_tables(pool).await?;
-
-//     // if drop {
-//     //     create_defaults(pool, owner_acc, config).await?;
-//     // }
-
-//     Ok(())
-// }
+// Type alias to keep call sites clean
+pub type PgPool = Pool<Postgres>;
 
 // ---- Embedded migrations (expects a `migrations/` folder at project root) ----
-pub const MIGRATIONS: diesel_migrations::EmbeddedMigrations = embed_migrations!("migrations");
+// Generate with: `sqlx migrate add -r <name>` then `sqlx migrate run`
+static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!(); // embeds migrations at compile time
 
-// Keep the same async signature as before for minimal churn.
 pub async fn establish_connection(database_url: &str) -> PgPool {
-    Pool::builder()
-        .build(diesel_async::pooled_connection::AsyncDieselConnectionManager::new(database_url))
+    PgPoolOptions::new()
+        .max_connections(10)
+        .connect(database_url)
         .await
         .expect("Failed to create pool")
 }
 
-// Initialize DB: optionally drop schema, run migrations, then (optionally) seed defaults.
+/// Initialize DB:
+/// - optionally drop schema (if `drop == true`)
+/// - run migrations
+/// - optionally seed defaults
 pub async fn init_db(
     pool: &PgPool,
     owner_acc: &Account,
     drop: bool,
     _config: &AppConfig,
-) -> anyhow::Result<()> {
-    // Diesel is sync; grab a connection from the pool
-    let mut conn = pool.get().context("db pool get() failed")?;
-
-    // If you really want a clean slate, reset the public schema.
-    // (Safer in dev/test. For production, prefer dedicated revert migrations.)
+) -> Result<()> {
     if drop {
-        conn.batch_execute(
-            r#"
-            DROP SCHEMA IF EXISTS public CASCADE;
-            CREATE SCHEMA public;
-            GRANT ALL ON SCHEMA public TO public;
-            "#,
-        )
-        .context("failed to drop & recreate public schema")?;
+        // Nuke and recreate the default schema (Postgres).
+        // If you’re using multiple schemas or extensions, adjust accordingly.
+        sqlx::query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;")
+            .execute(pool)
+            .await
+            .context("dropping & recreating public schema failed")?;
     }
 
     // Run all pending migrations
-    // conn.run_pending_migrations(MIGRATIONS)
-    //     .context("running diesel migrations failed")?;
+    MIGRATOR
+        .run(pool)
+        .await
+        .context("running sqlx migrations failed")?;
 
     // ---- Seed defaults (optional) ----
-    // seed_defaults(&mut conn, owner_acc, _config).context("seeding defaults failed")?;
+    // seed_defaults(pool, owner_acc, _config).await.context("seeding defaults failed")?;
 
     Ok(())
 }
 
 /*
-// Example seeding function if/when you’re ready to port it:
-use diesel::prelude::*;
-use crate::schema::roles::dsl::*;
-use crate::models::role::{NewRole, Role};
+// Example seeding function (SQLx)
+use uuid::Uuid;
 
-fn seed_defaults(conn: &mut PgConnection, owner: &Account, _config: &AppConfig) -> anyhow::Result<()> {
+async fn seed_defaults(pool: &PgPool, owner: &Account, _config: &AppConfig) -> Result<()> {
     // Example: ensure an "Owner" role exists
-    let exists: bool = diesel::select(diesel::dsl::exists(roles.filter(name.eq("Owner"))))
-        .get_result(conn)?;
-    if !exists {
-        diesel::insert_into(roles)
-            .values(&NewRole { name: "Owner", namespace: None, description: Some("Project owner") })
-            .execute(conn)?;
+    let exists: (bool,) = sqlx::query_as(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM roles WHERE name = 'Owner'
+        )
+        "#,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !exists.0 {
+        let _inserted: (Uuid,) = sqlx::query_as(
+            r#"
+            INSERT INTO roles (id, name, namespace, description)
+            VALUES ($1, 'Owner', NULL, 'Project owner')
+            RETURNING id
+            "#,
+        )
+        .bind(Uuid::new_v4())
+        .fetch_one(pool)
+        .await?;
     }
 
     // Attach role to owner, insert base permissions, etc...

@@ -5,13 +5,6 @@ use uuid::Uuid;
 
 use super::role::Role;
 
-use diesel::prelude::*;
-
-use crate::{
-    db::models::account::DbAccount,
-    schema::{account_roles, accounts, roles},
-};
-
 // ------------ DB models (table-shaped) ------------
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -156,25 +149,25 @@ impl Default for Account {
     }
 }
 
-impl From<DbAccount> for Account {
-    fn from(db: DbAccount) -> Self {
-        Account {
-            id: db.id,
-            name: db.name,
-            email: db.email,
-            // these are domain-only; set sensible defaults or hydrate later
-            password_hash: String::new(),
-            acc_type: AccountType::User,
-            provider: AccountProvider::Local,
-            provider_id: None,
-            roles: vec![], // hydrate from membership repo if needed
-            description: None,
-            image_url: None,
-            verified: false,
-            enabled: true,
-        }
-    }
-}
+// impl From<DbAccount> for Account {
+//     fn from(db: DbAccount) -> Self {
+//         Account {
+//             id: db.id,
+//             name: db.name,
+//             email: db.email,
+//             // these are domain-only; set sensible defaults or hydrate later
+//             password_hash: String::new(),
+//             acc_type: AccountType::User,
+//             provider: AccountProvider::Local,
+//             provider_id: None,
+//             roles: vec![], // hydrate from membership repo if needed
+//             description: None,
+//             image_url: None,
+//             verified: false,
+//             enabled: true,
+//         }
+//     }
+// }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "camelCase")]

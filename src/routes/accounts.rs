@@ -10,13 +10,10 @@ use sqlx::Error;
 use uuid::Uuid;
 
 use crate::app::AppData;
-use crate::db::repos::{
-    account::{
-        create_account_db, delete_account_db, get_account_db, get_all_accounts_db,
-        update_account_db,
-    },
-    role::{bind_role_to_account_db, create_role_db, get_role_db},
+use crate::db::queries::account::{
+    create_account_db, delete_account_db, get_account_db, get_all_accounts_db, update_account_db,
 };
+use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
 use crate::models::account::{Account, AccountType};
 use crate::models::api::ApiError;
 use crate::models::role::Role;
@@ -85,7 +82,7 @@ pub async fn update_account(
         Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
     };
 
-    // update account with new values
+    // update password
     if let Some(p) = &body.password {
         let hash = match hash_password(&p) {
             Ok(p) => p,
@@ -232,7 +229,7 @@ pub async fn describe_self(req: HttpRequest, app: Data<AppData>) -> impl Respond
 pub struct UpdateSelfReq {
     pub name: Option<String>,
     // pub email: Option<String>,
-    // pub password: Option<String>,
+    pub password: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -257,14 +254,14 @@ pub async fn update_self(
     };
 
     // update account with new values
-    // if let Some(p) = &body.password {
-    //     let hash = match hash_password(&p) {
-    //         Ok(p) => p,
-    //         Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
-    //     };
+    if let Some(p) = &body.password {
+        let hash = match hash_password(&p) {
+            Ok(p) => p,
+            Err(e) => return ApiError::new(&e.to_string(), 400).respond_to(&req),
+        };
 
-    //     account.password_hash = hash
-    // }
+        account.password_hash = hash
+    }
 
     // NOTE: update user email currently not allowed
     // if let Some(email) = &body.email {
@@ -483,11 +480,11 @@ pub async fn create_user_account(
 
 pub fn register_accounts_collection() -> Scope {
     scope("/accounts")
-        // .service(describe_account)
-        // .service(describe_self)
-        // .service(delete_self)
-        // .service(update_self)
-        // .service(update_account)
+        .service(describe_account)
+        .service(describe_self)
+        .service(delete_self)
+        .service(update_self)
+        .service(update_account)
         .service(update_account)
         .service(delete_account)
         .service(list_accounts)

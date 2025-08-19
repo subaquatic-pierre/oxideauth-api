@@ -2,10 +2,9 @@ use std::{env, sync::Arc};
 
 use actix_web::web::{scope, Data};
 use actix_web::Scope;
-use diesel::r2d2::{ConnectionManager, Pool};
 use dotenv::dotenv;
 
-// use sqlx::{PgPool, Pool};
+use sqlx::Pool;
 
 use crate::{
     db::init::{establish_connection, PgPool},
