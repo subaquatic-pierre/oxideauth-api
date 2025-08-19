@@ -10,7 +10,6 @@ mod cli;
 mod db;
 mod models;
 mod routes;
-pub mod schema;
 mod services;
 mod utils;
 
