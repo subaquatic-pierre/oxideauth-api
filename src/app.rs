@@ -7,7 +7,7 @@ use dotenv::dotenv;
 use sqlx::Pool;
 
 use crate::{
-    db::init::{establish_connection, PgPool},
+    db::init::{establish_connection, DbPool},
     models::guard::AuthGuard,
 };
 
@@ -147,13 +147,13 @@ impl AppConfig {
 
 pub struct AppData {
     pub config: AppConfig,
-    pub db: Arc<PgPool>,
+    pub db: Arc<DbPool>,
     pub guard: AuthGuard,
 }
 
 pub async fn new_app_data() -> Data<AppData> {
     let config = AppConfig::from_env();
-    let db: PgPool = establish_connection(&config.database_url).await;
+    let db: DbPool = establish_connection(&config.database_url).await;
     let arc_db = Arc::new(db);
     let guard = AuthGuard::new(&config.jwt_secret, arc_db.clone());
 
@@ -171,7 +171,7 @@ pub async fn new_test_app_data() -> Data<AppData> {
     config.email_dry_mode = true;
     config.database_url = "postgres://test_user:password@localhost/test_db".to_string();
 
-    let db: PgPool = establish_connection(&config.database_url).await;
+    let db: DbPool = establish_connection(&config.database_url).await;
     let arc_db = Arc::new(db);
     let guard = AuthGuard::new(&config.jwt_secret, arc_db.clone());
 

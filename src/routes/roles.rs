@@ -20,14 +20,14 @@ use crate::models::token::TokenClaims;
 use crate::utils::token::get_token_from_req;
 use log::{debug, error, info};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CreateRoleReq {
     pub name: String,
     pub description: Option<String>,
     pub permissions: Option<Vec<String>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreateRoleRes {
     pub role: Role,
 }
@@ -55,14 +55,14 @@ pub async fn create_role(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateRoleReq {
     pub role: String,
     pub name: Option<String>,
     pub description: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateRoleRes {
     pub role: Role,
 }
@@ -99,11 +99,11 @@ pub async fn update_role(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DescribeRoleReq {
     pub role: String,
 }
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DescribeRoleRes {
     pub role: Role,
 }
@@ -127,7 +127,7 @@ pub async fn describe_role(
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ListRoleRes {
     pub roles: Vec<Role>,
 }
@@ -144,12 +144,12 @@ pub async fn list_roles(req: HttpRequest, app: Data<AppData>) -> impl Responder 
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DeleteRoleReq {
     pub role: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DeleteRoleRes {
     pub deleted_role: String,
 }
@@ -177,13 +177,13 @@ pub async fn delete_role(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct AssignRolesReq {
     pub account: String,
     pub roles: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AssignRoleRes {
     pub account: Account,
 }
@@ -226,13 +226,13 @@ pub async fn assign_roles(
     })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RemoveRoleReq {
     pub account: String,
     pub roles: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RemoveRoleRes {
     pub account: Account,
 }
@@ -276,15 +276,15 @@ pub async fn remove_roles(
     })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CreatePermissionsReq {
-    permissions: Vec<String>,
+    pub permissions: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePermissionsRes {
-    created_permissions: Vec<String>,
+    pub created_permissions: Vec<String>,
 }
 
 #[post("/create-permissions")]
@@ -320,9 +320,9 @@ pub async fn create_permissions(
     })
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ListPermissionsRes {
-    permissions: Vec<String>,
+    pub permissions: Vec<String>,
 }
 
 #[get("/list-permissions")]
@@ -343,15 +343,15 @@ pub async fn list_permissions(req: HttpRequest, app: Data<AppData>) -> impl Resp
     HttpResponse::Ok().json(ListPermissionsRes { permissions })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DeletePermissionsReq {
-    permissions: Vec<String>,
+    pub permissions: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeletePermissionsRes {
-    deleted_permissions: Vec<String>,
+    pub deleted_permissions: Vec<String>,
 }
 
 #[post("/delete-permissions")]
@@ -381,13 +381,13 @@ pub async fn delete_permissions(
 
 #[derive(Debug, Deserialize)]
 pub struct AssignPermissionsReq {
-    role: String,
-    permissions: Vec<String>,
+    pub role: String,
+    pub permissions: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct AssignPermissionsRes {
-    role: Role,
+    pub role: Role,
 }
 
 #[post("/assign-permissions")]
@@ -430,13 +430,13 @@ pub async fn assign_permissions(
 
 #[derive(Debug, Deserialize)]
 pub struct RemovePermissionsReq {
-    role: String,
-    permissions: Vec<String>,
+    pub role: String,
+    pub permissions: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct RemovePermissionsRes {
-    role: Role,
+    pub role: Role,
 }
 
 #[post("/remove-permissions")]

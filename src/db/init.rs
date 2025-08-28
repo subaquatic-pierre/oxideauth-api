@@ -5,14 +5,14 @@ use sqlx::{Pool, Postgres};
 
 use crate::{app::AppConfig, models::account::Account};
 
-// Type alias to keep call sites clean
-pub type PgPool = Pool<Postgres>;
+// Type alias for DB
+pub type DbPool = Pool<Postgres>;
 
 // ---- Embedded migrations (expects a `migrations/` folder at project root) ----
 // Generate with: `sqlx migrate add -r <name>` then `sqlx migrate run`
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!(); // embeds migrations at compile time
 
-pub async fn establish_connection(database_url: &str) -> PgPool {
+pub async fn establish_connection(database_url: &str) -> DbPool {
     PgPoolOptions::new()
         .max_connections(10)
         .connect(database_url)
@@ -25,7 +25,7 @@ pub async fn establish_connection(database_url: &str) -> PgPool {
 /// - run migrations
 /// - optionally seed defaults
 pub async fn init_db(
-    pool: &PgPool,
+    pool: &DbPool,
     owner_acc: &Account,
     drop: bool,
     _config: &AppConfig,
@@ -55,7 +55,7 @@ pub async fn init_db(
 // Example seeding function (SQLx)
 use uuid::Uuid;
 
-async fn seed_defaults(pool: &PgPool, owner: &Account, _config: &AppConfig) -> Result<()> {
+async fn seed_defaults(pool: &DbPool, owner: &Account, _config: &AppConfig) -> Result<()> {
     // Example: ensure an "Owner" role exists
     let exists: (bool,) = sqlx::query_as(
         r#"

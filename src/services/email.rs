@@ -73,7 +73,7 @@ impl EmailService {
             };
 
             let mut tera = Tera::default();
-            tera.add_raw_template(template_name, &content);
+            let _ = tera.add_raw_template(template_name, &content);
 
             let body = match tera.render(template_name, &context) {
                 Ok(body) => body,

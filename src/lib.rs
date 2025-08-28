@@ -1,3 +1,4 @@
+#![deny(unused_must_use)]
 use std::{env, io};
 
 use actix_cors::Cors;

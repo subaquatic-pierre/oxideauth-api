@@ -41,7 +41,7 @@ impl StorageService for LocalStorageService {
         let path = Path::new(&path);
         let mut file = File::open(path)?;
         let mut contents = String::new();
-        file.read_to_string(&mut contents);
+        let _ = file.read_to_string(&mut contents);
         Ok(contents)
     }
 }
