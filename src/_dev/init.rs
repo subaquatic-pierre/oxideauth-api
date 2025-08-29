@@ -21,13 +21,14 @@ const SQL_RECREATE_DB_FILE_NAME: &str = "00-recreate-db.sql";
 
 pub async fn init_dev(db_pool: DbPool) {
     static INIT: OnceCell<()> = OnceCell::const_new();
+
     INIT.get_or_init(|| async {
         info!("{:<12} - init_dev()", "FOR-DEV-ONLY");
     })
     .await;
 }
 
-pub async fn init_test(db_pool: DbPool) -> DataStore {
+pub async fn init_test<'a>(db_pool: DbPool) -> &'a DataStore {
     static INIT: OnceCell<DataStore> = OnceCell::const_new();
 
     let ds = INIT
@@ -37,5 +38,5 @@ pub async fn init_test(db_pool: DbPool) -> DataStore {
         })
         .await;
 
-    ds.clone()
+    ds
 }

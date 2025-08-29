@@ -10,7 +10,7 @@ pub type DbPool = Pool<Postgres>;
 
 // ---- Embedded migrations (expects a `migrations/` folder at project root) ----
 // Generate with: `sqlx migrate add -r <name>` then `sqlx migrate run`
-static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!(); // embeds migrations at compile time
+// static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!(); // embeds migrations at compile time
 
 pub async fn new_db_pool(database_url: &str, max_connections: u32) -> DbPool {
     PgPoolOptions::new()

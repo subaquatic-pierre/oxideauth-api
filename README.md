@@ -69,3 +69,74 @@ Rust - Actix Web authorization server
 - unit tests
 - utils
 - models
+
+### Database & Migration Workflow
+
+This project uses sqlx-cli with Cargo aliases for managing development, test, and production databases. All configuration is defined in `.cargo/config.toml`.
+
+1. Setup
+
+---
+
+- Copy the example config into place:
+  cp .cargo/config.example.toml .cargo/config.toml
+
+- Fill in the empty values with your real database URLs, AWS credentials, and secrets.
+
+- IMPORTANT: `.cargo/config.toml` is gitignored — never commit secrets to the repository.
+
+2. Migration directories
+
+---
+
+Each environment has its own migration history to prevent conflicts:
+
+    sql/migrations/dev/
+    sql/migrations/test/
+    sql/migrations/prod/
+
+- Development and Test: safe to reset or revert.
+- Production: only run forward migrations. Reset or revert here risks data loss.
+
+3. Aliases
+
+---
+
+The following Cargo aliases are provided in `.cargo/config.toml`:
+
+Development
+cargo db-dev-add create_users # create new migration in dev/
+cargo db-dev-run # run pending migrations
+cargo db-dev-info # show applied/pending migrations
+cargo db-dev-revert # revert the last migration
+cargo db-dev-reset # drop & recreate db_dev
+
+Test
+cargo db-test-add init_schema
+cargo db-test-run
+cargo db-test-info
+cargo db-test-revert
+cargo db-test-reset
+
+Production
+cargo db-prod-add add_index_to_accounts -r # reversible template
+cargo db-prod-run
+cargo db-prod-info
+cargo db-prod-revert # USE ONLY IN EMERGENCIES
+
+4. Promotion workflow
+
+---
+
+- Create and test new migrations in dev/.
+- Promote them to test/ when stable.
+- Finally, copy to prod/ before deployment.
+- Ensure filenames are identical across environments so migration checksums remain consistent.
+
+5. Notes
+
+---
+
+- The [env] section in `.cargo/config.toml` provides variables to your Rust application (`cargo run`, `cargo test`, etc.), but sqlx-cli ignores them.
+- That is why aliases explicitly include the `--database-url`.
+- Keep your actual secrets local; only `config.example.toml` is shared.

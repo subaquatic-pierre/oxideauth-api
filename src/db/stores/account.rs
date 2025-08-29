@@ -17,7 +17,6 @@ struct AccountUpdate {
     name: Option<String>,
 }
 
-#[derive(Clone)]
 pub struct AccountStore {
     db: Arc<Dbx>,
 }

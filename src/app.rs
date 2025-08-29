@@ -44,7 +44,7 @@ pub async fn new_app_data() -> Data<AppData> {
 pub async fn new_test_app_data() -> Data<AppData> {
     let mut config = Config::from_env();
 
-    config.drop_tables = true;
+    config.drop_schema = true;
     config.email_dry_mode = true;
     config.database_url = "postgres://test_user:password@localhost/test_db".to_string();
 

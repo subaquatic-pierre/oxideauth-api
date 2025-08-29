@@ -4,4 +4,4 @@ server.pid
 
 .sqlx
 test-results
-.cargo
+.cargo/config.toml

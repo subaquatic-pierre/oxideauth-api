@@ -4,7 +4,6 @@ use sqlx::PgPool;
 
 use crate::db::{dbx::Dbx, error::Result, stores::account::AccountStore, DbPool};
 
-#[derive(Clone)]
 pub struct DataStore {
     dbx: Arc<Dbx>,
 

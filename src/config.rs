@@ -7,7 +7,7 @@ pub const PROJECT_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 pub struct Config {
     pub host: String,
     pub port: usize,
-    pub drop_tables: bool,
+    pub drop_schema: bool,
 
     pub client_origin: String,
     pub database_url: String,
@@ -76,12 +76,12 @@ impl Config {
             env::var("AWS_REGION").expect("AWS_REGION credentials must be set in .env");
 
         let mut s_drop_tables =
-            env::var("DROP_TABLES").expect("DROP_TABLES credentials must be set in .env");
+            env::var("DROP_SCHEMA").expect("DROP_SCHEMA credentials must be set in .env");
 
-        let mut drop_tables = false;
+        let mut drop_schema = false;
 
         if s_drop_tables == "true".to_string() {
-            drop_tables = true;
+            drop_schema = true;
         }
 
         dotenv().ok();
@@ -102,7 +102,7 @@ impl Config {
             aws_region,
             aws_s3_access_key,
             aws_s3_secret_key,
-            drop_tables,
+            drop_schema,
             email_dry_mode: false,
         }
     }
@@ -111,7 +111,7 @@ impl Config {
         Self {
             host: "127.0.0.1".to_string(),
             port: 8080,
-            drop_tables: false,
+            drop_schema: false,
             client_origin: "http://localhost:3000".to_string(),
             database_url: "postgres://user:password@localhost/test_db".to_string(),
             jwt_secret: "supersecretkey".to_string(),
