@@ -5,25 +5,33 @@ use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{http::header, web, App, HttpServer, Scope};
 use db::init::init_db;
-
+use tracing::info;
+use tracing_subscriber::EnvFilter;
+mod _dev;
 mod app;
 mod cli;
+mod config;
 mod db;
 mod models;
 mod routes;
 mod services;
 mod utils;
 
-use log::info;
 use utils::auth::build_owner_account;
 
 use app::{new_app_data, register_all_services};
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
+    tracing_subscriber::fmt()
+        .without_time() // For early local development.
+        .with_target(false)
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+
     let app_data = new_app_data().await;
 
-    env_logger::init();
+    // env_logger::init();
 
     let app_host = format!("{:}:{:}", app_data.config.host, app_data.config.port);
     info!("Server listening at {app_host}...",);
@@ -32,14 +40,9 @@ async fn main() -> io::Result<()> {
 
     let owner_acc = build_owner_account();
 
-    init_db(
-        &app_data.db,
-        &owner_acc,
-        app_data.config.drop_tables,
-        &app_data.config,
-    )
-    .await
-    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+    init_db(&app_data.db, &owner_acc, &app_data.config)
+        .await
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     let server = HttpServer::new(move || {
         // let cors = Cors::default()

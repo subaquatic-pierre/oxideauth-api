@@ -25,15 +25,10 @@ pub async fn setup_test_server(
 
     let owner_acc = build_owner_account();
 
-    init_db(
-        &app_data.db,
-        &owner_acc,
-        app_data.config.drop_tables,
-        &app_data.config,
-    )
-    .await
-    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-    .expect("Unable to initialize test database");
+    init_db(&app_data.db, &owner_acc, &app_data.config)
+        .await
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        .expect("Unable to initialize test database");
 
     // Initialize the app with routes and services
     let mut app = test::init_service(

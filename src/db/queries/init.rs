@@ -3,7 +3,7 @@ use std::iter::Map;
 use sqlx::PgPool;
 
 use crate::{
-    app::AppConfig,
+    config::Config,
     models::{
         account::{Account, AccountProvider, AccountType},
         role::{Permission, Role},
@@ -21,26 +21,26 @@ use super::{
 pub async fn drop_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
 
-    sqlx::query!("DROP TABLE IF EXISTS role_bindings;")
-        .execute(&mut *tx)
-        .await?;
-    sqlx::query!("DROP TABLE IF EXISTS permission_bindings;")
-        .execute(&mut *tx)
-        .await?;
-    sqlx::query!("DROP TABLE IF EXISTS roles;")
-        .execute(&mut *tx)
-        .await?;
-    sqlx::query!("DROP TABLE IF EXISTS permissions;")
-        .execute(&mut *tx)
-        .await?;
-    sqlx::query!("DROP TABLE IF EXISTS accounts;")
-        .execute(&mut *tx)
-        .await?;
-    sqlx::query!("DROP TABLE IF EXISTS services;")
-        .execute(&mut *tx)
-        .await?;
+    // sqlx::query!("DROP TABLE IF EXISTS role_bindings;")
+    //     .execute(&mut *tx)
+    //     .await?;
+    // sqlx::query!("DROP TABLE IF EXISTS permission_bindings;")
+    //     .execute(&mut *tx)
+    //     .await?;
+    // sqlx::query!("DROP TABLE IF EXISTS roles;")
+    //     .execute(&mut *tx)
+    //     .await?;
+    // sqlx::query!("DROP TABLE IF EXISTS permissions;")
+    //     .execute(&mut *tx)
+    //     .await?;
+    // sqlx::query!("DROP TABLE IF EXISTS accounts;")
+    //     .execute(&mut *tx)
+    //     .await?;
+    // sqlx::query!("DROP TABLE IF EXISTS services;")
+    //     .execute(&mut *tx)
+    //     .await?;
 
-    tx.commit().await?;
+    // tx.commit().await?;
     Ok(())
 }
 
@@ -240,7 +240,7 @@ const DEFAULT_SA_PERMISSIONS: &'static [&str] = &[
 pub async fn create_defaults(
     pool: &PgPool,
     owner_acc: &Account,
-    config: &AppConfig,
+    config: &Config,
 ) -> Result<(), sqlx::Error> {
     let perms = DEFAULT_ALL_PERMISSIONS
         .iter()

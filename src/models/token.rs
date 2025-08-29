@@ -4,7 +4,7 @@ use chrono::{prelude::*, Duration};
 use log::debug;
 
 use crate::{
-    app::AppConfig,
+    config::Config,
     utils::token::{decode_token, encode_token, is_token_exp},
 };
 use serde::{Deserialize, Serialize};

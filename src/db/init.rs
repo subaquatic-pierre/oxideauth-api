@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres};
 
-use crate::{app::AppConfig, models::account::Account};
+use crate::{config::Config, models::account::Account};
 
 // Type alias for DB
 pub type DbPool = Pool<Postgres>;
@@ -12,9 +12,9 @@ pub type DbPool = Pool<Postgres>;
 // Generate with: `sqlx migrate add -r <name>` then `sqlx migrate run`
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!(); // embeds migrations at compile time
 
-pub async fn establish_connection(database_url: &str) -> DbPool {
+pub async fn new_db_pool(database_url: &str, max_connections: u32) -> DbPool {
     PgPoolOptions::new()
-        .max_connections(10)
+        .max_connections(max_connections)
         .connect(database_url)
         .await
         .expect("Failed to create pool")
@@ -24,26 +24,19 @@ pub async fn establish_connection(database_url: &str) -> DbPool {
 /// - optionally drop schema (if `drop == true`)
 /// - run migrations
 /// - optionally seed defaults
-pub async fn init_db(
-    pool: &DbPool,
-    owner_acc: &Account,
-    drop: bool,
-    _config: &AppConfig,
-) -> Result<()> {
-    if drop {
-        // Nuke and recreate the default schema (Postgres).
-        // If you’re using multiple schemas or extensions, adjust accordingly.
-        sqlx::query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;")
-            .execute(pool)
-            .await
-            .context("dropping & recreating public schema failed")?;
-    }
+pub async fn init_db(pool: &DbPool, owner_acc: &Account, _config: &Config) -> Result<()> {
+    // Nuke and recreate the default schema (Postgres).
+    // If you’re using multiple schemas or extensions, adjust accordingly.
+    // sqlx::query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;")
+    //     .execute(pool)
+    //     .await
+    //     .context("dropping & recreating public schema failed")?;
 
     // Run all pending migrations
-    MIGRATOR
-        .run(pool)
-        .await
-        .context("running sqlx migrations failed")?;
+    // MIGRATOR
+    //     .run(pool)
+    //     .await
+    //     .context("running sqlx migrations failed")?;
 
     // ---- Seed defaults (optional) ----
     // seed_defaults(pool, owner_acc, _config).await.context("seeding defaults failed")?;

@@ -7,7 +7,7 @@ use aws_sdk_ses::types::{Body, Content, Destination, Message};
 use aws_sdk_ses::Client as SesClient;
 use tera::{Context, Tera};
 
-use crate::app::AppConfig;
+use crate::config::Config;
 
 use super::storage::StorageService;
 use crate::models::api::{ApiError, ApiResult};
@@ -25,7 +25,7 @@ pub struct EmailService {
 }
 
 impl EmailService {
-    pub fn new(config: &AppConfig, storage: Box<dyn StorageService>) -> Self {
+    pub fn new(config: &Config, storage: Box<dyn StorageService>) -> Self {
         let region = Region::new(config.aws_region.clone());
 
         let credentials = Credentials::new(
@@ -132,7 +132,7 @@ mod tests {
     async fn test_send_email_success() {
         let mut mock_storage = MockStorageService {};
 
-        let config = AppConfig::mock_config();
+        let config = Config::mock_config();
         // Mocking SES client can be more complex, might need to use `mockito` or similar library if required
 
         let service = EmailService::new(&config, Box::new(mock_storage));

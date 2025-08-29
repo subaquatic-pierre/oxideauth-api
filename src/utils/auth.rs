@@ -5,7 +5,7 @@ use std::{collections::HashSet, env};
 
 use dotenv::dotenv;
 
-use crate::app::AppConfig;
+use crate::config::Config;
 use crate::models::api::{ApiError, ApiResult};
 use crate::routes::accounts::register_accounts_collection;
 use crate::routes::auth::{register_auth_collection, RegisterReq};
@@ -63,7 +63,7 @@ pub struct GoogleUserResult {
 
 pub async fn request_google_token(
     authorization_code: &str,
-    config: &AppConfig,
+    config: &Config,
 ) -> ApiResult<OAuthResponse> {
     let redirect_url = config.google_oauth_redirect_url.to_owned();
     let client_secret = config.google_oauth_client_secret.to_owned();
@@ -153,7 +153,7 @@ pub struct RegisterRedirectParams {
 }
 
 impl RegisterRedirectParams {
-    pub fn from_req(body: Json<RegisterReq>, config: &AppConfig, token: &str) -> Self {
+    pub fn from_req(body: Json<RegisterReq>, config: &Config, token: &str) -> Self {
         let redirect_url = match (&body.redirect_host, &body.confirm_email_redirect_endpoint) {
             (Some(host), Some(endpoint)) => format!("{}{}", host.clone(), endpoint.clone()),
             _ => format!("{}/auth/sign-in", config.client_origin),

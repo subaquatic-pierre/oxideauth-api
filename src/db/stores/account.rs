@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use uuid::Uuid;
 
 use crate::db::dbx::Dbx;
@@ -15,6 +17,13 @@ struct AccountUpdate {
     name: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct AccountStore {
-    db: Dbx,
+    db: Arc<Dbx>,
+}
+
+impl AccountStore {
+    pub fn new(db: Arc<Dbx>) -> Self {
+        Self { db }
+    }
 }

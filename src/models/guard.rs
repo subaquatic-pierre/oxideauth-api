@@ -5,9 +5,12 @@ use log::{debug, error, info};
 use sqlx::{Error, PgPool, Pool};
 
 use crate::{
-    db::queries::{
-        account::get_account_db,
-        role::{get_role_db, get_role_permissions_db},
+    db::{
+        queries::{
+            account::get_account_db,
+            role::{get_role_db, get_role_permissions_db},
+        },
+        DbPool,
     },
     models::{api::ApiError, token::TokenType},
     utils::token::{get_token_from_req, is_token_exp},
@@ -17,11 +20,11 @@ use super::{account::Account, api::ApiResult, token::TokenClaims};
 
 pub struct AuthGuard {
     jwt_secret: String,
-    pub db: Arc<PgPool>,
+    pub db: DbPool,
 }
 
 impl AuthGuard {
-    pub fn new(jwt_secret: &str, db: Arc<PgPool>) -> Self {
+    pub fn new(jwt_secret: &str, db: DbPool) -> Self {
         Self {
             jwt_secret: jwt_secret.to_string(),
             db,

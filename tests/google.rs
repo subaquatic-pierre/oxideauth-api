@@ -1,5 +1,5 @@
 use oxideauth::{
-    app::AppConfig,
+    config::Config,
     utils::auth::{get_google_user, request_google_token, GoogleUserResult, OAuthResponse},
 };
 use serde_json::json;

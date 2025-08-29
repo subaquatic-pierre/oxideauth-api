@@ -4,7 +4,7 @@ use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, 
 use log::debug;
 
 use crate::{
-    app::AppConfig,
+    config::Config,
     models::{
         account::Account,
         api::{ApiError, ApiResult},
@@ -13,7 +13,7 @@ use crate::{
 };
 
 pub fn gen_token(
-    app_config: &AppConfig,
+    app_config: &Config,
     user: &Account,
     token_type: TokenType,
     exp_future: Option<i64>,
@@ -106,8 +106,8 @@ mod tests {
     use chrono::{Duration, Utc};
     use std::collections::HashMap;
 
-    fn mock_app_config() -> AppConfig {
-        AppConfig::mock_config()
+    fn mock_app_config() -> Config {
+        Config::mock_config()
     }
 
     fn mock_account() -> Account {

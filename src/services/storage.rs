@@ -14,7 +14,7 @@ use aws_sdk_s3::config::{Builder, Region};
 use aws_sdk_s3::Client as S3Client;
 use log::{debug, error, info};
 
-use crate::app::AppConfig;
+use crate::config::Config;
 
 #[async_trait]
 pub trait StorageService {
@@ -52,7 +52,7 @@ pub struct S3StorageService {
 }
 
 impl S3StorageService {
-    pub fn new(bucket_name: &str, config: &AppConfig) -> Self {
+    pub fn new(bucket_name: &str, config: &Config) -> Self {
         let credentials = Credentials::new(
             config.aws_s3_access_key.to_string(),
             config.aws_s3_secret_key.to_string(),

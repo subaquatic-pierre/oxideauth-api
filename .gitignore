@@ -1,6 +1,7 @@
 /target
 .env*
 server.pid
-db.*
+
 .sqlx
 test-results
+.cargo

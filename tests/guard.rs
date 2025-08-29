@@ -2,7 +2,7 @@ use actix_http::StatusCode;
 use actix_web::{test, web, App};
 use chrono::Utc;
 use jsonwebtoken::{encode, EncodingKey, Header};
-use oxideauth::app::AppConfig;
+use oxideauth::config::Config;
 use oxideauth::db::queries::account::get_account_db;
 use oxideauth::models::account::Principal;
 use oxideauth::utils::token::{encode_token, gen_token};
@@ -16,7 +16,7 @@ use oxideauth::{
 };
 use serial_test::serial;
 
-fn generate_test_token(config: &AppConfig, account: &Account, token_type: TokenType) -> String {
+fn generate_test_token(config: &Config, account: &Account, token_type: TokenType) -> String {
     let token = gen_token(config, account, token_type, None).unwrap();
     token
 }

@@ -1,4 +1,4 @@
-use crate::app::AppConfig;
+use crate::config::Config;
 
 #[derive(Debug)]
 pub struct GoogleOAuthState {
@@ -9,7 +9,7 @@ pub struct GoogleOAuthState {
 }
 
 impl GoogleOAuthState {
-    pub fn from_state(state: Option<String>, config: &AppConfig) -> Self {
+    pub fn from_state(state: Option<String>, config: &Config) -> Self {
         let (redirect_url, csrf_token, dash_url, project_name) = match state {
             Some(s) => {
                 let split: Vec<&str> = s.split("&").collect();
@@ -60,10 +60,10 @@ impl GoogleOAuthState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::AppConfig;
+    use crate::config::Config;
 
-    fn default_config() -> AppConfig {
-        AppConfig::mock_config()
+    fn default_config() -> Config {
+        Config::mock_config()
     }
 
     #[test]
