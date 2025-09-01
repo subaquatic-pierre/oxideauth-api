@@ -1,4 +1,3 @@
-use log::error;
 use sqlx::{
     query::{Query, QueryAs},
     FromRow, IntoArguments, Postgres, Transaction,
@@ -16,6 +15,7 @@ use tokio::{
     task::JoinHandle,
     time::{interval, sleep, MissedTickBehavior},
 };
+use tracing::error;
 
 use crate::db::{
     error::{Error, Result},
@@ -37,8 +37,8 @@ pub struct Dbx {
     /// (Useful to create a read-only Dbx or a non-transactional ModelManager.)
     with_txn: bool,
 
-    idle_timeout: Duration,
-    force_rollback: bool,
+    pub(crate) idle_timeout: Duration,
+    pub(crate) force_rollback: bool,
 }
 
 impl Dbx {
@@ -75,7 +75,7 @@ impl Dbx {
     /// `#![deny(unused_must_use)]` to make ignoring it a compile error.
     pub async fn begin_txn(&self) -> Result<TxnGuard> {
         if !self.with_txn {
-            return Err(Error::CantBeginTxnWithTxnFalse);
+            return Err(Error::WithTxnFalse);
         }
 
         let mut txh_g = self.txn_holder.lock().await;
@@ -123,7 +123,7 @@ impl Dbx {
     /// - Decrements the counter; if it reaches 0, commits the physical txn and clears the holder.
     pub async fn commit_txn(&self) -> Result<()> {
         if !self.with_txn {
-            return Err(Error::CantCommitTxtWithTxnFalse);
+            return Err(Error::WithTxnFalse);
         }
 
         let mut txh_g = self.txn_holder.lock().await;
@@ -141,7 +141,7 @@ impl Dbx {
             }
             Ok(())
         } else {
-            Err(Error::TxnCantCommitNoOpenTxn)
+            Err(Error::NoTxn)
         }
     }
 
@@ -239,7 +239,7 @@ impl Dbx {
 #[derive(Debug)]
 pub struct TxnHolder {
     txn: Transaction<'static, Postgres>,
-    counter: i32,
+    pub(crate) counter: i32,
 
     // --- idle-timeout metadata
     pub created_at: Instant,
@@ -428,5 +428,388 @@ impl Drop for TxnGuard {
             }
             // else: already committed/rolled back -> nothing to do
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use serial_test::serial;
+    use sqlx::{query, query_as};
+
+    use crate::{
+        db::stores::account::AccountRow,
+        dev::{
+            db::init_dev_db,
+            init::{init_dev, init_test},
+        },
+    };
+
+    use super::*;
+
+    use uuid::Uuid;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_dbx_with_txn() {
+        let app = init_test().await;
+        let dbx = Dbx::new(app.db.clone(), true);
+
+        assert_eq!(dbx.with_txn, true);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_begin_txn_fail() {
+        let app = init_test().await;
+        let dbx = Dbx::new(app.db.clone(), false);
+
+        let res = dbx.begin_txn().await;
+
+        assert!(matches!(res, Err(Error::WithTxnFalse)));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_begin_txn() {
+        let app = init_test().await;
+        let dbx = Dbx::new(app.db.clone(), true);
+
+        let txn_g = dbx.begin_txn().await.unwrap();
+
+        let mut holder = txn_g.txn_holder.lock().await;
+
+        if let Some(holder) = holder.take() {
+            assert_eq!(holder.counter, 1)
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_rollback_fail() {
+        let app = init_test().await;
+        let dbx = Dbx::new(app.db.clone(), true);
+
+        let res = dbx.rollback_txn().await;
+
+        assert!(matches!(res, Err(Error::NoTxn)))
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_commit_txn_fail() {
+        let app = init_test().await;
+        let dbx = Dbx::new(app.db.clone(), true);
+
+        let res = dbx.commit_txn().await;
+
+        assert!(matches!(res, Err(Error::NoTxn)))
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_commit_txn() -> Result<()> {
+        let app = init_test().await;
+        let dbx = Dbx::new(app.db.clone(), true);
+
+        let _ = dbx.begin_txn().await?;
+
+        let q = query_as::<_, AccountRow>("SELECT * FROM accounts");
+        let fetch = dbx.fetch_all(q).await?;
+
+        let q = query("DELETE FROM accounts WHERE name = $1").bind("TEST User");
+
+        let affected_rows = dbx.execute(q).await?;
+
+        assert_eq!(affected_rows, 1);
+
+        let q = query_as::<_, AccountRow>("SELECT * FROM accounts");
+        let fetch_again = dbx.fetch_all(q).await?;
+
+        assert_ne!(fetch.len(), fetch_again.len());
+
+        Ok(())
+    }
+
+    // --- fetch_one / fetch_optional without active txn ----------------------
+
+    #[tokio::test]
+    #[serial]
+    async fn test_fetch_one_and_optional_no_txn() -> Result<()> {
+        let app = init_test().await;
+        let dbx = Dbx::new(app.db.clone(), false);
+
+        let email = format!("u+{}@example.com", Uuid::new_v4());
+        let name = "FetchOne User";
+        let id = insert_test_account_raw(&app.db, name, &email).await?;
+
+        // fetch_one by email
+        let q = query_as::<_, AccountRow>("SELECT * FROM accounts WHERE email = $1").bind(&email);
+        let row = dbx.fetch_one(q).await?;
+        assert_eq!(row.id, id);
+        assert_eq!(row.email, email);
+
+        // fetch_optional for a non-existent email
+        let q_none = query_as::<_, AccountRow>("SELECT * FROM accounts WHERE email = $1")
+            .bind("does-not-exist@example.com");
+        let opt = dbx.fetch_optional(q_none).await?;
+        assert!(opt.is_none());
+
+        // cleanup
+        let _ = query("DELETE FROM accounts WHERE id = $1")
+            .bind(id)
+            .execute(&app.db)
+            .await?;
+        Ok(())
+    }
+
+    // --- execute without txn (directly against pool) ------------------------
+
+    #[tokio::test]
+    #[serial]
+    async fn test_execute_no_txn() -> Result<()> {
+        let app = init_test().await;
+        let dbx = Dbx::new(app.db.clone(), false);
+
+        let email = format!("u+{}@example.com", Uuid::new_v4());
+        let name = "ExecNoTxn User";
+        let id = insert_test_account_raw(&app.db, name, &email).await?;
+
+        // delete using dbx.execute (no txn path)
+        let q = query("DELETE FROM accounts WHERE id = $1").bind(id);
+        let rows = dbx.execute(q).await?;
+        assert_eq!(rows, 1);
+
+        // ensure gone
+        assert!(!account_exists(&Dbx::new(app.db.clone(), false), id).await?);
+        Ok(())
+    }
+
+    // --- nested begin/commit flow -------------------------------------------
+
+    #[tokio::test]
+    #[serial]
+    async fn test_nested_txn_commit_persists() -> Result<()> {
+        let app = init_test().await;
+        let dbx = Dbx::new(app.db.clone(), true);
+
+        // begin level 1
+        let _g1 = dbx.begin_txn().await?;
+        // begin level 2 (nested)
+        let _g2 = dbx.begin_txn().await?;
+
+        let email = format!("u+{}@example.com", Uuid::new_v4());
+        let name = "NestedCommit User";
+        let id = Uuid::new_v4();
+
+        let q_ins = query(
+            r#"
+            INSERT INTO accounts
+              (id, email, password_hash, name, acc_type, provider, verified, enabled)
+            VALUES ($1, $2, 'hashed', $3, 'user', 'local', true, true)
+            "#,
+        )
+        .bind(id)
+        .bind(&email)
+        .bind(name);
+
+        let rows = dbx.execute(q_ins).await?;
+        assert_eq!(rows, 1);
+
+        // commit inner, then outer -> physical commit happens at outer
+        dbx.commit_txn().await?;
+        dbx.commit_txn().await?;
+
+        // verify persisted outside any txn
+        let exists = account_exists(&Dbx::new(app.db.clone(), false), id).await?;
+        assert!(exists);
+
+        // cleanup
+        let _ = query("DELETE FROM accounts WHERE id = $1")
+            .bind(id)
+            .execute(&app.db)
+            .await?;
+        Ok(())
+    }
+
+    // --- nested rollback one level only decrements counter ------------------
+    // NOTE: There is no SAVEPOINT logic; rolling back one level does NOT undo writes.
+
+    #[tokio::test]
+    #[serial]
+    async fn test_nested_rollback_then_commit() -> Result<()> {
+        let app = init_test().await;
+        let dbx = Dbx::new(app.db.clone(), true);
+
+        let _g1 = dbx.begin_txn().await?;
+        let _g2 = dbx.begin_txn().await?;
+
+        let id = Uuid::new_v4();
+        let email = format!("u+{}@example.com", Uuid::new_v4());
+
+        let q_ins = query(
+            "INSERT INTO accounts (id, email, password_hash, name, acc_type, provider, verified, enabled)
+             VALUES ($1, $2, 'hashed', 'NestedRollback User', 'user', 'local', true, true)",
+        )
+        .bind(id)
+        .bind(&email);
+
+        dbx.execute(q_ins).await?;
+
+        // Roll back ONE level (counter--), physical txn should remain open
+        dbx.rollback_txn().await?;
+
+        // Commit remaining outer level -> persists since no SAVEPOINT rollback exists
+        dbx.commit_txn().await?;
+
+        let exists = account_exists(&Dbx::new(app.db.clone(), false), id).await?;
+        assert!(
+            exists,
+            "row should persist because partial rollback does not undo writes"
+        );
+
+        // cleanup
+        let _ = query("DELETE FROM accounts WHERE id = $1")
+            .bind(id)
+            .execute(&app.db)
+            .await?;
+        Ok(())
+    }
+
+    // --- full rollback path (two levels -> rollback twice) ------------------
+
+    #[tokio::test]
+    #[serial]
+    async fn test_full_rollback_discards() -> Result<()> {
+        let app = init_test().await;
+        let dbx = Dbx::new(app.db.clone(), true);
+
+        let _g1 = dbx.begin_txn().await?;
+        let _g2 = dbx.begin_txn().await?;
+
+        let id = Uuid::new_v4();
+        let email = format!("u+{}@example.com", Uuid::new_v4());
+
+        let q_ins = query(
+            "INSERT INTO accounts (id, email, password_hash, name, acc_type, provider, verified, enabled)
+             VALUES ($1, $2, 'hashed', 'FullRollback User', 'user', 'local', true, true)",
+        )
+        .bind(id)
+        .bind(&email);
+
+        dbx.execute(q_ins).await?;
+
+        // Roll back twice to close physical txn
+        dbx.rollback_txn().await?;
+        dbx.rollback_txn().await?;
+
+        let exists = account_exists(&Dbx::new(app.db.clone(), false), id).await?;
+        assert!(!exists, "row should be discarded after full rollback");
+        Ok(())
+    }
+
+    // --- guard drop triggers rollback when force_rollback=true ---------------
+
+    #[tokio::test]
+    #[serial]
+    async fn test_guard_drop_rollback_on_drop() -> Result<()> {
+        let app = init_test().await;
+
+        let mut dbx = Dbx::new(app.db.clone(), true);
+
+        // tune watchdog for a fast test
+        dbx.force_rollback = true;
+
+        let id = Uuid::new_v4();
+        let email = format!("u+{}@example.com", Uuid::new_v4());
+
+        {
+            let _g = dbx.begin_txn().await?;
+            let q_ins = query(
+                "INSERT INTO accounts (id, email, password_hash, name, acc_type, provider, verified, enabled)
+                 VALUES ($1, $2, 'hashed', 'DropRollback User', 'user', 'local', true, true)",
+            )
+            .bind(id)
+            .bind(&email);
+            dbx.execute(q_ins).await?;
+            // scope ends -> _g dropped -> rollback happens asynchronously
+        }
+
+        // Give the spawned drop task a moment to run
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        let exists = account_exists(&Dbx::new(app.db.clone(), false), id).await?;
+        assert!(
+            !exists,
+            "row should be rolled back when TxnGuard is dropped"
+        );
+        Ok(())
+    }
+
+    // --- idle watchdog rolls back after timeout when force_rollback=true -----
+
+    #[tokio::test]
+    #[serial]
+    async fn test_idle_watchdog_force_rollback() -> Result<()> {
+        let app = init_test().await;
+        let mut dbx = Dbx::new(app.db.clone(), true);
+
+        // tune watchdog for a fast test
+        dbx.idle_timeout = Duration::from_millis(200);
+        dbx.force_rollback = true;
+
+        let id = Uuid::new_v4();
+        let email = format!("u+{}@example.com", Uuid::new_v4());
+
+        let _g = dbx.begin_txn().await?;
+        let q_ins = query(
+            "INSERT INTO accounts (id, email, password_hash, name, acc_type, provider, verified, enabled)
+             VALUES ($1, $2, 'hashed', 'Watchdog User', 'user', 'local', true, true)",
+        )
+        .bind(id)
+        .bind(&email);
+        dbx.execute(q_ins).await?;
+
+        // drop(_g);
+
+        tokio::time::sleep(Duration::from_millis(2000)).await;
+
+        // holder should be cleared by watchdog; commit should now fail with NoTxn
+        let commit_res = dbx.commit_txn().await;
+        assert!(matches!(commit_res, Err(Error::NoTxn)));
+
+        let exists = account_exists(&dbx, id).await?;
+        assert!(
+            !exists,
+            "row should be rolled back by idle watchdog with force_rollback"
+        );
+        Ok(())
+    }
+
+    // --- utils ---
+
+    async fn insert_test_account_raw(db: &DbPool, name: &str, email: &str) -> Result<Uuid> {
+        let id = Uuid::new_v4();
+        query(
+            r#"
+            INSERT INTO accounts
+              (id, email, password_hash, name, acc_type, provider, verified, enabled)
+            VALUES ($1, $2, $3, $4, 'user', 'local', true, true)
+            "#,
+        )
+        .bind(id)
+        .bind(email)
+        .bind("hashed")
+        .bind(name)
+        .execute(db)
+        .await?;
+        Ok(id)
+    }
+
+    async fn account_exists(dbx: &Dbx, id: Uuid) -> Result<bool> {
+        let q =
+            query_as::<_, (i64,)>("SELECT COUNT(*)::bigint FROM accounts WHERE id = $1").bind(id);
+        let (cnt,) = dbx.fetch_one(q).await?;
+        Ok(cnt > 0)
     }
 }

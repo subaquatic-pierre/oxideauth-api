@@ -9,9 +9,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 #[serde_as]
 #[derive(Debug, Serialize, From)]
 pub enum Error {
-    TxnCantCommitNoOpenTxn,
-    CantBeginTxnWithTxnFalse,
-    CantCommitTxtWithTxnFalse,
+    WithTxnFalse,
     NoTxn,
 
     // --- DataStore

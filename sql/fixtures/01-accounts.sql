@@ -40,4 +40,14 @@ VALUES
     'local',
     TRUE,
     TRUE
+  ),
+  (
+    '00000000-0000-0000-0000-100000000001',
+    'TEST@example.com',
+    'hash_admin',
+    'TEST User',
+    'TEST',
+    'local',
+    TRUE,
+    TRUE
   );
