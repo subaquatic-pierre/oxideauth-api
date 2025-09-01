@@ -3,10 +3,12 @@ use std::{env, sync::Arc};
 use actix_web::web::{scope, Data};
 use actix_web::Scope;
 use dotenv::dotenv;
+use tracing::{debug, info};
 
 use sqlx::Pool;
 
 use crate::db::store::DataStore;
+use crate::dev::init::init_dev;
 use crate::{
     config::Config,
     db::init::{new_db_pool, DbPool},
@@ -19,6 +21,10 @@ use crate::routes::accounts::register_accounts_collection;
 // use crate::routes::roles::register_roles_collection;
 // use crate::routes::services::register_services_collection;
 
+// Main guard to ensure APP_ENV is set,
+// will ensure correct configs and not reset database
+const APP_ENV: &'static str = env!("APP_ENV");
+
 pub struct AppData {
     pub config: Config,
     pub db: DbPool,
@@ -27,6 +33,34 @@ pub struct AppData {
 }
 
 pub async fn new_app_data() -> AppData {
+    let app = match APP_ENV {
+        "dev" => {
+            debug!(
+                "{:<12} - new_app_data()",
+                "Application started in DEVELOPMENT mode"
+            );
+
+            let app = new_dev_app_data().await;
+            init_dev(&app.db).await;
+            app
+        }
+        "prod" => {
+            debug!(
+                "{:<12} - new_app_data()",
+                "Application started in PRODUCTION mode"
+            );
+            let app = new_prod_app_data().await;
+            app
+        }
+        _ => {
+            panic!("Incorrect APP_ENV, {APP_ENV}")
+        }
+    };
+
+    app
+}
+
+pub async fn new_prod_app_data() -> AppData {
     let config = Config::from_env();
     let db: DbPool = new_db_pool(&config.database_url, 5).await;
 
@@ -34,7 +68,7 @@ pub async fn new_app_data() -> AppData {
     let ds = DataStore::new(db.clone());
 
     AppData {
-        db: db.clone(),
+        db,
         config,
         guard,
         ds,
@@ -49,7 +83,7 @@ pub async fn new_dev_app_data() -> AppData {
     let ds = DataStore::new(db.clone());
 
     AppData {
-        db: db.clone(),
+        db,
         config,
         guard,
         ds,
@@ -59,12 +93,12 @@ pub async fn new_dev_app_data() -> AppData {
 pub async fn new_test_app_data() -> AppData {
     let config = Config::test_config();
 
-    let db: DbPool = new_db_pool(&config.database_url, 5).await;
+    let db: DbPool = new_db_pool(&config.database_url, 1).await;
     let guard = AuthGuard::new(&config.jwt_secret, db.clone());
     let ds = DataStore::new(db.clone());
 
     AppData {
-        db: db.clone(),
+        db,
         config,
         guard,
         ds,

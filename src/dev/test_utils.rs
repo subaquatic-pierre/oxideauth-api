@@ -22,14 +22,14 @@ use actix_web::dev::{Service, ServiceResponse};
 pub async fn setup_test_server(
 ) -> impl Service<Request, Response = ServiceResponse, Error = actix_web::Error> {
     // Setup the app
-    let app_data = Data::new(new_test_app_data().await);
+    let app = new_test_app_data().await;
 
-    let owner_acc = build_owner_account();
-
-    init_db(&app_data.db, &owner_acc, &app_data.config)
+    init_db(&app)
         .await
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
         .expect("Unable to initialize test database");
+
+    let app_data = Data::new(app);
 
     // Initialize the app with routes and services
     let mut app = test::init_service(

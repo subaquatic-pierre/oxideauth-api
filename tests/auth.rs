@@ -12,7 +12,7 @@ use serde_json::json;
 use serial_test::serial;
 
 use oxideauth::app::{new_app_data, new_test_app_data, register_all_services};
-use oxideauth::utils::test_utils::{create_test_account, login_owner, setup_test_server};
+use oxideauth::dev::test_utils::{create_test_account, login_owner, setup_test_server};
 
 #[actix_web::test]
 #[serial]

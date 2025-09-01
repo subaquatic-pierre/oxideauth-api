@@ -5,6 +5,7 @@ use std::{env::var, sync::Arc};
 pub struct Config {
     pub host: String,
     pub port: usize,
+    pub app_env: String,
 
     pub client_origin: String,
     pub database_url: String,
@@ -65,6 +66,8 @@ impl Config {
             var("AWS_SES_FROM").expect("AWS_SES_FROM credentials must be set in .env");
         let aws_region = var("AWS_REGION").expect("AWS_REGION credentials must be set in .env");
 
+        let app_env = var("APP_ENV").expect("APP_ENV must be set in .env");
+
         Config {
             database_url,
             jwt_secret,
@@ -83,12 +86,14 @@ impl Config {
             aws_s3_access_key,
             aws_s3_secret_key,
             email_dry_mode: false,
+            app_env,
         }
     }
 
     pub fn mock_config() -> Self {
         Self {
             host: "127.0.0.1".to_string(),
+            app_env: "mock".to_string(),
             port: 8080,
             client_origin: "http://localhost:3000".to_string(),
             database_url: "postgres://user:password@localhost/test_db".to_string(),
@@ -111,6 +116,7 @@ impl Config {
     pub fn test_config() -> Self {
         Self {
             host: "127.0.0.1".to_string(),
+            app_env: "test".to_string(),
             port: 8080,
             client_origin: "http://localhost:3000".to_string(),
             database_url: "postgres://oxideauth:password@localhost:5432/db_test".to_string(),
@@ -133,6 +139,7 @@ impl Config {
     pub fn dev_config() -> Self {
         Self {
             host: "127.0.0.1".to_string(),
+            app_env: "dev".to_string(),
             port: 8080,
             client_origin: "http://localhost:3000".to_string(),
             database_url: "postgres://oxideauth:password@localhost:5432/db_dev".to_string(),

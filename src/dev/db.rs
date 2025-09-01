@@ -10,8 +10,8 @@ use tokio::sync::OnceCell;
 use tracing::info;
 
 use crate::{
-    _dev::config::{PROJECT_ROOT, SQL_DIR},
     db::init::DbPool,
+    dev::config::{PROJECT_ROOT, SQL_DIR},
 };
 
 static INIT: OnceCell<()> = OnceCell::const_new();
@@ -82,8 +82,8 @@ mod tests {
     use crate::db::init::new_db_pool;
 
     use super::*;
+    use crate::config::Config;
     use anyhow::{Context, Result};
-    use oxideauth::config::Config;
     use serial_test::serial;
 
     #[tokio::test]
