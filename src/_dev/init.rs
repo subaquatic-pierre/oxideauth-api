@@ -10,16 +10,14 @@ use tokio::sync::OnceCell;
 use tracing::info;
 
 use crate::{
-    config::PROJECT_ROOT,
+    _dev::{
+        config::PROJECT_ROOT,
+        db::{init_test_db, reset_db, run_migrations},
+    },
     db::{store::DataStore, DbPool},
 };
 
-// NOTE: Hardcode to prevent deployed system db update.
-const PG_DEV_POSTGRES_URL: &str = "postgres://oxideauth:password@localhost/oxideauth";
-const PG_DEV_APP_URL: &str = "postgres://test_user:password@localhost/tests_db";
-const SQL_RECREATE_DB_FILE_NAME: &str = "00-recreate-db.sql";
-
-pub async fn init_dev(db_pool: DbPool) {
+pub async fn init_dev(db_pool: &DbPool) {
     static INIT: OnceCell<()> = OnceCell::const_new();
 
     INIT.get_or_init(|| async {
@@ -28,13 +26,15 @@ pub async fn init_dev(db_pool: DbPool) {
     .await;
 }
 
-pub async fn init_test<'a>(db_pool: DbPool) -> &'a DataStore {
+pub async fn init_test<'a>(db_pool: &DbPool) -> &'a DataStore {
     static INIT: OnceCell<DataStore> = OnceCell::const_new();
 
     let ds = INIT
         .get_or_init(|| async {
             info!("{:<12} - init_test()", "FOR-DEV-ONLY");
-            DataStore::new(db_pool)
+            init_test_db(db_pool).await;
+
+            DataStore::new(db_pool.clone())
         })
         .await;
 

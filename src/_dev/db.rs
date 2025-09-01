@@ -1,39 +1,74 @@
-use std::path::{Path, PathBuf};
+use sqlx::migrate::Migrator;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Result;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{postgres::PgPoolOptions, Executor};
 use tokio::sync::OnceCell;
 use tracing::info;
 
-use crate::config::PROJECT_ROOT;
-use crate::db::init::DbPool;
-
-// NOTE: Hardcode to prevent deployed system db update.
-const PG_DEV_POSTGRES_URL: &str = "postgres://oxideauth:password@localhost/oxideauth";
-const PG_DEV_TEST_URL: &str = "postgres://test_user:password@localhost/tests_db";
-const PG_DEV_APP_URL: &str = "postgres://oxideauth:password@localhost/apps_db";
-const SQL_DIR: &str = "sql/_dev";
+use crate::{
+    _dev::config::{PROJECT_ROOT, SQL_DIR},
+    db::init::DbPool,
+};
 
 static INIT: OnceCell<()> = OnceCell::const_new();
 
-pub async fn init_dev_db(pool: &DbPool) -> Result<()> {
-    INIT.get_or_init(|| async {
-        info!("{:<12} - init_dev_db()", "FOR-DEV-ONLY");
-    })
-    .await;
+pub async fn reset_db(pool: &DbPool) -> Result<()> {
+    pool.execute("DROP SCHEMA public CASCADE").await?;
+    pool.execute("CREATE SCHEMA public").await?;
 
-    // let pool = new_db_pool()
     Ok(())
 }
 
-pub async fn init_test_db(pool: &DbPool) -> Result<()> {
-    INIT.get_or_init(|| async {
-        info!("{:<12} - init_test_db()", "FOR-DEV-ONLY");
-    })
-    .await;
+pub async fn run_migrations(pool: &DbPool, migration_env: &str) -> Result<()> {
+    let path = get_sql_dir().join("migrations").join(migration_env);
+    let migrator = Migrator::new(path).await?;
+    migrator.run(pool).await?;
 
-    // let pool = new_db_pool()
     Ok(())
+}
+
+pub async fn load_fixture(pool: &DbPool, filename: &str) -> Result<()> {
+    let path = get_sql_dir().join("fixtures").join(filename);
+    let sql = fs::read_to_string(path)?;
+    pool.execute(sql.as_str()).await?;
+
+    Ok(())
+}
+
+pub async fn load_all_fixtures(pool: &DbPool) -> Result<()> {
+    let path = get_sql_dir().join("fixtures");
+    let mut files: Vec<String> = vec![];
+
+    for file in fs::read_dir(path)? {
+        let file = file?;
+        if file.file_type()?.is_file() {
+            files.push(file.file_name().to_string_lossy().to_string());
+        }
+    }
+
+    files.sort();
+
+    for filename in files {
+        load_fixture(pool, &filename).await?;
+    }
+
+    Ok(())
+}
+
+pub async fn init_dev_db(pool: &DbPool) {
+    reset_db(pool).await.unwrap();
+    run_migrations(pool, "dev").await.unwrap();
+
+    // run fixtures
+}
+
+pub async fn init_test_db(pool: &DbPool) {
+    reset_db(pool).await.unwrap();
+    run_migrations(pool, "test").await.unwrap();
 }
 
 pub fn get_sql_dir() -> PathBuf {
@@ -42,25 +77,80 @@ pub fn get_sql_dir() -> PathBuf {
     sql_dir
 }
 
-pub fn exec_psql(db: &DbPool, file: &Path) -> Result<(), sqlx::Error> {
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::db::init::new_db_pool;
+
     use super::*;
-    use crate::config::PROJECT_ROOT;
     use anyhow::{Context, Result};
+    use oxideauth::config::Config;
     use serial_test::serial;
 
     #[tokio::test]
     #[serial]
-    async fn test_path() -> Result<()> {
-        let path = get_sql_dir();
-        println!(
-            "{:<12} - path: {path:?} , PROJECT_ROOT:{PROJECT_ROOT:?}",
-            "FOR-DEV-ONLY"
-        );
+    async fn test_reset_db() -> Result<()> {
+        let config = Config::test_config();
+        let db = new_db_pool(&config.database_url, 1).await;
+
+        reset_db(&db).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_run_migrations() -> Result<()> {
+        let config = Config::test_config();
+        let db = new_db_pool(&config.database_url, 1).await;
+
+        reset_db(&db).await?;
+        run_migrations(&db, "test").await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_load_fixture() -> Result<()> {
+        let config = Config::test_config();
+        let db = new_db_pool(&config.database_url, 1).await;
+
+        init_test_db(&db).await;
+        load_fixture(&db, "services.sql").await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_load_all_fixtures() -> Result<()> {
+        let config = Config::test_config();
+        let db = new_db_pool(&config.database_url, 1).await;
+
+        init_test_db(&db).await;
+        load_all_fixtures(&db).await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_init_test_db() -> Result<()> {
+        let config = Config::test_config();
+        let db = new_db_pool(&config.database_url, 1).await;
+
+        init_test_db(&db).await;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_init_dev_db() -> Result<()> {
+        let config = Config::test_config();
+        let db = new_db_pool(&config.database_url, 1).await;
+
+        init_dev_db(&db).await;
+
         Ok(())
     }
 }

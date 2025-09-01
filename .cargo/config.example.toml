@@ -7,8 +7,6 @@
 
 # --- Database configuration
 DATABASE_URL=""        # main/prod database
-DATABASE_URL_DEV=""    # development database
-DATABASE_URL_TEST=""   # test database
 
 # --- AWS configuration
 AWS_REGION=""

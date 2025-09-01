@@ -42,11 +42,7 @@ pub async fn new_app_data() -> Data<AppData> {
 }
 
 pub async fn new_test_app_data() -> Data<AppData> {
-    let mut config = Config::from_env();
-
-    config.drop_schema = true;
-    config.email_dry_mode = true;
-    config.database_url = "postgres://test_user:password@localhost/test_db".to_string();
+    let config = Config::from_env();
 
     let db: DbPool = new_db_pool(&config.database_url, 5).await;
     let guard = AuthGuard::new(&config.jwt_secret, db.clone());
