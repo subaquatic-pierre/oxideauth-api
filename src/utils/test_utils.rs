@@ -2,6 +2,7 @@ use actix_cors::Cors;
 use actix_http::Request;
 use actix_web::dev::Server;
 use actix_web::middleware::Logger;
+use actix_web::web::Data;
 use actix_web::{http::header, test, web, App, HttpServer, Scope};
 use log::info;
 use serde_json::json;
@@ -21,7 +22,7 @@ use actix_web::dev::{Service, ServiceResponse};
 pub async fn setup_test_server(
 ) -> impl Service<Request, Response = ServiceResponse, Error = actix_web::Error> {
     // Setup the app
-    let app_data = new_test_app_data().await;
+    let app_data = Data::new(new_test_app_data().await);
 
     let owner_acc = build_owner_account();
 

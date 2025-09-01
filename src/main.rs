@@ -3,8 +3,10 @@ use std::{env, io};
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
+use actix_web::web::Data;
 use actix_web::{http::header, web, App, HttpServer, Scope};
 use db::init::init_db;
+use oxideauth::app::new_dev_app_data;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 mod _dev;
@@ -21,6 +23,8 @@ use utils::auth::build_owner_account;
 
 use app::{new_app_data, register_all_services};
 
+use crate::_dev::init::init_dev;
+
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     tracing_subscriber::fmt()
@@ -29,20 +33,21 @@ async fn main() -> io::Result<()> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let app_data = new_app_data().await;
+    let owner_acc = build_owner_account();
 
-    // env_logger::init();
+    // ---
+    // FIXME: must remove this from production
+    let app = new_dev_app_data().await;
+    init_dev(&app.db).await;
+    // FIXME
+    // ---
+
+    let app_data = Data::new(app);
 
     let app_host = format!("{:}:{:}", app_data.config.host, app_data.config.port);
     info!("Server listening at {app_host}...",);
 
     // CHnage again
-
-    let owner_acc = build_owner_account();
-
-    init_db(&app_data.db, &owner_acc, &app_data.config)
-        .await
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     let server = HttpServer::new(move || {
         // let cors = Cors::default()

@@ -26,34 +26,49 @@ pub struct AppData {
     pub ds: DataStore,
 }
 
-pub async fn new_app_data() -> Data<AppData> {
+pub async fn new_app_data() -> AppData {
     let config = Config::from_env();
     let db: DbPool = new_db_pool(&config.database_url, 5).await;
 
     let guard = AuthGuard::new(&config.jwt_secret, db.clone());
     let ds = DataStore::new(db.clone());
 
-    Data::new(AppData {
+    AppData {
         db: db.clone(),
         config,
         guard,
         ds,
-    })
+    }
 }
 
-pub async fn new_test_app_data() -> Data<AppData> {
-    let config = Config::from_env();
+pub async fn new_dev_app_data() -> AppData {
+    let config = Config::dev_config();
 
     let db: DbPool = new_db_pool(&config.database_url, 5).await;
     let guard = AuthGuard::new(&config.jwt_secret, db.clone());
     let ds = DataStore::new(db.clone());
 
-    Data::new(AppData {
+    AppData {
         db: db.clone(),
         config,
         guard,
         ds,
-    })
+    }
+}
+
+pub async fn new_test_app_data() -> AppData {
+    let config = Config::test_config();
+
+    let db: DbPool = new_db_pool(&config.database_url, 5).await;
+    let guard = AuthGuard::new(&config.jwt_secret, db.clone());
+    let ds = DataStore::new(db.clone());
+
+    AppData {
+        db: db.clone(),
+        config,
+        guard,
+        ds,
+    }
 }
 
 pub fn register_all_services() -> Scope {
