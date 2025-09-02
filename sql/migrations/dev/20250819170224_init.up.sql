@@ -1,4 +1,5 @@
 -- migrations/20250819120000_init.up.sql
+-- START ACCOUNT
 CREATE TABLE IF NOT EXISTS accounts (
   id UUID PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
@@ -10,9 +11,20 @@ CREATE TABLE IF NOT EXISTS accounts (
   description TEXT,
   image_url TEXT,
   verified BOOLEAN DEFAULT FALSE NOT NULL,
-  enabled BOOLEAN DEFAULT TRUE NOT NULL
+  enabled BOOLEAN DEFAULT TRUE NOT NULL,
+  -- audit (match Rust: cid/mid UUID, ctime/mtime timestamptz)
+  cid UUID NOT NULL,
+  ctime TIMESTAMPTZ NOT NULL,
+  mid UUID NOT NULL,
+  mtime TIMESTAMPTZ NOT NULL
 );
 
+-- Timelines (common for recent-first queries)
+CREATE INDEX IF NOT EXISTS idx_accounts_ctime_desc ON accounts (ctime DESC);
+
+CREATE INDEX IF NOT EXISTS idx_accounts_mtime_desc ON accounts (mtime DESC);
+
+-- START ROLES
 CREATE TABLE IF NOT EXISTS roles (
   id UUID PRIMARY KEY,
   name TEXT NOT NULL,

@@ -1,4 +1,5 @@
 pub mod account;
+pub mod crud;
 pub mod init;
 pub mod role;
 pub mod service;

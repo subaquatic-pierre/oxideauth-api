@@ -6,7 +6,6 @@ use actix_http::Request;
 use actix_web::dev::Server;
 use actix_web::middleware::Logger;
 use actix_web::{http::header, test, web, App, HttpServer, Scope};
-use db::init::init_db;
 
 pub mod app;
 pub mod cli;

@@ -4,8 +4,7 @@ use std::{env, io};
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::web::Data;
-use actix_web::{http::header, web, App, HttpServer, Scope};
-use db::init::init_db;
+use actix_web::{http::header, web as ActixWeb, App, HttpServer, Scope};
 use oxideauth::app::new_dev_app_data;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
@@ -17,8 +16,10 @@ mod db;
 mod dev;
 mod models;
 mod routes;
+mod rpc;
 mod services;
 mod utils;
+mod web;
 
 use app::{new_app_data, register_all_services};
 

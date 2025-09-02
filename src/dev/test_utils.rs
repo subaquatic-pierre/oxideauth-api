@@ -10,7 +10,6 @@ use serde_json::Value;
 use std::any::Any;
 use std::{env, io};
 
-use crate::db::init::init_db;
 use crate::models::account::Account;
 use crate::utils::auth::build_owner_account;
 
@@ -23,11 +22,6 @@ pub async fn setup_test_server(
 ) -> impl Service<Request, Response = ServiceResponse, Error = actix_web::Error> {
     // Setup the app
     let app = new_test_app_data().await;
-
-    init_db(&app)
-        .await
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-        .expect("Unable to initialize test database");
 
     let app_data = Data::new(app);
 

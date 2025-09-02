@@ -438,7 +438,7 @@ mod tests {
     use sqlx::{query, query_as};
 
     use crate::{
-        db::stores::account::AccountRow,
+        db::schema::account::AccountRow,
         dev::{
             db::init_dev_db,
             init::{init_dev, init_test},

@@ -12,8 +12,8 @@ pub struct DataStore {
 }
 
 impl DataStore {
-    pub fn new(db_pool: DbPool) -> Self {
-        let dbx = Dbx::new(db_pool, false);
+    pub fn new(db: DbPool) -> Self {
+        let dbx = Dbx::new(db, false);
         let dbx_c = Arc::new(dbx);
         let account = AccountStore::new(dbx_c.clone());
 
