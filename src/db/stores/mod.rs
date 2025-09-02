@@ -1,3 +1,3 @@
 pub mod account;
-mod base;
+pub mod base;
 pub mod utils;

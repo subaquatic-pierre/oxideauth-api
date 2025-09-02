@@ -43,8 +43,8 @@ pub struct AccountRow {
     pub mtime: time::OffsetDateTime,
 }
 
-#[derive(Debug, Deserialize)]
-struct AccountCreate {
+#[derive(Debug, Deserialize, Fields)]
+pub struct AccountCreate {
     pub email: String,
     pub password_hash: String,
     pub name: String,
@@ -57,7 +57,7 @@ struct AccountCreate {
     pub enabled: bool,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
 struct AccountUpdate {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -84,4 +84,23 @@ pub struct AccountFilter {
 
     #[serde(flatten)]
     pub audit: AuditFilter,
+}
+
+#[cfg(test)]
+impl Default for AccountCreate {
+    fn default() -> Self {
+        Self {
+            email: "user1@example.com".into(),
+            // any string is fine for the DB; it's not verified here
+            password_hash: "$argon2id$v=19$m=65536,t=3,p=1$testsalt$testhash".into(),
+            name: "Test User".into(),
+            acc_type: "user".into(),
+            provider: "local".into(),
+            provider_id: None,
+            description: Some("Fixture account for create() test".into()),
+            image_url: None,
+            verified: false,
+            enabled: true,
+        }
+    }
 }

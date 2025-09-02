@@ -13,7 +13,7 @@ use anyhow::Error;
 use async_trait::async_trait;
 
 use crate::{
-    db::{dbx::Dbx, init::DbPool, schema::iden::AuditIden},
+    db::{dbx::Dbx, init::DbPool, schema::iden::AuditIden, stores::utils::prepare_audit_fields},
     utils::time::now_utc,
 };
 
@@ -28,38 +28,20 @@ pub struct ListOpts {
 }
 
 #[async_trait]
-pub trait BaseStore: Send + Sync {
-    const TABLE: &'static str;
-
+pub trait StoreCrud: Send + Sync {
     type Row: for<'r> FromRow<'r, PgRow> + Unpin + Send + HasSeaFields;
     type CreateParams: HasSeaFields + Send;
     type UpdateParams: HasSeaFields + Send;
     type FilterParams: Into<FilterGroups> + Send;
 
-    // Needs to implement
-    fn db(&self) -> &Dbx;
-    fn has_audit(&self) -> bool;
-
-    // default methods
-    fn table_ref(&self) -> TableRef {
-        TableRef::Table(SIden(Self::TABLE).into_iden())
-    }
-
-    fn prepare_audit_fields(&self, fields: &mut SeaFields, user_id: Uuid, is_create: bool) {
-        if (self.has_audit()) {
-            let now = now_utc();
-            fields.push(SeaField::new(AuditIden::Mid, user_id));
-            fields.push(SeaField::new(AuditIden::Mtime, now));
-
-            if is_create {
-                fields.push(SeaField::new(AuditIden::Cid, user_id));
-                fields.push(SeaField::new(AuditIden::Ctime, now));
-            }
-        }
-    }
-
-    // --- Main query methods ---
     async fn create(&self, data: Self::CreateParams) -> Result<(), Error> {
         Ok(())
     }
+}
+
+#[async_trait]
+pub trait StoreMeta {
+    fn table_ref(&self) -> TableRef;
+    fn db(&self) -> &Dbx;
+    fn has_audit(&self) -> bool;
 }

@@ -23,7 +23,7 @@ impl DataStore {
         }
     }
 
-    pub fn db(&self) -> &DbPool {
-        self.dbx.db()
+    pub fn db(&self) -> Arc<Dbx> {
+        self.dbx.clone()
     }
 }

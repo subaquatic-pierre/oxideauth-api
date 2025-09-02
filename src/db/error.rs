@@ -18,6 +18,8 @@ pub enum Error {
     // --- Externals
     #[from]
     Sqlx(#[serde_as(as = "DisplayFromStr")] sqlx::Error),
+    #[from]
+    SeaQueryError(#[serde_as(as = "DisplayFromStr")] sea_query::error::Error),
 }
 
 impl Display for Error {

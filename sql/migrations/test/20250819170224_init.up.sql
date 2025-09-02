@@ -1,6 +1,10 @@
 -- migrations/20250819120000_init.up.sql
+-- one-time setup (per database)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- START ACCOUNT
 CREATE TABLE IF NOT EXISTS accounts (
-  id UUID PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   name TEXT NOT NULL,
@@ -10,9 +14,19 @@ CREATE TABLE IF NOT EXISTS accounts (
   description TEXT,
   image_url TEXT,
   verified BOOLEAN DEFAULT FALSE NOT NULL,
-  enabled BOOLEAN DEFAULT TRUE NOT NULL
+  enabled BOOLEAN DEFAULT TRUE NOT NULL,
+  cid UUID NOT NULL,
+  ctime TIMESTAMPTZ NOT NULL DEFAULT now(),
+  mid UUID NOT NULL,
+  mtime TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Timelines (common for recent-first queries)
+CREATE INDEX IF NOT EXISTS idx_accounts_ctime_desc ON accounts (ctime DESC);
+
+CREATE INDEX IF NOT EXISTS idx_accounts_mtime_desc ON accounts (mtime DESC);
+
+-- START ROLES
 CREATE TABLE IF NOT EXISTS roles (
   id UUID PRIMARY KEY,
   name TEXT NOT NULL,
