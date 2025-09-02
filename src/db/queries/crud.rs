@@ -45,6 +45,7 @@ where
 mod tests {
     use anyhow::Result;
     use serial_test::serial;
+    use sqlx::{query_as, Postgres};
 
     use crate::{
         db::{
@@ -69,8 +70,11 @@ mod tests {
 
         let ret: AccountRow = create(&ctx, &acc_store, data).await?;
 
-        println!("{ret:?}");
+        let query = query_as::<_, AccountRow>("SELECT * FROM accounts WHERE id = $1").bind(ret.id);
 
+        let found: AccountRow = acc_store.db().fetch_one(query).await?;
+
+        assert_eq!(found.id, ret.id);
         Ok(())
     }
 }
