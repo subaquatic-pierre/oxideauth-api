@@ -17,7 +17,7 @@ use tokio::{
 };
 use tracing::error;
 
-use crate::db::{
+use crate::store::{
     error::{Error, Result},
     init::DbPool,
 };
@@ -438,11 +438,11 @@ mod tests {
     use sqlx::{query, query_as};
 
     use crate::{
-        db::schema::account::AccountRow,
         dev::{
             db::init_dev_db,
             init::{init_dev, init_test},
         },
+        store::schema::account::AccountRow,
     };
 
     use super::*;

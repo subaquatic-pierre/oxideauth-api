@@ -7,16 +7,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::app::AppData;
-use crate::db::queries::account::get_account_db;
-use crate::db::queries::role::{
-    bind_permissions_to_role, bind_role_to_account_db, create_permissions_db, create_role_db,
-    delete_permissions_db, delete_role_db, get_all_permissions, get_all_roles_db, get_role_db,
-    remove_permissions_from_role_db, remove_role_binding_db, update_role_db,
-};
 use crate::models::account::Account;
 use crate::models::api::ApiError;
 use crate::models::role::{Permission, Role};
 use crate::models::token::TokenClaims;
+use crate::store::queries::account::get_account_db;
+use crate::store::queries::role::{
+    bind_permissions_to_role, bind_role_to_account_db, create_permissions_db, create_role_db,
+    delete_permissions_db, delete_role_db, get_all_permissions, get_all_roles_db, get_role_db,
+    remove_permissions_from_role_db, remove_role_binding_db, update_role_db,
+};
 use crate::utils::token::get_token_from_req;
 use log::{debug, error, info};
 

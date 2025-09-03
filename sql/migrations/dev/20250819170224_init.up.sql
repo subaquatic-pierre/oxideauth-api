@@ -2,7 +2,6 @@
 -- one-time setup (per database)
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- START ACCOUNT
 CREATE TABLE IF NOT EXISTS accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
@@ -13,13 +12,19 @@ CREATE TABLE IF NOT EXISTS accounts (
   provider_id TEXT,
   description TEXT,
   image_url TEXT,
-  verified BOOLEAN DEFAULT FALSE NOT NULL,
-  enabled BOOLEAN DEFAULT TRUE NOT NULL,
+  verified BOOLEAN NOT NULL DEFAULT FALSE,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
   cid UUID NOT NULL,
   ctime TIMESTAMPTZ NOT NULL DEFAULT now(),
   mid UUID NOT NULL,
-  mtime TIMESTAMPTZ NOT NULL DEFAULT now()
+  mtime TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT accounts_cid_fkey FOREIGN KEY (cid) REFERENCES accounts(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT accounts_mid_fkey FOREIGN KEY (mid) REFERENCES accounts(id) ON UPDATE CASCADE ON DELETE RESTRICT
 );
+
+CREATE INDEX IF NOT EXISTS idx_accounts_cid ON accounts (cid);
+
+CREATE INDEX IF NOT EXISTS idx_accounts_mid ON accounts (mid);
 
 -- Timelines (common for recent-first queries)
 CREATE INDEX IF NOT EXISTS idx_accounts_ctime_desc ON accounts (ctime DESC);

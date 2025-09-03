@@ -1,11 +1,13 @@
 use std::fmt::Display;
 
-use chrono::{prelude::*, Duration};
 use log::debug;
 
 use crate::{
     config::Config,
-    utils::token::{decode_token, encode_token, is_token_exp},
+    utils::{
+        time::now_utc,
+        token::{decode_token, encode_token, is_token_exp},
+    },
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -33,8 +35,8 @@ pub struct TokenClaims {
 
 impl TokenClaims {
     pub fn new_token(account: &Account, exp: usize, token_type: TokenType) -> Self {
-        let now = Utc::now();
-        let iat = now.timestamp() as usize;
+        let now = now_utc();
+        let iat = now.unix_timestamp_nanos() as usize;
         Self {
             sub: account.id(),
             exp,
@@ -45,8 +47,8 @@ impl TokenClaims {
     }
 
     pub fn new_auth_token(account: &Account, exp: Option<usize>) -> Self {
-        let now = Utc::now();
-        let iat = now.timestamp() as usize;
+        let now = now_utc();
+        let iat = now.unix_timestamp_nanos() as usize;
         Self {
             sub: account.id(),
             exp: 9999999999999999,
@@ -57,8 +59,8 @@ impl TokenClaims {
     }
 
     pub fn new_confirm_token(account: &Account, exp: Option<usize>) -> Self {
-        let now = Utc::now();
-        let iat = now.timestamp() as usize;
+        let now = now_utc();
+        let iat = now.unix_timestamp_nanos() as usize;
         Self {
             sub: account.id(),
             exp: 9999999999999999,
@@ -69,8 +71,8 @@ impl TokenClaims {
     }
 
     pub fn new_reset_token(account: &Account, exp: Option<usize>) -> Self {
-        let now = Utc::now();
-        let iat = now.timestamp() as usize;
+        let now = now_utc();
+        let iat = now.unix_timestamp_nanos() as usize;
         Self {
             sub: account.id(),
             exp: 9999999999999999,
@@ -91,10 +93,11 @@ impl TokenClaims {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use crate::utils::token::encode_token;
 
     use super::*;
-    use chrono::Utc;
 
     // Helper function to create a mock account
     fn mock_account() -> Account {
@@ -109,7 +112,7 @@ mod tests {
     #[test]
     fn test_new_auth_token() {
         let account = mock_account();
-        let exp = Some((Utc::now() + Duration::days(1)).timestamp() as usize);
+        let exp = Some((now_utc() + Duration::from_secs(86400)).unix_timestamp_nanos() as usize);
         let claims = TokenClaims::new_auth_token(&account, exp);
 
         assert_eq!(claims.sub, account.id());
@@ -120,7 +123,7 @@ mod tests {
     #[test]
     fn test_new_confirm_token() {
         let account = mock_account();
-        let exp = Some((Utc::now() + Duration::days(1)).timestamp() as usize);
+        let exp = Some((now_utc() + Duration::from_secs(86400)).unix_timestamp_nanos() as usize);
         let claims = TokenClaims::new_confirm_token(&account, exp);
 
         assert_eq!(claims.sub, account.id());
@@ -131,7 +134,7 @@ mod tests {
     #[test]
     fn test_new_reset_token() {
         let account = mock_account();
-        let exp = Some((Utc::now() + Duration::days(1)).timestamp() as usize);
+        let exp = Some((now_utc() + Duration::from_secs(86400)).unix_timestamp_nanos() as usize);
         let claims = TokenClaims::new_reset_token(&account, exp);
 
         assert_eq!(claims.sub, account.id());
@@ -158,7 +161,7 @@ mod tests {
         let account = mock_account();
         let claims = TokenClaims::new_auth_token(
             &account,
-            Some((Utc::now() + Duration::seconds(10)).timestamp() as usize),
+            Some((now_utc() + Duration::from_secs(10)).unix_timestamp_nanos() as usize),
         );
 
         // Check that token is not expired
@@ -166,7 +169,7 @@ mod tests {
 
         // Set an expiration time in the past
         let expired_claims = TokenClaims {
-            exp: (Utc::now() - Duration::days(1)).timestamp() as usize,
+            exp: (now_utc() - Duration::from_secs(86400)).unix_timestamp_nanos() as usize,
             ..claims
         };
 

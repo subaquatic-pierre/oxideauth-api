@@ -5,14 +5,14 @@ use log::{debug, error, info};
 use sqlx::{Error, PgPool, Pool};
 
 use crate::{
-    db::{
+    models::{api::ApiError, token::TokenType},
+    store::{
         queries::{
             account::get_account_db,
             role::{get_role_db, get_role_permissions_db},
         },
         DbPool,
     },
-    models::{api::ApiError, token::TokenType},
     utils::token::{get_token_from_req, is_token_exp},
 };
 

@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::db::init::new_db_pool;
+use crate::store::init::new_db_pool;
 use anyhow::Result;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::OnceCell;
@@ -11,8 +11,8 @@ use tracing::info;
 
 use crate::{
     app::{new_test_app_data, AppData},
-    db::{store::DataStore, DbPool},
     dev::db::{init_dev_db, init_test_db},
+    store::{manager::StoreManager, DbPool},
 };
 
 pub async fn init_dev(db_pool: &DbPool) {

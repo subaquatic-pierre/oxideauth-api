@@ -1,5 +1,6 @@
+use std::time::Duration;
+
 use actix_web::HttpRequest;
-use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use log::debug;
 
@@ -10,13 +11,14 @@ use crate::{
         api::{ApiError, ApiResult},
         token::{TokenClaims, TokenType},
     },
+    utils::time::now_utc,
 };
 
 pub fn gen_token(
     app_config: &Config,
     user: &Account,
     token_type: TokenType,
-    exp_future: Option<i64>,
+    exp_future: Option<u64>,
 ) -> ApiResult<String> {
     let jwt_max_age = match exp_future {
         Some(num) => num,
@@ -81,15 +83,15 @@ pub fn get_token_from_req(req: &HttpRequest) -> Option<String> {
     None
 }
 
-fn gen_token_exp_time(max_age: i64) -> usize {
-    let now = Utc::now();
-    let expire_duration = Duration::seconds(max_age);
+fn gen_token_exp_time(max_age: u64) -> usize {
+    let now = now_utc();
+    let expire_duration = Duration::from_secs(max_age);
     let future_time = now + expire_duration;
-    future_time.timestamp() as usize
+    future_time.unix_timestamp_nanos() as usize
 }
 
 pub fn is_token_exp(token: &TokenClaims) -> bool {
-    let now = Utc::now().timestamp() as usize;
+    let now = now_utc().unix_timestamp_nanos() as usize;
     if token.exp < now {
         true
     } else {
@@ -103,7 +105,6 @@ mod tests {
     use crate::models::account::{Account, AccountType};
     use crate::models::token::TokenType;
     use actix_web::test::TestRequest;
-    use chrono::{Duration, Utc};
     use std::collections::HashMap;
 
     fn mock_app_config() -> Config {
@@ -183,7 +184,7 @@ mod tests {
 
         // Simulate an expired token by setting exp time in the past
         let expired_claims = TokenClaims {
-            exp: (Utc::now() - Duration::seconds(10)).timestamp() as usize,
+            exp: (now_utc() - Duration::from_secs(10)).unix_timestamp_nanos() as usize,
             ..claims
         };
 

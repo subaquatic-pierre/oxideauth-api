@@ -11,11 +11,21 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
     WithTxnFalse,
     NoTxn,
+    EntityNotFound {
+        entity: String,
+        id: String,
+    },
+    ListLimitOverMax {
+        max: i64,
+        actual: i64,
+    },
 
-    // --- DataStore
+    // --- StoreManager
     CantCreateDataStore(String),
 
     // --- Externals
+    #[from]
+    ModqlError(#[serde_as(as = "DisplayFromStr")] modql::filter::IntoSeaError),
     #[from]
     Sqlx(#[serde_as(as = "DisplayFromStr")] sqlx::Error),
     #[from]

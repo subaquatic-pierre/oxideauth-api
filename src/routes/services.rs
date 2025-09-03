@@ -8,15 +8,15 @@ use sqlx::Error;
 use uuid::Uuid;
 
 use crate::app::AppData;
-use crate::db;
-use crate::db::queries::account::get_account_db;
-use crate::db::queries::service::{
-    self, create_service_db, delete_service_db, get_all_services_db, get_service_db,
-    update_service_db,
-};
 use crate::models::api::ApiError;
 use crate::models::service::Service;
 use crate::models::token::TokenClaims;
+use crate::store;
+use crate::store::queries::account::get_account_db;
+use crate::store::queries::service::{
+    self, create_service_db, delete_service_db, get_all_services_db, get_service_db,
+    update_service_db,
+};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CreateServiceReq {

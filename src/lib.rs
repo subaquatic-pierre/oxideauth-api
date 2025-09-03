@@ -10,11 +10,11 @@ use actix_web::{http::header, test, web, App, HttpServer, Scope};
 pub mod app;
 pub mod cli;
 pub mod config;
-pub mod db;
 pub mod dev;
 pub mod models;
 pub mod routes;
 pub mod services;
+pub mod store;
 pub mod utils;
 
 use log::info;

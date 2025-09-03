@@ -10,7 +10,7 @@ pub struct Config {
     pub client_origin: String,
     pub database_url: String,
     pub jwt_secret: String,
-    pub jwt_max_age: i64,
+    pub jwt_max_age: u64,
 
     pub google_oauth_client_id: String,
     pub google_oauth_client_secret: String,
@@ -72,7 +72,7 @@ impl Config {
             database_url,
             jwt_secret,
             client_origin,
-            jwt_max_age: jwt_max_age.parse::<i64>().unwrap(),
+            jwt_max_age: jwt_max_age.parse::<u64>().unwrap(),
             google_oauth_client_id,
             google_oauth_client_secret,
             google_oauth_redirect_url,

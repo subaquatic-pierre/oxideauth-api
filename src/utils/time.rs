@@ -1,12 +1,10 @@
-use chrono::Datelike;
-use chrono::Utc;
 use time::{Duration, OffsetDateTime};
 
 use crate::config::Config;
 pub use time::format_description::well_known::Rfc3339;
 
 pub fn get_year() -> i32 {
-    Utc::now().year()
+    now_utc().year()
 }
 
 pub fn now_utc() -> OffsetDateTime {

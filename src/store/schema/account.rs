@@ -1,25 +1,17 @@
-use std::sync::Arc;
-
 use modql::field::Fields;
-use modql::filter::{FilterNodes, OpValsInt64, OpValsString, OpValsValue};
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
+use modql::filter::{FilterNodes, OpValsString, OpValsValue};
 use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::db::dbx::Dbx;
-use crate::db::schema::audit::{AuditFields, AuditFilter};
+use crate::store::schema::audit::AuditFilter;
 
-use crate::utils::modql::time_to_sea_value;
-
-#[serde_as]
-#[derive(Debug, Clone, FromRow, Fields, Serialize)]
+// --- Row (DB-facing only) ---
+#[derive(Debug, Clone, FromRow, Fields)]
 pub struct AccountRow {
     pub id: Uuid,
     pub email: String,
-    #[serde(skip_serializing)]
-    pub password_hash: String, // skip serializing, prevent leaks to logs or api
+    pub password_hash: String, // internal only
     pub name: String,
     pub acc_type: String,
     pub provider: String,
@@ -29,21 +21,14 @@ pub struct AccountRow {
     pub verified: bool,
     pub enabled: bool,
 
-    // audit as UUID + timestamptz
-    pub cid: uuid::Uuid,
-    #[field(cast_as = "timestamptz")]
-    #[modql(to_sea_value_fn = "time_to_sea_value")]
-    #[serde(with = "time::serde::rfc3339")]
-    pub ctime: time::OffsetDateTime,
-
-    pub mid: uuid::Uuid,
-    #[field(cast_as = "timestamptz")]
-    #[modql(to_sea_value_fn = "time_to_sea_value")]
-    #[serde(with = "time::serde::rfc3339")]
-    pub mtime: time::OffsetDateTime,
+    pub cid: Uuid,
+    pub ctime: OffsetDateTime,
+    pub mid: Uuid,
+    pub mtime: OffsetDateTime,
 }
 
-#[derive(Debug, Deserialize, Fields)]
+// --- Create (store input; built from DTO via From/Into in web layer) ---
+#[derive(Debug, Fields)]
 pub struct AccountCreate {
     pub email: String,
     pub password_hash: String,
@@ -57,8 +42,9 @@ pub struct AccountCreate {
     pub enabled: bool,
 }
 
-#[derive(Debug, Deserialize)]
-struct AccountUpdate {
+// --- Update (store input; built from DTO via From/Into in web layer) ---
+#[derive(Debug, Fields)]
+pub struct AccountUpdate {
     pub name: Option<String>,
     pub description: Option<String>,
     pub image_url: Option<String>,
@@ -66,8 +52,8 @@ struct AccountUpdate {
     pub enabled: Option<bool>,
 }
 
-/// Filtering options for queries
-#[derive(FilterNodes, Deserialize, Default, Debug)]
+/// Filtering options for queries (web/domain-facing)
+#[derive(FilterNodes, serde::Deserialize, Default, Debug)]
 pub struct AccountFilter {
     // Core identifiers / status
     pub id: Option<OpValsValue>, // Uuid (use Value to support eq/in)

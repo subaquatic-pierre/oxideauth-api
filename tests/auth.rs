@@ -1,11 +1,11 @@
 use actix_web::dev::ServiceResponse;
 use actix_web::http::header::{HeaderValue, AUTHORIZATION};
 use actix_web::{http::StatusCode, test, App};
-use oxideauth::db::queries::account::get_account_db;
 use oxideauth::models::account::Account;
 use oxideauth::models::token::TokenType;
 use oxideauth::routes::accounts::{DeleteAccountReq, UpdateAccountReq};
 use oxideauth::routes::auth::login_user;
+use oxideauth::store::queries::account::get_account_db;
 use oxideauth::utils::auth::build_owner_account;
 use oxideauth::utils::token::gen_token;
 use serde_json::json;

@@ -12,12 +12,12 @@ use tracing_subscriber::EnvFilter;
 mod app;
 mod cli;
 mod config;
-mod db;
 mod dev;
 mod models;
 mod routes;
 mod rpc;
 mod services;
+mod store;
 mod utils;
 mod web;
 

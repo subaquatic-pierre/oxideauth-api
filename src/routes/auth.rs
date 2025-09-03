@@ -5,7 +5,6 @@ use actix_web::{
     Scope,
 };
 use actix_web::{http::header, HttpResponse};
-use chrono::{prelude::*, Duration};
 use sqlx::Error;
 
 use actix_web::{get, post, web, HttpRequest, Responder};
@@ -15,8 +14,6 @@ use serde_json::json;
 use tera::Context;
 
 use crate::app::AppData;
-use crate::db::queries::account::{self, create_account_db, get_account_db, update_account_db};
-use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
 use crate::models::account::{Account, AccountProvider, AccountType};
 use crate::models::api::ApiError;
 use crate::models::oauth::GoogleOAuthState;
@@ -24,6 +21,8 @@ use crate::models::role::Role;
 use crate::models::token::{TokenClaims, TokenType};
 use crate::services::email::EmailService;
 use crate::services::storage::S3StorageService;
+use crate::store::queries::account::{self, create_account_db, get_account_db, update_account_db};
+use crate::store::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
 use crate::utils::auth::{get_google_user, request_google_token, RegisterRedirectParams};
 use crate::utils::crypt::{hash_password, verify_password};
 use crate::utils::time::get_year;

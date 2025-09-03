@@ -7,12 +7,12 @@ use tracing::{debug, info};
 
 use sqlx::Pool;
 
-use crate::db::store::DataStore;
 use crate::dev::init::init_dev;
+use crate::store::manager::StoreManager;
 use crate::{
     config::Config,
-    db::init::{new_db_pool, DbPool},
     models::guard::AuthGuard,
+    store::init::{new_db_pool, DbPool},
 };
 
 use crate::routes::accounts::register_accounts_collection;
@@ -29,7 +29,7 @@ pub struct AppData {
     pub config: Config,
     pub db: DbPool,
     pub guard: AuthGuard,
-    pub ds: DataStore,
+    pub sm: StoreManager,
 }
 
 pub async fn new_app_data() -> AppData {
@@ -65,13 +65,13 @@ pub async fn new_prod_app_data() -> AppData {
     let db: DbPool = new_db_pool(&config.database_url, 5).await;
 
     let guard = AuthGuard::new(&config.jwt_secret, db.clone());
-    let ds = DataStore::new(db.clone());
+    let sm = StoreManager::new(db.clone());
 
     AppData {
         db,
         config,
         guard,
-        ds,
+        sm,
     }
 }
 
@@ -80,13 +80,13 @@ pub async fn new_dev_app_data() -> AppData {
 
     let db: DbPool = new_db_pool(&config.database_url, 5).await;
     let guard = AuthGuard::new(&config.jwt_secret, db.clone());
-    let ds = DataStore::new(db.clone());
+    let sm = StoreManager::new(db.clone());
 
     AppData {
         db,
         config,
         guard,
-        ds,
+        sm,
     }
 }
 
@@ -95,13 +95,13 @@ pub async fn new_test_app_data() -> AppData {
 
     let db: DbPool = new_db_pool(&config.database_url, 1).await;
     let guard = AuthGuard::new(&config.jwt_secret, db.clone());
-    let ds = DataStore::new(db.clone());
+    let sm = StoreManager::new(db.clone());
 
     AppData {
         db,
         config,
         guard,
-        ds,
+        sm,
     }
 }
 

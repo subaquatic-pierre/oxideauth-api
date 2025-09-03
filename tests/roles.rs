@@ -2,7 +2,6 @@ use actix_web::dev::ServiceResponse;
 use actix_web::http::header::{HeaderValue, AUTHORIZATION};
 use actix_web::{http::StatusCode, test, App};
 use oxideauth::app::{new_test_app_data, register_all_services};
-use oxideauth::db::queries::account::get_account_db;
 use oxideauth::dev::test_utils::{login_owner, setup_test_server};
 use oxideauth::models::account::Principal;
 use oxideauth::models::role::Role;
@@ -11,6 +10,7 @@ use oxideauth::routes::roles::{
     CreateRoleRes, DeletePermissionsReq, DeleteRoleReq, DeleteRoleRes, DescribeRoleRes,
     ListPermissionsRes, RemoveRoleReq, RemoveRoleRes, UpdateRoleReq, UpdateRoleRes,
 };
+use oxideauth::store::queries::account::get_account_db;
 use serde_json::json;
 use serial_test::serial;
 

@@ -10,8 +10,8 @@ use tokio::sync::OnceCell;
 use tracing::info;
 
 use crate::{
-    db::init::DbPool,
     dev::config::{PROJECT_ROOT, SQL_DIR},
+    store::init::DbPool,
 };
 
 static INIT: OnceCell<()> = OnceCell::const_new();
@@ -79,7 +79,7 @@ pub fn get_sql_dir() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use crate::db::init::new_db_pool;
+    use crate::store::init::new_db_pool;
 
     use super::*;
     use crate::config::Config;

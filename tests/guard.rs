@@ -1,10 +1,9 @@
 use actix_http::StatusCode;
 use actix_web::{test, web, App};
-use chrono::Utc;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use oxideauth::config::Config;
-use oxideauth::db::queries::account::get_account_db;
 use oxideauth::models::account::Principal;
+use oxideauth::store::queries::account::get_account_db;
 use oxideauth::utils::token::{encode_token, gen_token};
 use oxideauth::{
     app::new_test_app_data,

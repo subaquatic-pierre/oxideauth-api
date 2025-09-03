@@ -3428,7 +3428,6 @@ dependencies = [
  "aws-sdk-s3",
  "aws-sdk-ses",
  "cargo-watch",
- "chrono",
  "clap 4.5.45",
  "ctrlc",
  "derive_more",

@@ -10,14 +10,14 @@ use sqlx::Error;
 use uuid::Uuid;
 
 use crate::app::AppData;
-use crate::db::queries::account::{
-    create_account_db, delete_account_db, get_account_db, get_all_accounts_db, update_account_db,
-};
-use crate::db::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
 use crate::models::account::{Account, AccountType};
 use crate::models::api::ApiError;
 use crate::models::role::Role;
 use crate::models::token::TokenType;
+use crate::store::queries::account::{
+    create_account_db, delete_account_db, get_account_db, get_all_accounts_db, update_account_db,
+};
+use crate::store::queries::role::{bind_role_to_account_db, create_role_db, get_role_db};
 use crate::utils::crypt::hash_password;
 use crate::utils::token::gen_token;
 
@@ -353,7 +353,7 @@ pub async fn create_service_account(
 #[derive(Debug, Deserialize)]
 pub struct GetSaSecretKeyReq {
     pub account: String,
-    pub exp: Option<i64>,
+    pub exp: Option<u64>,
 }
 
 #[derive(Debug, Serialize)]

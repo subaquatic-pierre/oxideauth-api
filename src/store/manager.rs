@@ -2,16 +2,16 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
-use crate::db::{dbx::Dbx, error::Result, stores::account::AccountStore, DbPool};
+use crate::store::{dbx::Dbx, error::Result, stores::account::AccountStore, DbPool};
 
-pub struct DataStore {
+pub struct StoreManager {
     dbx: Arc<Dbx>,
 
     // --- specific table stores
     account: AccountStore,
 }
 
-impl DataStore {
+impl StoreManager {
     pub fn new(db: DbPool) -> Self {
         let dbx = Dbx::new(db, false);
         let dbx_c = Arc::new(dbx);

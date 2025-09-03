@@ -1,7 +1,7 @@
 use modql::field::{SeaField, SeaFields};
 use uuid::Uuid;
 
-use crate::{db::schema::iden::AuditIden, utils::time::now_utc};
+use crate::{store::schema::iden::AuditIden, utils::time::now_utc};
 
 pub fn prepare_audit_fields(fields: &mut SeaFields, user_id: Uuid, is_create: bool) {
     let now = now_utc();
