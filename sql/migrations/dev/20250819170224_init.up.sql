@@ -1,10 +1,10 @@
 -- migrations/20250819120000_init.up.sql
 -- one-time setup (per database)
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 CREATE TABLE IF NOT EXISTS accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT UNIQUE NOT NULL,
+  -- Identity
+  email TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   name TEXT NOT NULL,
   acc_type TEXT NOT NULL,
@@ -14,36 +14,46 @@ CREATE TABLE IF NOT EXISTS accounts (
   image_url TEXT,
   verified BOOLEAN NOT NULL DEFAULT FALSE,
   enabled BOOLEAN NOT NULL DEFAULT TRUE,
-  cid UUID NOT NULL,
-  ctime TIMESTAMPTZ NOT NULL DEFAULT now(),
-  mid UUID NOT NULL,
-  mtime TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT accounts_cid_fkey FOREIGN KEY (cid) REFERENCES accounts(id) ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT accounts_mid_fkey FOREIGN KEY (mid) REFERENCES accounts(id) ON UPDATE CASCADE ON DELETE RESTRICT
+  -- Audit
+  created_by UUID,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_by UUID,
+  updated_at TIMESTAMPTZ,
+  -- Concurrency (optimistic locking)
+  version INT NOT NULL DEFAULT 1,
+  -- Soft-delete placeholders (not used now)
+  -- deleted_by UUID,
+  -- deleted_at TIMESTAMPTZ,
+  -- ---------- Constraints ----------
+  CONSTRAINT accounts_email_key UNIQUE (email),
+  CONSTRAINT accounts_created_by_fkey FOREIGN KEY (created_by) REFERENCES accounts(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT accounts_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES accounts(id) ON UPDATE CASCADE ON DELETE
+  SET NULL -- If enabling soft delete later:
+    -- ,CONSTRAINT accounts_deleted_by_fkey
+    --   FOREIGN KEY (deleted_by)
+    --   REFERENCES accounts(id)
+    --   ON UPDATE CASCADE
+    --   ON DELETE SET NULL
 );
-
+-- Optional helpful indexes (uncomment if useful to your queries):
+-- CREATE INDEX accounts_enabled_idx ON accounts (enabled);
+-- CREATE INDEX accounts_provider_provider_id_idx ON accounts (provider, provider_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_cid ON accounts (cid);
-
 CREATE INDEX IF NOT EXISTS idx_accounts_mid ON accounts (mid);
-
 -- Timelines (common for recent-first queries)
 CREATE INDEX IF NOT EXISTS idx_accounts_ctime_desc ON accounts (ctime DESC);
-
 CREATE INDEX IF NOT EXISTS idx_accounts_mtime_desc ON accounts (mtime DESC);
-
 -- START ROLES
 CREATE TABLE IF NOT EXISTS roles (
   id UUID PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT
 );
-
 CREATE TABLE IF NOT EXISTS permissions (
   id UUID,
   name TEXT PRIMARY KEY,
   description TEXT
 );
-
 CREATE TABLE IF NOT EXISTS permission_bindings (
   role_id UUID NOT NULL,
   permission_name TEXT NOT NULL,
@@ -51,7 +61,6 @@ CREATE TABLE IF NOT EXISTS permission_bindings (
   FOREIGN KEY (role_id) REFERENCES roles(id),
   FOREIGN KEY (permission_name) REFERENCES permissions(name)
 );
-
 CREATE TABLE IF NOT EXISTS role_bindings (
   account_id UUID NOT NULL,
   role_id UUID NOT NULL,
@@ -59,7 +68,6 @@ CREATE TABLE IF NOT EXISTS role_bindings (
   FOREIGN KEY (account_id) REFERENCES accounts(id),
   FOREIGN KEY (role_id) REFERENCES roles(id)
 );
-
 CREATE TABLE IF NOT EXISTS services (
   id UUID PRIMARY KEY,
   name TEXT UNIQUE NOT NULL,

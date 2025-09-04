@@ -9,7 +9,10 @@ use sqlx::{postgres::PgRow, FromRow};
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::store::error::{Error, Result};
+use crate::store::{
+    error::{Error, Result},
+    queries::crud::list,
+};
 use async_trait::async_trait;
 
 use crate::{
@@ -52,7 +55,7 @@ where
         filter: Option<Self::FilterParams>,
         opts: Option<ListOptions>,
     ) -> Result<Vec<Self::Row>> {
-        todo!()
+        list(ctx, self, filter, opts).await
     }
 
     /// Update a row and return the new version.

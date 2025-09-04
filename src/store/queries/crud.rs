@@ -73,7 +73,7 @@ where
     Ok(ret)
 }
 
-async fn list<T, F, DB>(
+pub async fn list<T, F, DB>(
     ctx: &Ctx,
     store: &DB,
     filter: Option<F>,
