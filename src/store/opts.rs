@@ -26,7 +26,7 @@ impl ListOptionsValidator {
     ///   * If no `limit` is provided, defaults to `LIST_LIMIT_MAX`.
     ///
     /// - If `opts` is `None`, falls back to defaults:
-    ///   * If the store has audit fields (`ctime`), sorts by `ctime DESC`
+    ///   * If the store has audit fields (`created_at`), sorts by `created_at DESC`
     ///     with a default limit of `LIST_LIMIT_DEFAULT`.
     ///   * Otherwise uses the bare default (limit only, no order).
     pub fn validate(opts: Option<ListOptions>, has_audit_fields: bool) -> Result<ListOptions> {
@@ -49,8 +49,8 @@ impl ListOptionsValidator {
             None => {
                 // No options provided → use sensible defaults
                 if has_audit_fields {
-                    // If table has audit fields, sort by ctime DESC (newest first)
-                    Self::with_order_by_ctime()
+                    // If table has audit fields, sort by created_at DESC (newest first)
+                    Self::with_order_by_created_at()
                 } else {
                     // Else rely on Postgres default row order
                     Self::default()
@@ -61,15 +61,15 @@ impl ListOptionsValidator {
         Ok(opts.to_owned())
     }
 
-    /// Build a default `ListOptions` that orders by `ctime DESC`.
+    /// Build a default `ListOptions` that orders by `created_at DESC`.
     ///
     /// Uses a *soft default* of `LIST_LIMIT_DEFAULT` rows.
-    pub fn with_order_by_ctime() -> ListOptions {
+    pub fn with_order_by_created_at() -> ListOptions {
         ListOptions {
             limit: Some(LIST_LIMIT_DEFAULT),
             offset: None,
             // `!` prefix = descending order in modql syntax
-            order_bys: Some(format!("!{}", AuditIden::Ctime.to_string()).into()),
+            order_bys: Some(format!("!{}", AuditIden::CreatedAt.to_string()).into()),
         }
     }
 
@@ -107,11 +107,11 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_none_opts_with_audit_fields_adds_ctime_desc_and_default_limit() {
+    async fn test_none_opts_with_audit_fields_adds_created_at_desc_and_default_limit() {
         let res = ListOptionsValidator::validate(None, /*has_audit_fields*/ true).unwrap();
         assert_eq!(res.limit, Some(LIST_LIMIT_DEFAULT));
-        // Expect "!ctime" (descending on ctime)
-        assert_eq!(ob_str(&res.order_bys).as_deref(), Some("ctime DESC"));
+        // Expect "!created_at" (descending on created_at)
+        assert_eq!(ob_str(&res.order_bys).as_deref(), Some("created_at DESC"));
         // Offset should remain None by default
         assert_eq!(res.offset, None);
     }
@@ -179,8 +179,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_provided_order_bys_is_preserved_and_not_overwritten() {
-        // Caller explicitly wants ascending by ctime (no '!' prefix)
-        let provided = Some("ctime".to_owned().into());
+        // Caller explicitly wants ascending by created_at (no '!' prefix)
+        let provided = Some("created_at".to_owned().into());
         let opts = ListOptions {
             limit: Some(42),
             offset: None,
@@ -189,15 +189,15 @@ mod tests {
         let res = ListOptionsValidator::validate(Some(opts), /*has_audit_fields*/ true).unwrap();
         assert_eq!(res.limit, Some(42));
         // Our validator should not override caller's order_bys
-        assert_eq!(ob_str(&res.order_bys).as_deref(), Some("ctime ASC"));
+        assert_eq!(ob_str(&res.order_bys).as_deref(), Some("created_at ASC"));
     }
 
     #[tokio::test]
     #[serial]
-    async fn test_with_order_by_ctime_helper_builds_expected_default() {
-        let res = ListOptionsValidator::with_order_by_ctime();
+    async fn test_with_order_by_created_at_helper_builds_expected_default() {
+        let res = ListOptionsValidator::with_order_by_created_at();
         assert_eq!(res.limit, Some(LIST_LIMIT_DEFAULT));
-        assert_eq!(ob_str(&res.order_bys).as_deref(), Some("ctime DESC"));
+        assert_eq!(ob_str(&res.order_bys).as_deref(), Some("created_at DESC"));
         assert_eq!(res.offset, None);
     }
 

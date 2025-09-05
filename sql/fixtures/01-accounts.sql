@@ -1,6 +1,6 @@
 -- Accounts
 INSERT INTO
-  accounts (
+  account (
     id,
     email,
     password_hash,
@@ -9,10 +9,10 @@ INSERT INTO
     provider,
     verified,
     enabled,
-    cid,
-    mid,
-    ctime,
-    mtime
+    created_by,
+    updated_by,
+    created_at,
+    updated_at
   )
 VALUES
   (

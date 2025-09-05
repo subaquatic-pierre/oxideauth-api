@@ -9,7 +9,7 @@ pub async fn get_all_services_db(pool: &PgPool) -> Result<Vec<Service>> {
     let services = sqlx::query_as!(
         Service,
         r#"
-        SELECT * FROM services
+        SELECT * FROM service
       "#,
     )
     .fetch_all(pool)
@@ -30,7 +30,7 @@ pub async fn get_service_db(pool: &PgPool, id_or_name: &str) -> Result<Service> 
         Ok(id) => {
             if let Some(r) = sqlx::query!(
                 r#"
-              SELECT * FROM services
+              SELECT * FROM service
               WHERE id = $1 
             "#,
                 id,
@@ -51,7 +51,7 @@ pub async fn get_service_db(pool: &PgPool, id_or_name: &str) -> Result<Service> 
         Err(_) => {
             if let Some(r) = sqlx::query!(
                 r#"
-                SELECT * FROM services
+                SELECT * FROM service
                 WHERE name = $1 
             "#,
                 id_or_name,
@@ -82,7 +82,7 @@ pub async fn get_service_db(pool: &PgPool, id_or_name: &str) -> Result<Service> 
 pub async fn create_service_db(pool: &PgPool, service: &Service) -> Result<Service> {
     let r = sqlx::query!(
         r#"
-        INSERT INTO services (id,name,endpoint,description)
+        INSERT INTO service (id,name,endpoint,description)
         VALUES ($1, $2, $3, $4)
         RETURNING *
       "#,
@@ -102,7 +102,7 @@ pub async fn create_service_db(pool: &PgPool, service: &Service) -> Result<Servi
 pub async fn update_service_db(pool: &PgPool, service: &Service) -> Result<Service> {
     let r = sqlx::query!(
         r#"
-        UPDATE services
+        UPDATE service
         SET name = $1,
             endpoint = $2,
             description = $3
@@ -130,7 +130,7 @@ pub async fn update_service_db(pool: &PgPool, service: &Service) -> Result<Servi
 pub async fn delete_service_db(pool: &PgPool, service: &Service) -> Result<()> {
     sqlx::query!(
         r#"
-          DELETE FROM services
+          DELETE FROM service
           WHERE id = $1
         "#,
         service.id

@@ -1,6 +1,6 @@
 -- Roles
 INSERT INTO
-  roles (id, name, description)
+  role (id, name, description)
 VALUES
   (
     '10000000-0000-0000-0000-000000000001',
@@ -20,7 +20,7 @@ VALUES
 
 -- Permissions
 INSERT INTO
-  permissions (id, name, description)
+  permission (id, name, description)
 VALUES
   (
     '20000000-0000-0000-0000-000000000001',
@@ -39,7 +39,7 @@ VALUES
   );
 
 INSERT INTO
-  permission_bindings (role_id, permission_name)
+  permission_role (role_id, permission_name)
 VALUES
   (
     '10000000-0000-0000-0000-000000000001',
@@ -68,7 +68,7 @@ VALUES
 
 -- Role bindings (accounts → roles)
 INSERT INTO
-  role_bindings (account_id, role_id)
+  role_account (account_id, role_id)
 VALUES
   (
     '00000000-0000-0000-0000-000000000001',

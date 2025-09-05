@@ -8,18 +8,19 @@ use crate::utils::modql::time_to_sea_value;
 
 #[derive(Debug, Clone, Fields)]
 pub struct AuditFields {
-    pub cid: Uuid,
-    pub ctime: OffsetDateTime,
-    pub mid: Uuid,
-    pub mtime: OffsetDateTime,
+    pub created_by: Uuid,
+    pub created_at: OffsetDateTime,
+    pub updated_by: Option<Uuid>,
+    pub updated_at: Option<OffsetDateTime>,
 }
 
 #[derive(FilterNodes, Deserialize, Default, Debug)]
 pub struct AuditFilter {
-    pub cid: Option<OpValsValue>,
+    pub created_by: Option<OpValsValue>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
-    pub ctime: Option<OpValsValue>,
-    pub mid: Option<OpValsValue>,
+    pub created_at: Option<OpValsValue>,
+
+    pub updated_by: Option<OpValsValue>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
-    pub mtime: Option<OpValsValue>,
+    pub updated_at: Option<OpValsValue>,
 }

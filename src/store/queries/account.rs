@@ -14,7 +14,7 @@ pub async fn create_account_db(pool: &PgPool, acc: &Account) -> Result<Account> 
 
     let acc_r = sqlx::query!(
         r#"
-        INSERT INTO accounts (id, email, name, password_hash, acc_type, description, provider,provider_id, image_url, verified, enabled)
+        INSERT INTO account (id, email, name, password_hash, acc_type, description, provider,provider_id, image_url, verified, enabled)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
       "#,
@@ -56,7 +56,7 @@ pub async fn update_account_db(pool: &PgPool, account: &Account) -> Result<Accou
     let mut tx = pool.begin().await?;
     sqlx::query!(
         r#"
-        UPDATE accounts
+        UPDATE account
         SET email = $2,
             name = $3,
             description = $4,
@@ -100,7 +100,7 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
         Ok(id) => {
             if let Some(r) = sqlx::query!(
                 r#"
-                  SELECT * FROM accounts
+                  SELECT * FROM account
                   WHERE id = $1 
                 "#,
                 id,
@@ -128,7 +128,7 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
         Err(_) => {
             if let Some(r) = sqlx::query!(
                 r#"
-                SELECT * FROM accounts
+                SELECT * FROM account
                 WHERE email = $1 
                 "#,
                 id_or_email,
@@ -157,7 +157,7 @@ pub async fn get_account_db(pool: &PgPool, id_or_email: &str) -> Result<Account>
 
     let roles_r = sqlx::query!(
         r#"
-        SELECT * FROM role_bindings
+        SELECT * FROM role_account
         WHERE account_id = $1
         "#,
         acc_r.id
@@ -196,7 +196,7 @@ pub async fn delete_account_db(pool: &PgPool, account: &Account) -> Result<()> {
 
         sqlx::query!(
             r#"
-                DELETE FROM role_bindings 
+                DELETE FROM role_account 
                 WHERE role_id = $1 AND account_id = $2
                 "#,
             role.id,
@@ -210,7 +210,7 @@ pub async fn delete_account_db(pool: &PgPool, account: &Account) -> Result<()> {
     // Fetch the newly created user from the database
     sqlx::query!(
         r#"
-          DELETE FROM accounts
+          DELETE FROM account
           WHERE id = $1
         "#,
         account.id
@@ -227,7 +227,7 @@ pub async fn get_all_accounts_db(pool: &PgPool) -> Result<Vec<Account>> {
     // TODO: Implement Limit paging for query all
     let acc_rs = sqlx::query!(
         r#"
-          SELECT * FROM accounts
+          SELECT * FROM account
         "#,
     )
     .fetch_all(pool)

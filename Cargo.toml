@@ -71,12 +71,13 @@ sqlx = { version = "0.8.6", features = [
     "runtime-tokio-rustls", # Tokio + rustls TLS
     "postgres",             # Postgres driver
     "uuid",                 # UUID (for id columns)
-    "chrono",               # Date/Time support
+    # "chrono",               # Date/Time support
     "migrate",               # Enable sqlx::migrate!(),
     "macros", 
+    "json"
 ] }
-sea-query = "0.32.7"
-sea-query-binder = { version = "0.7", features = ["sqlx-postgres", "with-uuid", "with-time" ] }
+sea-query = { version= "0.32.7", features = ["backend-postgres", "with-uuid", "with-json"] }
+sea-query-binder = { version = "0.7", features = ["sqlx-postgres", "with-uuid", "with-time", "with-json" ] }
 modql = { version = "0.4.1", features = ["with-sea-query"]}
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -102,3 +103,6 @@ serial_test = "0.6"
 [lints.rust]
 unused = "allow"
 unsafe_code = "forbid"
+
+[features]
+# default = ["sqlx/offline"] 

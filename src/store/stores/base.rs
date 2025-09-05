@@ -98,7 +98,7 @@ pub trait StoreMeta {
     /// - `Unpin`: needed because sqlx streams rows across await points.
     /// - `Send + Sync`: required for async trait usage.
     /// - `HasSeaFields`: provides column definitions for SeaQuery.
-    type Row: for<'r> FromRow<'r, PgRow> + Unpin + Send + Sync + HasSeaFields;
+    type Row: for<'r> FromRow<'r, PgRow> + Unpin + Send + Sync;
 
     /// Parameters used when inserting a new row.
     type CreateParams: HasSeaFields + Send;

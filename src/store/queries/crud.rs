@@ -1,6 +1,6 @@
 use modql::field::HasSeaFields;
 use modql::filter::{FilterGroups, ListOptions};
-use sea_query::{Condition, Expr, IntoValueTuple, PostgresQueryBuilder, Query};
+use sea_query::{Alias, Asterisk, Condition, Expr, IntoValueTuple, PostgresQueryBuilder, Query};
 use sea_query_binder::SqlxBinder;
 use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, Value};
@@ -18,7 +18,7 @@ use sea_query::{Iden, IntoIden, TableRef};
 pub async fn create<T, C, DB>(ctx: &Ctx, store: &DB, data: C) -> Result<T>
 where
     DB: StoreMeta,
-    T: for<'r> FromRow<'r, PgRow> + HasSeaFields + Send + Sync + Unpin,
+    T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     C: HasSeaFields,
 {
     let user_id = ctx.user_id();
@@ -48,14 +48,14 @@ pub async fn get<T, DB, ID>(ctx: &Ctx, store: &DB, id: ID) -> Result<T>
 where
     ID: ToString + Into<sea_query::Value>,
     DB: StoreMeta,
-    T: for<'r> FromRow<'r, PgRow> + HasSeaFields + Send + Sync + Unpin,
+    T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
 {
     let mut query = Query::select();
     let id_for_error = id.to_string();
 
     query
         .from(store.table_ref())
-        .columns(T::sea_column_refs())
+        .column((Alias::new(DB::TABLE), Asterisk))
         .and_where(Expr::col(CommonIden::Id).eq(id));
 
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
@@ -81,10 +81,15 @@ pub async fn list<T, F, DB>(
 ) -> Result<Vec<T>>
 where
     DB: StoreMeta,
-    T: for<'r> FromRow<'r, PgRow> + HasSeaFields + Send + Sync + Unpin,
+    T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     F: Into<FilterGroups>,
 {
     let mut query = Query::select();
+
+    // FROM + SELECT *
+    query
+        .from(store.table_ref())
+        .column((Alias::new(DB::TABLE), Asterisk));
 
     // apply filter to query
     if let Some(filter) = filter {

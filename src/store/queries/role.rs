@@ -14,7 +14,7 @@ pub async fn create_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
     debug!("Creating role: {role:?}");
     sqlx::query!(
         r#"
-        INSERT INTO roles (id, name, description)
+        INSERT INTO role (id, name, description)
         VALUES ($1, $2, $3)
         "#,
         role.id,
@@ -36,7 +36,7 @@ pub async fn create_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
 pub async fn update_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
     let r = sqlx::query!(
         r#"
-        UPDATE roles
+        UPDATE role
             SET name = $1,
                 description = $2
             WHERE id = $3
@@ -67,10 +67,10 @@ pub async fn update_role_db(pool: &PgPool, role: &Role) -> Result<Role> {
 pub async fn delete_role_db(pool: &PgPool, role: &Role) -> Result<()> {
     let mut tx = pool.begin().await?;
 
-    // Delete from permission_bindings
+    // Delete from permission_role
     sqlx::query!(
         r#"
-        DELETE FROM permission_bindings
+        DELETE FROM permission_role
         WHERE role_id = $1
         "#,
         role.id
@@ -79,10 +79,10 @@ pub async fn delete_role_db(pool: &PgPool, role: &Role) -> Result<()> {
     // .execute(&mut tx)
     .await?;
 
-    // Delete from role_bindings
+    // Delete from role_account
     sqlx::query!(
         r#"
-        DELETE FROM role_bindings
+        DELETE FROM role_account
         WHERE role_id = $1
         "#,
         role.id
@@ -94,7 +94,7 @@ pub async fn delete_role_db(pool: &PgPool, role: &Role) -> Result<()> {
     // // Delete the role itself
     sqlx::query!(
         r#"
-        DELETE FROM roles
+        DELETE FROM role
         WHERE id = $1
         "#,
         role.id
@@ -113,7 +113,7 @@ pub async fn get_role_db(pool: &PgPool, id_or_name: &str) -> Result<Role> {
         Ok(id) => {
             if let Some(r) = sqlx::query!(
                 r#"
-                SELECT * FROM roles
+                SELECT * FROM role
                 WHERE id = $1
                 "#,
                 id
@@ -129,7 +129,7 @@ pub async fn get_role_db(pool: &PgPool, id_or_name: &str) -> Result<Role> {
         Err(_) => {
             if let Some(r) = sqlx::query!(
                 r#"
-                SELECT * FROM roles
+                SELECT * FROM role
                 WHERE name = $1
                 "#,
                 id_or_name
@@ -156,7 +156,7 @@ pub async fn get_role_db(pool: &PgPool, id_or_name: &str) -> Result<Role> {
 pub async fn get_role_permissions_db(pool: &PgPool, role_id: &Uuid) -> Result<RolePermissions> {
     let permission_rows = sqlx::query!(
         r#"
-            SELECT permission_name FROM permission_bindings
+            SELECT permission_name FROM permission_role
             WHERE role_id = $1
             "#,
         role_id
@@ -177,7 +177,7 @@ pub async fn get_role_permissions_db(pool: &PgPool, role_id: &Uuid) -> Result<Ro
 pub async fn get_all_roles_db(pool: &PgPool) -> Result<Vec<Role>> {
     let rs = sqlx::query!(
         r#"
-        SELECT name FROM roles
+        SELECT name FROM role
         "#,
     )
     .fetch_all(pool)
@@ -204,7 +204,7 @@ pub async fn create_permissions_db(pool: &PgPool, perms: Vec<Permission>) -> Res
         if !existing_perms.contains(&perm.name) {
             sqlx::query!(
                 r#"
-                INSERT INTO permissions (id, name)
+                INSERT INTO permission (id, name)
                 VALUES ($1, $2)
                 "#,
                 perm.id,
@@ -228,7 +228,7 @@ pub async fn create_permissions_db(pool: &PgPool, perms: Vec<Permission>) -> Res
 pub async fn get_permission_db(pool: &PgPool, permission_name: &str) -> Result<String> {
     match sqlx::query!(
         r#"
-        SELECT name FROM permissions
+        SELECT name FROM permission
         WHERE name = $1
         "#,
         permission_name
@@ -244,7 +244,7 @@ pub async fn get_permission_db(pool: &PgPool, permission_name: &str) -> Result<S
 pub async fn get_all_permissions(pool: &PgPool) -> Result<Vec<String>> {
     let rs = sqlx::query!(
         r#"
-        SELECT name FROM permissions
+        SELECT name FROM permission
         "#,
     )
     .fetch_all(pool)
@@ -264,7 +264,7 @@ pub async fn delete_permissions_db(pool: &PgPool, perms: Vec<String>) -> Result<
         if let Ok(perm) = get_permission_db(pool, &perm).await {
             sqlx::query!(
                 r#"
-                    DELETE FROM permission_bindings 
+                    DELETE FROM permission_role 
                     WHERE permission_name = $1
                     "#,
                 perm
@@ -275,7 +275,7 @@ pub async fn delete_permissions_db(pool: &PgPool, perms: Vec<String>) -> Result<
 
             sqlx::query!(
                 r#"
-                DELETE FROM permissions 
+                DELETE FROM permission 
                 WHERE name = $1
                 "#,
                 perm
@@ -301,7 +301,7 @@ pub async fn bind_role_to_account_db(pool: &PgPool, acc: &Account, role: &Role) 
     ) {}
     sqlx::query!(
         r#"
-        INSERT INTO role_bindings (account_id, role_id)
+        INSERT INTO role_account (account_id, role_id)
         VALUES ($1, $2)
         "#,
         acc.id,
@@ -323,7 +323,7 @@ pub async fn bind_permissions_to_role(
     for perm in perms {
         if let Err(e) = sqlx::query!(
             r#"
-                INSERT INTO permission_bindings (role_id, permission_name)
+                INSERT INTO permission_role (role_id, permission_name)
                 VALUES ($1, $2)
                 "#,
             role.id,
@@ -353,7 +353,7 @@ pub async fn remove_permissions_from_role_db(
         debug!("Removing permission binding, for permission_name: {perm:?}, and role: {role:?}");
         if let Err(e) = sqlx::query!(
             r#"
-                DELETE FROM permission_bindings 
+                DELETE FROM permission_role 
                 WHERE role_id = $1 AND permission_name = $2
                 "#,
             role.id,
@@ -383,7 +383,7 @@ pub async fn remove_role_binding_db(pool: &PgPool, acc: &Account, role: &Role) -
         debug!("Removing role binding, for account: {role:?}, and role: {acc:?}");
         sqlx::query!(
             r#"
-                DELETE FROM role_bindings 
+                DELETE FROM role_account 
                 WHERE role_id = $1 AND account_id = $2
                 "#,
             role.id,
