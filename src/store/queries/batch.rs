@@ -172,7 +172,7 @@ where
     // WHERE t.id = v.id RETURNING t.*
     qb.push("WHERE t.id = v.id RETURNING t.*");
 
-    println!("-- QB --: {:#?}", qb.sql());
+    // println!("-- QB --: {:#?}", qb.sql());
 
     // 4) Execute and return updated rows
     let query = qb.build_query_as::<T>();
@@ -237,11 +237,11 @@ mod tests {
         let ctx = Ctx::new_root();
 
         let data = AccountCreate::default();
-        println!("DATA 1: {:#?}", data);
+        // println!("DATA 1: {:#?}", data);
         let ret1: AccountRow = create(&ctx, &acc_store, data).await?;
 
         let mut data = AccountCreate::default();
-        println!("DATA 2: {:#?}", data);
+        // println!("DATA 2: {:#?}", data);
         data.email = "change".to_string();
         let ret2: AccountRow = create(&ctx, &acc_store, data).await?;
 
@@ -253,7 +253,7 @@ mod tests {
 
         let r: Vec<AccountRow> = update_many(&ctx, &acc_store, data).await?;
 
-        println!("RETURNED {:#?}", r);
+        // println!("RETURNED {:#?}", r);
 
         Ok(())
     }
