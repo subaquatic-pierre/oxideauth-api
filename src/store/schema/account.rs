@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::store::schema::audit::AuditFilter;
-use crate::utils::modql::json_to_sea_value;
+use crate::store::utils::json_to_sea_value;
 
 // --- Row (DB-facing) ---
 #[derive(Debug, FromRow)]
@@ -28,7 +28,7 @@ pub struct AccountRow {
     pub enabled: bool,
 
     // Scope
-    pub namespace_id: Uuid,
+    pub namespace_id: Option<Uuid>,
     pub project_id: Option<Uuid>,
 
     // Free-form
@@ -59,7 +59,7 @@ pub struct AccountCreate {
     pub enabled: bool,
 
     // Scope
-    pub namespace_id: Uuid,
+    pub namespace_id: Option<Uuid>,
     pub project_id: Option<Uuid>,
     // Free-form
     // pub tags: Vec<String>,
@@ -67,7 +67,7 @@ pub struct AccountCreate {
 }
 
 // --- Update (store input) ---
-#[derive(Debug, Default, Fields)]
+#[derive(Debug, Fields, Clone)]
 pub struct AccountUpdate {
     pub name: Option<String>,
     pub acc_type: Option<String>,
@@ -86,7 +86,7 @@ pub struct AccountUpdate {
     pub meta: Option<AccountMeta>,
 }
 
-#[derive(Debug, Default, Fields, Serialize, Deserialize)]
+#[derive(Debug, Default, Fields, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct AccountMeta {
     pub schema_version: String,
@@ -138,7 +138,6 @@ pub struct AccountFilter {
 #[cfg(test)]
 impl Default for AccountCreate {
     fn default() -> Self {
-        use serde_json::json;
         Self {
             email: "user1@example.com".into(),
             password_hash: "$argon2id$v=19$m=65536,t=3,p=1$testsalt$testhash".into(),
@@ -150,12 +149,38 @@ impl Default for AccountCreate {
             image_url: None,
             verified: false,
             enabled: true,
-            namespace_id: Uuid::new_v4(),
+            namespace_id: None,
             project_id: None,
             // tags: vec![],
             meta: AccountMeta {
                 schema_version: "1".into(),
             },
+        }
+    }
+}
+
+#[cfg(test)]
+impl Default for AccountUpdate {
+    fn default() -> Self {
+        Self {
+            // Basic identity
+            name: Some("New Account".to_string()),
+            acc_type: Some("user".to_string()), // e.g. "user" | "admin" | "service"
+            provider: Some("local".to_string()), // e.g. "local" | "google" | "github"
+            provider_id: None,                  // set if provider != local
+
+            // Profile / status
+            description: Some(String::new()),
+            image_url: None,
+            verified: Some(false),
+            enabled: Some(true),
+
+            // Scope (left unset by default to avoid FK issues)
+            namespace_id: None,
+            project_id: None,
+
+            // Free-form meta; keep structure present but empty
+            meta: Some(AccountMeta::default()),
         }
     }
 }

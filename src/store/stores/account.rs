@@ -7,8 +7,14 @@ use uuid::Uuid;
 
 use crate::store::{
     dbx::Dbx,
-    schema::account::{AccountCreate, AccountFilter, AccountRow, AccountUpdate},
-    stores::base::StoreMeta,
+    schema::{
+        account::{AccountCreate, AccountFilter, AccountRow, AccountUpdate},
+        iden::TableIden,
+    },
+    stores::base::{
+        CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
+        UpdateStore,
+    },
 };
 
 pub struct AccountStore {
@@ -21,19 +27,36 @@ impl AccountStore {
     }
 }
 
-impl StoreMeta for AccountStore {
-    const TABLE: &'static str = "accounts";
-
-    #[doc = " Whether this table has the standard audit fields."]
-    const HAS_AUDIT_FIELDS: bool = true;
-
+impl MetaStore for AccountStore {
     type Id = Uuid;
     type Row = AccountRow;
-    type CreateParams = AccountCreate;
-    type UpdateParams = AccountUpdate;
-    type FilterParams = AccountFilter;
+
+    const TABLE: TableIden = TableIden::Account;
+    const HAS_AUDIT_FIELDS: bool = true;
 
     fn db(&self) -> &Dbx {
         &self.db
     }
 }
+
+impl CreateStore for AccountStore {
+    type CreateStoreParams = AccountCreate;
+}
+
+impl GetStore for AccountStore {}
+
+impl ListStore for AccountStore {
+    type FilterStoreParams = AccountFilter;
+}
+
+impl UpdateStore for AccountStore {
+    type UpdateStoreParams = AccountUpdate;
+}
+
+impl DeleteManyStore for AccountStore {}
+
+impl UpdateManyStore for AccountStore {
+    type UpdateStoreParams = AccountUpdate;
+}
+
+impl DeleteStore for AccountStore {}

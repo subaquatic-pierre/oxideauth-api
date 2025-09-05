@@ -4,13 +4,13 @@ use serde::Deserialize;
 
 use crate::store::error::{Error, Result};
 use crate::store::schema::iden::AuditIden;
-use crate::store::stores::base::StoreMeta;
+use crate::store::stores::base::MetaStore;
 
 /// Default number of rows to return in a list query.
-const LIST_LIMIT_DEFAULT: i64 = 100;
+pub const LIST_LIMIT_DEFAULT: i64 = 100;
 
 /// Hard cap on the maximum number of rows a client can request.
-const LIST_LIMIT_MAX: i64 = 500;
+pub const LIST_LIMIT_MAX: i64 = 500;
 
 /// Utility struct for validating and normalizing `ListOptions`.
 ///
@@ -29,17 +29,15 @@ impl ListOptionsValidator {
     ///   * If the store has audit fields (`created_at`), sorts by `created_at DESC`
     ///     with a default limit of `LIST_LIMIT_DEFAULT`.
     ///   * Otherwise uses the bare default (limit only, no order).
-    pub fn validate(opts: Option<ListOptions>, has_audit_fields: bool) -> Result<ListOptions> {
+    pub fn validate_list_opts(
+        opts: Option<ListOptions>,
+        has_audit_fields: bool,
+    ) -> Result<ListOptions> {
         let opts = match opts {
             Some(mut opts) => {
                 // If caller provided a limit, check it's within the allowed max
                 if let Some(limit) = opts.limit {
-                    if limit > LIST_LIMIT_MAX {
-                        return Err(Error::ListLimitOverMax {
-                            max: LIST_LIMIT_MAX,
-                            actual: limit,
-                        });
-                    }
+                    Self::validate_limit(limit)?
                 } else {
                     // If no limit provided, enforce the max limit by default
                     opts.limit = Some(LIST_LIMIT_MAX);
@@ -71,6 +69,17 @@ impl ListOptionsValidator {
             // `!` prefix = descending order in modql syntax
             order_bys: Some(format!("!{}", AuditIden::CreatedAt.to_string()).into()),
         }
+    }
+
+    pub fn validate_limit(limit: i64) -> Result<()> {
+        if limit > LIST_LIMIT_MAX {
+            return Err(Error::ListLimitOverMax {
+                max: LIST_LIMIT_MAX,
+                actual: limit,
+            });
+        }
+
+        Ok(())
     }
 
     /// Build a default `ListOptions` with only a row limit, no ordering.
@@ -108,7 +117,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_none_opts_with_audit_fields_adds_created_at_desc_and_default_limit() {
-        let res = ListOptionsValidator::validate(None, /*has_audit_fields*/ true).unwrap();
+        let res =
+            ListOptionsValidator::validate_list_opts(None, /*has_audit_fields*/ true).unwrap();
         assert_eq!(res.limit, Some(LIST_LIMIT_DEFAULT));
         // Expect "!created_at" (descending on created_at)
         assert_eq!(ob_str(&res.order_bys).as_deref(), Some("created_at DESC"));
@@ -119,7 +129,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_none_opts_without_audit_fields_uses_default_no_order() {
-        let res = ListOptionsValidator::validate(None, /*has_audit_fields*/ false).unwrap();
+        let res =
+            ListOptionsValidator::validate_list_opts(None, /*has_audit_fields*/ false).unwrap();
         assert_eq!(res.limit, Some(LIST_LIMIT_DEFAULT));
         assert!(res.order_bys.is_none());
         assert_eq!(res.offset, None);
@@ -133,8 +144,11 @@ mod tests {
             offset: Some(20),
             order_bys: None,
         };
-        let res =
-            ListOptionsValidator::validate(Some(opts.clone()), /*has_audit_fields*/ true).unwrap();
+        let res = ListOptionsValidator::validate_list_opts(
+            Some(opts.clone()),
+            /*has_audit_fields*/ true,
+        )
+        .unwrap();
         // Provided limit is kept as-is (<= max)
         assert_eq!(res.limit, Some(250));
         // Provided offset is preserved
@@ -151,7 +165,9 @@ mod tests {
             offset: Some(5),
             order_bys: None,
         };
-        let res = ListOptionsValidator::validate(Some(opts), /*has_audit_fields*/ true).unwrap();
+        let res =
+            ListOptionsValidator::validate_list_opts(Some(opts), /*has_audit_fields*/ true)
+                .unwrap();
         assert_eq!(res.limit, Some(LIST_LIMIT_MAX));
         assert_eq!(res.offset, Some(5));
         assert!(res.order_bys.is_none());
@@ -166,7 +182,8 @@ mod tests {
             order_bys: None,
         };
         let err =
-            ListOptionsValidator::validate(Some(opts), /*has_audit_fields*/ false).unwrap_err();
+            ListOptionsValidator::validate_list_opts(Some(opts), /*has_audit_fields*/ false)
+                .unwrap_err();
         match err {
             Error::ListLimitOverMax { max, actual } => {
                 assert_eq!(max, LIST_LIMIT_MAX);
@@ -186,7 +203,9 @@ mod tests {
             offset: None,
             order_bys: provided.clone(),
         };
-        let res = ListOptionsValidator::validate(Some(opts), /*has_audit_fields*/ true).unwrap();
+        let res =
+            ListOptionsValidator::validate_list_opts(Some(opts), /*has_audit_fields*/ true)
+                .unwrap();
         assert_eq!(res.limit, Some(42));
         // Our validator should not override caller's order_bys
         assert_eq!(ob_str(&res.order_bys).as_deref(), Some("created_at ASC"));

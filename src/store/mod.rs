@@ -9,5 +9,6 @@ pub mod opts;
 pub mod queries;
 pub mod schema;
 pub mod stores;
+pub mod utils;
 
 pub use init::DbPool;

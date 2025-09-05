@@ -74,7 +74,8 @@ sqlx = { version = "0.8.6", features = [
     # "chrono",               # Date/Time support
     "migrate",               # Enable sqlx::migrate!(),
     "macros", 
-    "json"
+    "json",
+    "rust_decimal"
 ] }
 sea-query = { version= "0.32.7", features = ["backend-postgres", "with-uuid", "with-json"] }
 sea-query-binder = { version = "0.7", features = ["sqlx-postgres", "with-uuid", "with-time", "with-json" ] }

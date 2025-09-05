@@ -12,6 +12,7 @@ use tracing_subscriber::EnvFilter;
 mod app;
 mod cli;
 mod config;
+mod core;
 mod dev;
 mod models;
 mod routes;

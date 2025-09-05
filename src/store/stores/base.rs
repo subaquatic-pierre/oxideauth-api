@@ -3,7 +3,7 @@ use modql::{
     filter::{FilterGroups, ListOptions},
     SIden,
 };
-use sea_query::{Iden, IntoIden, TableRef};
+use sea_query::{Iden, IntoIden, IntoTableRef, TableRef};
 use serde::Deserialize;
 use sqlx::{postgres::PgRow, FromRow};
 use std::sync::Arc;
@@ -11,7 +11,8 @@ use uuid::Uuid;
 
 use crate::store::{
     error::{Error, Result},
-    queries::crud::list,
+    queries::crud::{delete, list, update},
+    schema::iden::TableIden,
 };
 use async_trait::async_trait;
 
@@ -22,99 +23,181 @@ use crate::{
         init::DbPool,
         queries::crud::{create, get},
         schema::iden::AuditIden,
-        stores::utils::prepare_audit_fields,
+        utils::prepare_audit_fields,
     },
     utils::time::now_utc,
 };
 
-/// Trait defining common CRUD operations available to all stores.
+/// Base trait describing static metadata every store must provide.
 ///
-/// Each method delegates to a shared `queries::crud` function,
-/// so individual store implementations don’t need to duplicate logic.
+/// This trait connects a store type to its underlying SQL table,
+/// defines the types used in CRUD operations, and exposes the `Dbx`
+/// accessor for database access.
 #[async_trait]
-pub trait StoreCrud
+pub trait MetaStore {
+    /// Static table name used in SQL queries.
+    const TABLE: TableIden;
+
+    /// Whether the table includes audit fields
+    /// (`ctime`, `mtime`, `cid`, `mid`).
+    const HAS_AUDIT_FIELDS: bool = false;
+
+    /// Primary key type.
+    /// - `ToString`: for logging/debugging
+    /// - `Into<Value>`: so it can embed in SeaQuery expressions
+    /// - `Send`: so it can cross `await` points safely
+    type Id: ToString + Into<sea_query::Value> + Send;
+
+    /// Row type returned from queries.
+    /// Must be able to map from a Postgres row
+    type Row: for<'r> FromRow<'r, PgRow> + Unpin + Send + Sync;
+
+    /// Access to the underlying connection wrapper.
+    fn db(&self) -> &Dbx;
+}
+
+/// Trait for "create" capability of a store.
+#[async_trait]
+pub trait CreateStore
 where
-    // StoreCrud only applies to types that also implement StoreMeta
-    // and are thread-safe (`Send + Sync`) and concrete (`Sized`).
-    Self: StoreMeta + Send + Sync + Sized,
+    Self: MetaStore + Send + Sync + Sized,
 {
-    /// Insert a new row into the store’s table.
-    async fn create(&self, ctx: &Ctx, data: Self::CreateParams) -> Result<Self::Row> {
+    /// Parameters used to insert a new row.
+    type CreateStoreParams: HasSeaFields + Send;
+
+    /// Insert a new row and return the created record.
+    async fn create(&self, ctx: &Ctx, data: Self::CreateStoreParams) -> Result<Self::Row> {
         create(&ctx, self, data).await
     }
+}
 
-    /// Retrieve a single row by its primary key.
+/// Trait for "get by id" capability of a store.
+#[async_trait]
+pub trait GetStore
+where
+    Self: MetaStore + Send + Sync + Sized,
+{
+    /// Fetch a single row by its primary key.
     async fn get(&self, ctx: &Ctx, id: Self::Id) -> Result<Self::Row> {
         get(&ctx, self, id).await
     }
+}
 
-    /// List rows, optionally filtered and/or paginated.
+/// Trait for "list/filter" capability of a store.
+#[async_trait]
+pub trait ListStore
+where
+    Self: MetaStore + Send + Sync + Sized,
+{
+    /// Parameters used to filter queries.
+    type FilterStoreParams: Into<FilterGroups> + Send;
+
+    /// Return all rows matching the filter and list options.
     async fn list(
         &self,
         ctx: &Ctx,
-        filter: Option<Self::FilterParams>,
+        filter: Option<Self::FilterStoreParams>,
         opts: Option<ListOptions>,
     ) -> Result<Vec<Self::Row>> {
         list(ctx, self, filter, opts).await
     }
+}
 
-    /// Update a row and return the new version.
-    async fn update(&self, ctx: &Ctx, data: Self::UpdateParams) -> Result<Self::Row> {
-        todo!()
+/// Trait for "update" capability of a store.
+#[async_trait]
+pub trait UpdateStore
+where
+    Self: MetaStore + Send + Sync + Sized,
+{
+    /// Parameters used when updating a row.
+    type UpdateStoreParams: HasSeaFields + Send;
+
+    /// Update a row by ID and return the updated record.
+    async fn update(
+        &self,
+        ctx: &Ctx,
+        id: Self::Id,
+        data: Self::UpdateStoreParams,
+    ) -> Result<Self::Row> {
+        update(ctx, self, id, data).await
     }
+}
 
-    /// Delete a row by its primary key, returning the deleted row.
+/// Trait for "delete" capability of a store.
+#[async_trait]
+pub trait DeleteStore
+where
+    Self: MetaStore + Send + Sync + Sized,
+{
+    /// Delete a row by its primary key.
+    /// By default returns the deleted row (if you want
+    /// just an affected count, you can adjust here).
     async fn delete(&self, ctx: &Ctx, id: Self::Id) -> Result<Self::Row> {
+        delete(ctx, self, id).await
+    }
+}
+
+#[async_trait]
+pub trait CreateManyStore
+where
+    Self: MetaStore + CreateStore + Send + Sync + Sized,
+{
+    async fn create_many(
+        &self,
+        ctx: &Ctx,
+        data: Vec<Self::CreateStoreParams>,
+    ) -> Result<Vec<Self::Row>> {
         todo!()
     }
 }
 
-// Blanket impl so that any type implementing StoreMeta
-// automatically gains StoreCrud (with its default method bodies).
 #[async_trait]
-impl<T> StoreCrud for T where T: StoreMeta + Send + Sync + Sized {}
+pub trait UpdateManyStore
+where
+    Self: MetaStore + Send + Sync + Sized,
+{
+    type UpdateStoreParams: HasSeaFields + Clone + Send + Sync + Sized;
 
-/// Trait defining metadata every store must provide.
-///
-/// This links a Rust store type to its underlying SQL table
-/// and specifies the associated data types used in CRUD operations.
+    async fn update_many(
+        &self,
+        ctx: &Ctx,
+        data: Vec<(Self::Id, Self::UpdateStoreParams)>,
+    ) -> Result<Vec<Self::Row>> {
+        todo!()
+    }
+}
+
 #[async_trait]
-pub trait StoreMeta {
-    /// Backing table name (as a static string).
-    const TABLE: &'static str;
+pub trait DeleteManyStore
+where
+    Self: MetaStore + DeleteStore + Send + Sync + Sized,
+{
+    async fn delete_many(&self, ctx: &Ctx, ids: Vec<Self::Id>) -> Result<Vec<Self::Row>> {
+        todo!()
+    }
+}
 
-    /// Whether this table has the standard audit fields
-    /// (e.g., ctime, mtime, cid, mid).
-    const HAS_AUDIT_FIELDS: bool = false;
+#[async_trait]
+pub trait FirstStore
+where
+    Self: MetaStore + ListStore + Send + Sync + Sized,
+{
+    async fn first(&self, ctx: &Ctx, id: Self::Id) -> Result<Self::Row> {
+        todo!()
+    }
+}
 
-    /// The Rust type used for the table’s primary key.
-    /// - `ToString`: needed for debugging/logging.
-    /// - `Into<sea_query::Value>`: so it can be embedded directly in SeaQuery expressions.
-    /// - `Send`: ensures it can safely cross await boundaries in async code.
-    type Id: ToString + Into<sea_query::Value> + Send;
-
-    /// The row type returned from queries.
-    /// - `FromRow`: allows mapping from `sqlx::PgRow`.
-    /// - `Unpin`: needed because sqlx streams rows across await points.
-    /// - `Send + Sync`: required for async trait usage.
-    /// - `HasSeaFields`: provides column definitions for SeaQuery.
-    type Row: for<'r> FromRow<'r, PgRow> + Unpin + Send + Sync;
-
-    /// Parameters used when inserting a new row.
-    type CreateParams: HasSeaFields + Send;
-
-    /// Parameters used when updating an existing row.
-    type UpdateParams: HasSeaFields + Send;
-
-    /// Filtering options for list/select queries.
-    type FilterParams: Into<FilterGroups> + Send;
-
-    /// Accessor for the database connection wrapper.
-    fn db(&self) -> &Dbx;
-
-    /// Returns a `TableRef` for this store’s table.
-    /// Defaults to using the static `TABLE` identifier.
-    fn table_ref(&self) -> TableRef {
-        TableRef::Table(SIden(Self::TABLE).into_iden())
+#[async_trait]
+pub trait CountStore
+where
+    Self: MetaStore + ListStore + Send + Sync + Sized,
+{
+    async fn count(
+        &self,
+        ctx: &Ctx,
+        filter: Self::FilterStoreParams,
+        opt: Option<ListOptions>,
+    ) -> Result<usize> {
+        todo!()
     }
 }

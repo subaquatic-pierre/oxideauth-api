@@ -4,7 +4,7 @@ use serde::Deserialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::utils::modql::time_to_sea_value;
+use crate::store::utils::time_to_sea_value;
 
 #[derive(Debug, Clone, Fields)]
 pub struct AuditFields {
