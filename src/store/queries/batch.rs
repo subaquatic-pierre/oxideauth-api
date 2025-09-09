@@ -75,76 +75,71 @@ where
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     U: HasSeaFields + Clone,
 {
-    // --- Early exit: nothing to do, return empty result.
+    // exit: nothing to do, return empty result.
     if data.is_empty() {
         return Ok(vec![]);
     }
 
+    // validate list options, ie. max limit
     ListOptionsValidator::validate_limit(data.len() as i64)?;
 
-    // 1) Determine the update columns (and order) from the first payload.
-    let mut first_fields = data
-        .first()
-        .map(|(_, e)| e.clone().all_sea_fields())
-        .unwrap();
-    if DB::HAS_AUDIT_FIELDS {
-        prepare_audit_fields(&mut first_fields, ctx.user_id(), false);
-    }
+    // build list of column names as strings once (for SET clause and v alias).
+    let mut col_names: Vec<String> = vec![];
 
-    let (cols, vals) = first_fields.for_sea_insert();
-
-    // Build list of column names as strings once (for SET clause and v alias).
-    let mut col_names: Vec<String> = cols.iter().map(|el| el.to_string()).collect();
-
+    // construct the initial statement
     let update_statement = format!("UPDATE {} AS t SET ", DB::TABLE.to_string());
+
+    // initialize the query builder with the initial statement
     let mut qb = QueryBuilder::<Postgres>::new(update_statement);
 
-    // SET t.col = v.col, ...
-    let set_statement = col_names
-        .iter()
-        .map(|col| format!("{col} = COALESCE(v.{col}, t.{col})"))
-        .collect::<Vec<String>>()
-        .join(", ");
-    qb.push(set_statement);
-
-    // FROM (VALUES ...)
-    // open value statement
-    qb.push(" FROM (VALUES ");
-
     for (i, (id, el)) in data.into_iter().enumerate() {
-        // add comma after each row, skip first row
-        if i > 0 {
-            qb.push(", ");
-        }
-
-        // (id, ...)
-
-        // open value row
-        qb.push("(");
-
+        // get type of element ID
+        // all IDs should be of type UUID
         let id_type = match Uuid::parse_str(&id.to_string()) {
             Ok(id) => "::uuid".to_string(),
             Err(e) => "::text".to_string(),
         };
 
-        qb.push_bind(id.to_string());
-        qb.push(id_type);
-        qb.push(", ");
-
+        // get all fields from each element in data array
         let mut fields = el.all_sea_fields();
+
+        // prepare audit fields if model HAS_AUDIT_FIELDS
         if DB::HAS_AUDIT_FIELDS {
             prepare_audit_fields(&mut fields, ctx.user_id(), false);
         }
 
-        let mut add_comma = false;
-        for field in fields {
-            // add comma after each row, skip first row
+        // determine the update columns (and order) from the first payload.
+        if i == 0 {
+            let (cols, vals) = fields.clone().for_sea_insert();
 
-            if add_comma {
-                qb.push(", ");
-            } else {
-                add_comma = true
-            }
+            // build columns names, this is used later in the query string too
+            cols.iter().for_each(|el| col_names.push(el.to_string()));
+
+            // SET t.col = v.col, ...
+            let set_statement = col_names
+                .iter()
+                .map(|col| format!("{col} = COALESCE(v.{col}, t.{col})"))
+                .collect::<Vec<String>>()
+                .join(", ");
+            qb.push(set_statement);
+
+            // FROM (VALUES ...)
+            // open value statement
+            qb.push(" FROM (VALUES ");
+        } else {
+            // add comma after each row, skip first row
+            qb.push(", ");
+        }
+
+        // open value row
+        qb.push("(");
+
+        // this is row for element, (id, name, email, ...)
+        // always start id
+        qb.push_bind(id.to_string());
+        qb.push(id_type);
+        for field in fields {
+            qb.push(", ");
 
             match field.sea_value() {
                 Some(v) => {
@@ -152,8 +147,9 @@ where
                     let pg_type = format!("::{}", pg_type_of(v));
                     qb.push(pg_type);
                 }
+                // should never reach this value
                 None => {
-                    qb.push("NULL::");
+                    qb.push("NULL");
                 }
             }
         }
@@ -172,9 +168,7 @@ where
     // WHERE t.id = v.id RETURNING t.*
     qb.push("WHERE t.id = v.id RETURNING t.*");
 
-    // println!("-- QB --: {:#?}", qb.sql());
-
-    // 4) Execute and return updated rows
+    // execute and return updated rows
     let query = qb.build_query_as::<T>();
     let ret = store.db().fetch_all(query).await?;
 
