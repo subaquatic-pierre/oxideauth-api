@@ -199,7 +199,7 @@ mod tests {
 
         let ret: AccountRow = create(&ctx, &acc_store, data).await?;
 
-        let query = query_as::<_, AccountRow>("SELECT * FROM accounts WHERE id = $1").bind(ret.id);
+        let query = query_as::<_, AccountRow>("SELECT * FROM account WHERE id = $1").bind(ret.id);
 
         let found: AccountRow = acc_store.db().fetch_one(query).await?;
 

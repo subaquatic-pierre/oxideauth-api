@@ -77,8 +77,8 @@ sqlx = { version = "0.8.6", features = [
     "json",
     "rust_decimal"
 ] }
-sea-query = { version= "0.32.7", features = ["backend-postgres", "with-uuid", "with-json"] }
-sea-query-binder = { version = "0.7", features = ["sqlx-postgres", "with-uuid", "with-time", "with-json" ] }
+sea-query = { version= "0.32.7", features = ["backend-postgres", "with-uuid", "with-json","postgres-array"] }
+sea-query-binder = { version = "0.7", features = ["sqlx-postgres", "with-uuid", "with-time", "with-json", "postgres-array" ] }
 modql = { version = "0.4.1", features = ["with-sea-query"]}
 
 # ──────────────────────────────────────────────────────────────────────────────

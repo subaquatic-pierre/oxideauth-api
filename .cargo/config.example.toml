@@ -48,20 +48,20 @@ GOOGLE_OAUTH_CLIENT_SECRET=""
 
 # ---------------- DEV ----------------
 db-dev-add    = ["sqlx", "migrate", "add", "--source", "sql/migrations/dev"]
-db-dev-run    = ["sqlx", "migrate", "run",   "--database-url", "", "--source", "sql/migrations/dev"]
-db-dev-info   = ["sqlx", "migrate", "info",  "--database-url", "", "--source", "sql/migrations/dev"]
-db-dev-reset  = ["sqlx", "database", "reset","-y", "--database-url", "", "--source", "sql/migrations/dev"]
-db-dev-revert = ["sqlx", "migrate", "revert","--database-url", "", "--source", "sql/migrations/dev"]
+db-dev-run    = ["sqlx", "migrate", "run",   "--database-url", "postgres://oxideauth:password@localhost:5432/db_dev", "--source", "sql/migrations/dev"]
+db-dev-info   = ["sqlx", "migrate", "info",  "--database-url", "postgres://oxideauth:password@localhost:5432/db_dev", "--source", "sql/migrations/dev"]
+db-dev-reset  = ["sqlx", "database", "reset","-y", "--database-url", "postgres://oxideauth:password@localhost:5432/db_dev", "--source", "sql/migrations/dev"]
+db-dev-revert = ["sqlx", "migrate", "revert","--database-url", "postgres://oxideauth:password@localhost:5432/db_dev", "--source", "sql/migrations/dev"]
 
 # ---------------- TEST ----------------
 db-test-add    = ["sqlx", "migrate", "add", "--source", "sql/migrations/test"]
-db-test-run    = ["sqlx", "migrate", "run",   "--database-url", "", "--source", "sql/migrations/test"]
-db-test-info   = ["sqlx", "migrate", "info",  "--database-url", "", "--source", "sql/migrations/test"]
-db-test-reset  = ["sqlx", "database", "reset","-y", "--database-url", "", "--source", "sql/migrations/test"]
-db-test-revert = ["sqlx", "migrate", "revert","--database-url", "", "--source", "sql/migrations/test"]
+db-test-run    = ["sqlx", "migrate", "run",   "--database-url", "postgres://oxideauth:password@localhost:5432/db_test", "--source", "sql/migrations/test"]
+db-test-info   = ["sqlx", "migrate", "info",  "--database-url", "postgres://oxideauth:password@localhost:5432/db_test", "--source", "sql/migrations/test"]
+db-test-reset  = ["sqlx", "database", "reset","-y", "--database-url", "postgres://oxideauth:password@localhost:5432/db_test", "--source", "sql/migrations/test"]
+db-test-revert = ["sqlx", "migrate", "revert","--database-url", "postgres://oxideauth:password@localhost:5432/db_test", "--source", "sql/migrations/test"]
 
 # ---------------- PROD ----------------
 db-prod-add    = ["sqlx", "migrate", "add", "-r", "--source", "sql/migrations/prod"]
-db-prod-run    = ["sqlx", "migrate", "run",   "--database-url", "", "--source", "sql/migrations/prod"]
-db-prod-info   = ["sqlx", "migrate", "info",  "--database-url", "", "--source", "sql/migrations/prod"]
-db-prod-revert = ["sqlx", "migrate", "revert","--database-url", "", "--source", "sql/migrations/prod"]
+db-prod-run    = ["sqlx", "migrate", "run",   "--database-url", "postgres://oxideauth:password@localhost:5432/oxideauth", "--source", "sql/migrations/prod"]
+db-prod-info   = ["sqlx", "migrate", "info",  "--database-url", "postgres://oxideauth:password@localhost:5432/oxideauth", "--source", "sql/migrations/prod"]
+db-prod-revert = ["sqlx", "migrate", "revert","--database-url", "postgres://oxideauth:password@localhost:5432/oxideauth", "--source", "sql/migrations/prod"]

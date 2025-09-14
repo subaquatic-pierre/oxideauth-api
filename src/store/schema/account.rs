@@ -1,6 +1,6 @@
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
-use sea_query::{Nullable, Value};
+use sea_query::{sea_value_to_json_value, Nullable, Value as SeaValue};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::prelude::FromRow;
@@ -93,14 +93,14 @@ pub struct AccountMeta {
 }
 
 impl Nullable for AccountMeta {
-    fn null() -> Value {
-        Value::Json(None)
+    fn null() -> SeaValue {
+        SeaValue::Json(None)
     }
 }
 
-impl From<AccountMeta> for Value {
+impl From<AccountMeta> for SeaValue {
     fn from(value: AccountMeta) -> Self {
-        json_to_sea_value(&value)
+        json_to_sea_value(serde_json::to_value(value).unwrap()).unwrap()
     }
 }
 
