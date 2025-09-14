@@ -1,6 +1,8 @@
 pub mod account;
 pub mod batch;
+pub mod count;
 pub mod crud;
+pub mod first;
 pub mod init;
 pub mod role;
 pub mod service;

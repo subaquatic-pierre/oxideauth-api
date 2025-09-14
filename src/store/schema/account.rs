@@ -109,7 +109,8 @@ impl From<AccountMeta> for SeaValue {
 #[derive(FilterNodes, Deserialize, Default, Debug)]
 pub struct AccountFilter {
     // Core identifiers / status
-    pub id: Option<OpValsValue>, // UUID (eq/in)
+    #[modql(cast_as = "uuid")]
+    pub id: Option<String>, // UUID (eq/in)
     pub email: Option<OpValsString>,
     pub name: Option<OpValsString>,
     pub acc_type: Option<OpValsString>,
@@ -122,14 +123,17 @@ pub struct AccountFilter {
     pub enabled: Option<OpValsValue>,  // bool
 
     // Scope
-    pub namespace_id: Option<OpValsValue>, // UUID (eq/in)
-    pub project_id: Option<OpValsValue>,   // UUID (eq/in)
+    #[modql(cast_as = "uuid")]
+    pub namespace_id: Option<String>, // UUID (eq/in)
+    #[modql(cast_as = "uuid")]
+    pub project_id: Option<String>, // UUID (eq/in)
 
+    // TODO: Must update modql to handle filter by text[] and jsonb
     // Free-form filtering
     // tags: use array containment queries (e.g., @>)
-    pub tags: Option<OpValsValue>,
+    // pub tags: Option<OpValsValue>,
     // meta: use JSONB containment (@> '{"k":"v"}')
-    pub meta: Option<OpValsValue>,
+    // pub meta: Option<OpValsValue>,
 
     // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]

@@ -179,7 +179,7 @@ mod tests {
         dev::init::init_test,
         store::{
             schema::account::{AccountCreate, AccountRow},
-            stores::account::AccountStore,
+            stores::{account::AccountStore, base::GetStore},
         },
     };
 
@@ -199,9 +199,7 @@ mod tests {
 
         let ret: AccountRow = create(&ctx, &acc_store, data).await?;
 
-        let query = query_as::<_, AccountRow>("SELECT * FROM account WHERE id = $1").bind(ret.id);
-
-        let found: AccountRow = acc_store.db().fetch_one(query).await?;
+        let found: AccountRow = acc_store.get(&ctx, ret.id).await?;
 
         assert_eq!(found.id, ret.id);
         Ok(())
