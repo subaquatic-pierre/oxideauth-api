@@ -1,5 +1,5 @@
 use modql::field::HasSeaFields;
-use sea_query::{Iden, Value as SeaValue}; // for .to_string() on SeaField/Iden
+use sea_query::{ArrayType, Iden, Value as SeaValue}; // for .to_string() on SeaField/Iden
 use sqlx::{postgres::PgRow, FromRow, Postgres, QueryBuilder};
 use uuid::Uuid;
 
@@ -49,6 +49,17 @@ pub fn push_sq_value(qb: &mut QueryBuilder<Postgres>, v: &SeaValue) {
         SeaValue::TimeDateTimeWithTimeZone(Some(t)) => {
             qb.push_bind(**t);
         }
+        SeaValue::Array(ArrayType::String, Some(items)) => {
+            let arr: Vec<Option<String>> = items
+                .iter()
+                .map(|v| match v {
+                    SeaValue::String(Some(s)) => Some(s.to_string()),
+                    SeaValue::String(None) => None,
+                    _ => None,
+                })
+                .collect();
+            qb.push_bind(arr);
+        }
 
         // Anything else or NULL → literal NULL
         _ => {
@@ -67,8 +78,8 @@ pub fn pg_type_of(v: &sea_query::Value) -> &'static str {
         SeaValue::Json(_) => "jsonb",
         SeaValue::TimeDateTimeWithTimeZone(_) => "timestamptz",
         SeaValue::TimeDateTime(_) => "time",
-        // SeaValue::Arr
+        SeaValue::Array(ArrayType::String, _) => "text[]",
         // add others you use…
-        _ => "text", // safe fallback if you truly don’t know
+        _ => "", // safe fallback if you truly don’t know
     }
 }

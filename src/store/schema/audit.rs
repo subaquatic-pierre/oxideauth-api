@@ -16,11 +16,15 @@ pub struct AuditFields {
 
 #[derive(FilterNodes, Deserialize, Default, Debug)]
 pub struct AuditFilter {
-    pub created_by: Option<OpValsValue>,
+    #[modql(cast_as = "uuid")]
+    pub created_by: Option<String>,
+
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub created_at: Option<OpValsValue>,
 
-    pub updated_by: Option<OpValsValue>,
+    #[modql(cast_as = "uuid")]
+    pub updated_by: Option<String>,
+
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
 }

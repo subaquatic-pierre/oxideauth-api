@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::store::schema::audit::AuditFilter;
-use crate::store::utils::json_to_sea_value;
+use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 // --- Row (DB-facing) ---
 #[derive(Debug, FromRow)]
@@ -62,7 +62,7 @@ pub struct AccountCreate {
     pub namespace_id: Option<Uuid>,
     pub project_id: Option<Uuid>,
     // Free-form
-    // pub tags: Vec<String>,
+    pub tags: Vec<String>,
     pub meta: AccountMeta,
 }
 
@@ -81,8 +81,9 @@ pub struct AccountUpdate {
     // Scope
     pub namespace_id: Option<Uuid>,
     pub project_id: Option<Uuid>,
+
     // Free-form
-    // pub tags: Option<Vec<String>>,
+    pub tags: Option<Vec<String>>,
     pub meta: Option<AccountMeta>,
 }
 
@@ -131,8 +132,19 @@ pub struct AccountFilter {
     pub meta: Option<OpValsValue>,
 
     // Audit filters (created_by/at, updated_by/at)
-    #[serde(flatten)]
-    pub audit: AuditFilter,
+    #[modql(cast_as = "uuid")]
+    pub created_by: Option<String>,
+
+    #[modql(to_sea_value_fn = "time_to_sea_value")]
+    pub created_at: Option<OpValsValue>,
+
+    #[modql(cast_as = "uuid")]
+    pub updated_by: Option<String>,
+
+    #[modql(to_sea_value_fn = "time_to_sea_value")]
+    pub updated_at: Option<OpValsValue>,
+    // #[serde(flatten)]
+    // pub audit: AuditFilter,
 }
 
 #[cfg(test)]
@@ -151,7 +163,7 @@ impl Default for AccountCreate {
             enabled: true,
             namespace_id: None,
             project_id: None,
-            // tags: vec![],
+            tags: vec![],
             meta: AccountMeta {
                 schema_version: "1".into(),
             },
@@ -164,23 +176,24 @@ impl Default for AccountUpdate {
     fn default() -> Self {
         Self {
             // Basic identity
-            name: Some("New Account".to_string()),
-            acc_type: Some("user".to_string()), // e.g. "user" | "admin" | "service"
-            provider: Some("local".to_string()), // e.g. "local" | "google" | "github"
-            provider_id: None,                  // set if provider != local
+            name: None,
+            acc_type: None,    // e.g. "user" | "admin" | "service"
+            provider: None,    // e.g. "local" | "google" | "github"
+            provider_id: None, // set if provider != local
 
             // Profile / status
-            description: Some(String::new()),
+            description: None,
             image_url: None,
-            verified: Some(false),
-            enabled: Some(true),
+            verified: None,
+            enabled: None,
 
             // Scope (left unset by default to avoid FK issues)
             namespace_id: None,
             project_id: None,
 
             // Free-form meta; keep structure present but empty
-            meta: Some(AccountMeta::default()),
+            meta: None,
+            tags: None,
         }
     }
 }
