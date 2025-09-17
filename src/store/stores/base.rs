@@ -11,7 +11,12 @@ use uuid::Uuid;
 
 use crate::store::{
     error::{Error, Result},
-    queries::crud::{delete, list, update},
+    queries::{
+        batch::{create_many, delete_many, update_many},
+        count::count,
+        crud::{delete, list, update},
+        first::{self, first},
+    },
     schema::iden::TableIden,
 };
 use async_trait::async_trait;
@@ -147,7 +152,7 @@ where
         ctx: &Ctx,
         data: Vec<Self::CreateStoreParams>,
     ) -> Result<Vec<Self::Row>> {
-        todo!()
+        create_many(ctx, self, data).await
     }
 }
 
@@ -163,7 +168,7 @@ where
         ctx: &Ctx,
         data: Vec<(Self::Id, Self::UpdateStoreParams)>,
     ) -> Result<Vec<Self::Row>> {
-        todo!()
+        update_many(ctx, self, data).await
     }
 }
 
@@ -173,7 +178,7 @@ where
     Self: MetaStore + DeleteStore + Send + Sync + Sized,
 {
     async fn delete_many(&self, ctx: &Ctx, ids: Vec<Self::Id>) -> Result<Vec<Self::Row>> {
-        todo!()
+        delete_many(ctx, self, ids).await
     }
 }
 
@@ -182,8 +187,13 @@ pub trait FirstStore
 where
     Self: MetaStore + ListStore + Send + Sync + Sized,
 {
-    async fn first(&self, ctx: &Ctx, id: Self::Id) -> Result<Self::Row> {
-        todo!()
+    async fn first(
+        &self,
+        ctx: &Ctx,
+        filter: Option<Self::FilterStoreParams>,
+        opts: Option<ListOptions>,
+    ) -> Result<Self::Row> {
+        first(ctx, self, filter, opts).await
     }
 }
 
@@ -192,12 +202,7 @@ pub trait CountStore
 where
     Self: MetaStore + ListStore + Send + Sync + Sized,
 {
-    async fn count(
-        &self,
-        ctx: &Ctx,
-        filter: Self::FilterStoreParams,
-        opt: Option<ListOptions>,
-    ) -> Result<usize> {
-        todo!()
+    async fn count(&self, ctx: &Ctx, filter: Option<Self::FilterStoreParams>) -> Result<i64> {
+        count(ctx, self, filter).await
     }
 }

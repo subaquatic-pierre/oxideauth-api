@@ -38,3 +38,65 @@ where
     let cnt: i64 = row.try_get("count")?;
     Ok(cnt)
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use serde_json::json;
+    use serial_test::serial;
+    use tera::from_value;
+
+    use crate::{
+        dev::init::init_test,
+        store::{
+            ctx::Ctx,
+            queries::crud::create,
+            schema::account::{AccountCreate, AccountFilter, AccountRow},
+            stores::{
+                account::AccountStore,
+                base::{CreateStore, GetStore},
+            },
+        },
+    };
+
+    use super::*;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_count_after_inserts_matches_number_of_rows() -> Result<()> {
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let acc_store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        let mut ac = |i: usize| {
+            let mut data = AccountCreate::default();
+            data.email = format!("user{}@example.com", i);
+            data.provider = "TEST_FILTER_MATCH_COUNT".to_string();
+            data
+        };
+
+        // Create N accounts
+        let n = 3usize;
+        let mut created: Vec<AccountRow> = Vec::with_capacity(n);
+        for i in 0..3 {
+            let row = ac(i);
+            created.push(acc_store.create(&ctx, row).await?);
+        }
+
+        // Verify via get()
+        for r in &created {
+            let found = acc_store.get(&ctx, r.id).await?;
+            assert_eq!(found.id, r.id);
+        }
+
+        let filter: AccountFilter =
+            from_value(json!({"provider":{"$contains":"TEST_FILTER"}})).unwrap();
+
+        // Count should equal n
+        let total = count(&ctx, &acc_store, Some(filter)).await?;
+        assert_eq!(total as usize, n);
+
+        Ok(())
+    }
+}
