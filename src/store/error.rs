@@ -15,13 +15,14 @@ pub enum Error {
         entity: String,
         id: String,
     },
-    ListLimitOverMax {
+    InvalidListOptions {
         max: i64,
         actual: i64,
     },
 
     // --- StoreManager
     CantCreateDataStore(String),
+    UnknownError(String),
 
     // --- Externals
     #[from]
@@ -31,6 +32,15 @@ pub enum Error {
     #[from]
     SeaQueryError(#[serde_as(as = "DisplayFromStr")] sea_query::error::Error),
 }
+
+// impl From<sqlx::Error> for Error {
+//     fn from(value: sqlx::Error) -> Self {
+//         match value {
+//             sqlx::Error::RowNotFound => todo!(),
+//             _ => todo!(),
+//         }
+//     }
+// }
 
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

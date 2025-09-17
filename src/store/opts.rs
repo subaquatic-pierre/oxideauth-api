@@ -73,7 +73,7 @@ impl ListOptionsValidator {
 
     pub fn validate_limit(limit: i64) -> Result<()> {
         if limit > LIST_LIMIT_MAX {
-            return Err(Error::ListLimitOverMax {
+            return Err(Error::InvalidListOptions {
                 max: LIST_LIMIT_MAX,
                 actual: limit,
             });
@@ -185,7 +185,7 @@ mod tests {
             ListOptionsValidator::validate_list_opts(Some(opts), /*has_audit_fields*/ false)
                 .unwrap_err();
         match err {
-            Error::ListLimitOverMax { max, actual } => {
+            Error::InvalidListOptions { max, actual } => {
                 assert_eq!(max, LIST_LIMIT_MAX);
                 assert_eq!(actual, LIST_LIMIT_MAX + 1);
             }

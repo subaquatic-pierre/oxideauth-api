@@ -42,9 +42,8 @@ where
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use serde_json::json;
+    use serde_json::{from_value, json};
     use serial_test::serial;
-    use tera::from_value;
 
     use crate::{
         dev::init::init_test,
