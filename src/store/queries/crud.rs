@@ -195,6 +195,7 @@ mod tests {
     use serde_json::{from_value, json};
     use serial_test::serial;
     use sqlx::{query_as, Postgres};
+    use time::Duration;
     use uuid::Uuid;
 
     use crate::{
@@ -202,6 +203,7 @@ mod tests {
         services::error::Error as ServiceError,
         store::{
             error::Error,
+            queries::batch::create_many,
             schema::account::{
                 AccountCreate, AccountFilter, AccountMeta, AccountRow, AccountUpdate,
             },
@@ -209,7 +211,9 @@ mod tests {
                 account::AccountStore,
                 base::{CreateStore, GetStore, UpdateStore},
             },
+            utils::time_to_string,
         },
+        utils::time::now_utc,
     };
 
     use super::*;
@@ -548,6 +552,152 @@ mod tests {
         // Assert (via get)
         let fetched = store.get(&ctx, created.id).await?;
         assert_eq!(fetched.meta.schema_version, "v2");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_list_filter_by_created_by() -> Result<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        // Create a small cohort under a unique provider tag
+        let provider_tag = "TEST_LIST_FILTER_BY_CREATED_BY";
+        let mut data = vec![];
+        for i in 0..3 {
+            let mut ac = AccountCreate::default();
+            ac.email = format!("lfcb-{i}-{i}@example.com");
+            ac.provider = provider_tag.into();
+            data.push(ac)
+        }
+
+        let created: Vec<AccountRow> = create_many(&ctx, &store, data).await?;
+
+        // Build filter: by provider AND by created_by (= ctx.user_id via audit fields)
+        let filter = AccountFilter::try_from(serde_json::json!({
+            "provider": provider_tag,
+            "created_by":  ctx.user_id()
+        }))?;
+
+        // Act
+        let rows: Vec<AccountRow> = list(&ctx, &store, Some(filter), None).await?;
+
+        // Assert: all returned rows have matching provider and cid
+        assert!(!rows.is_empty());
+        for r in &rows {
+            assert_eq!(r.provider, provider_tag);
+            assert_eq!(r.created_by, ctx.user_id());
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_list_filter_by_created_at() -> Result<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        let provider_tag = "TEST_LIST_FILTER_BY_CREATED_AT";
+
+        // Establish a time window around "now"
+        let start = now_utc() - Duration::minutes(1);
+        let mut data = vec![];
+        for i in 0..3 {
+            let mut ac = AccountCreate::default();
+            ac.email = format!("lfcb-{}@example.com", i);
+            ac.provider = provider_tag.into();
+            data.push(ac)
+        }
+
+        let created: Vec<AccountRow> = create_many(&ctx, &store, data).await?;
+        let end = now_utc() + Duration::minutes(1);
+
+        // Build filter: provider AND ctime window
+        let filter: AccountFilter = serde_json::json!({
+            "provider": { "$eq": provider_tag },
+            "created_at": {
+                "$gte": time_to_string(start),
+                "$lte": time_to_string(end)
+            }
+        })
+        .try_into()?;
+
+        // Act
+        let rows: Vec<AccountRow> = list(&ctx, &store, Some(filter), None).await?;
+
+        // Assert
+        assert!(!rows.is_empty());
+        for r in &rows {
+            assert_eq!(r.provider, provider_tag);
+            // (Optional) sanity: r.created_at should lie in [start, end]
+            assert!(r.created_at >= start && r.created_at <= end);
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_list_order_by_created_at() -> Result<()> {
+        use tokio::time::{sleep, Duration};
+
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        let provider_tag = "TEST_LIST_ORDER_BY_CREATED_AT";
+
+        // Create two rows with a slight delay to ensure different ctime
+        let mut a1 = AccountCreate::default();
+        a1.email = "loca-1@example.com".into();
+        a1.provider = provider_tag.into();
+        let r1: AccountRow = create(&ctx, &store, a1).await?;
+
+        sleep(Duration::from_millis(10)).await;
+
+        let mut a2 = AccountCreate::default();
+        a2.email = "loca-2@example.com".into();
+        a2.provider = provider_tag.into();
+        let r2: AccountRow = create(&ctx, &store, a2).await?;
+
+        // Filter down to this provider, order by ctime ASC
+        let filter = AccountFilter::try_from(serde_json::json!({
+            "provider": { "$eq": provider_tag }
+        }))?;
+
+        let mut opts = ListOptions::default();
+        // depending on your ListOptions API, either set order_bys or use a helper
+        opts.order_bys = Some(vec!["created_at".to_string()].into());
+        opts.limit = Some(10);
+
+        // Act
+        let rows: Vec<AccountRow> = list(&ctx, &store, Some(filter), Some(opts)).await?;
+
+        // Assert: ensure ascending ctime puts the earlier one first
+        let emails: Vec<_> = rows.iter().map(|x| x.email.as_str()).collect();
+        // rows should at least contain our two in order
+        let idx1 = emails
+            .iter()
+            .position(|e| *e == "loca-1@example.com")
+            .unwrap();
+        let idx2 = emails
+            .iter()
+            .position(|e| *e == "loca-2@example.com")
+            .unwrap();
+        assert!(idx1 < idx2, "expected loca-1 before loca-2 with ctime ASC");
+
+        // Extra sanity
+        assert!(r1.created_at <= r2.created_at);
 
         Ok(())
     }

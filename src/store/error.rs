@@ -1,8 +1,10 @@
 use std::fmt::Display;
 
 use derive_more::From;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use serde_json::Error as JsonError;
 use serde_with::{serde_as, DisplayFromStr};
+use time::error::Parse;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -19,12 +21,19 @@ pub enum Error {
         max: i64,
         actual: i64,
     },
+    // Serialize(&'static str),
+    // #[from]
+    // Deserialize(#[serde_as(as = "DisplayFromStr")] JsonError),
 
     // --- StoreManager
     CantCreateDataStore(String),
     UnknownError(String),
 
     // --- Externals
+    #[from]
+    TimeError(#[serde_as(as = "DisplayFromStr")] Parse),
+    #[from]
+    JsonError(#[serde_as(as = "DisplayFromStr")] JsonError),
     #[from]
     ModqlError(#[serde_as(as = "DisplayFromStr")] modql::filter::IntoSeaError),
     #[from]

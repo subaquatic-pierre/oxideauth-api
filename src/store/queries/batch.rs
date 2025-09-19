@@ -206,15 +206,18 @@ where
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
+    use serde_json::json;
     use serial_test::serial;
     use sqlx::{query_as, Postgres};
 
     use crate::{
         dev::init::init_test,
         store::{
-            queries::crud::create,
-            schema::account::{AccountCreate, AccountRow, AccountUpdate},
-            stores::account::AccountStore,
+            queries::crud::{create, list},
+            schema::account::{
+                AccountCreate, AccountFilter, AccountMeta, AccountRow, AccountUpdate,
+            },
+            stores::{account::AccountStore, base::GetStore},
         },
     };
 
@@ -247,7 +250,353 @@ mod tests {
 
         let r: Vec<AccountRow> = update_many(&ctx, &acc_store, data).await?;
 
-        // println!("RETURNED {:#?}", r);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_update_many_ignore_unknown() -> Result<()> {
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+
+        let acc_store = AccountStore::new(dbx);
+
+        let ctx = Ctx::new_root();
+
+        // Prepare multiple unique payloads
+        let n = 3usize;
+        let mut payloads: Vec<AccountCreate> = Vec::with_capacity(n);
+        let desc = "TEST_CREATE_MANY_ONE_NOT_CHANGE".to_string();
+
+        for i in 0..n {
+            let mut ac = AccountCreate::default();
+            ac.email = format!("bulk{:02}@example.com", i);
+            ac.description = Some(desc.clone());
+            ac.provider = "TEST_CREATE_MANY".to_string();
+            payloads.push(ac);
+        }
+
+        // Act
+        let created: Vec<AccountRow> = create_many(&ctx, &acc_store, payloads).await?;
+        let mut data = vec![];
+        for (i, acc) in created.iter().enumerate() {
+            let mut new_update = AccountUpdate::default();
+            new_update.description = Some("UPDATED DESCRIPTION".to_string());
+            data.push((acc.id.clone(), new_update));
+            if (i == 1) {
+                break;
+            }
+        }
+
+        // push unknown ID
+        data.push((Uuid::new_v4(), AccountUpdate::default()));
+
+        let r: Vec<AccountRow> = update_many(&ctx, &acc_store, data).await?;
+
+        let filter: AccountFilter = json!({"description":Some(desc.clone())}).try_into()?;
+
+        let found: Vec<AccountRow> = list(&ctx, &acc_store, Some(filter), None).await?;
+
+        assert_eq!(found.len(), 1);
+
+        assert_eq!(r.len(), 2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_create_many() -> Result<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        // Prepare multiple unique payloads
+        let n = 3usize;
+        let mut payloads: Vec<AccountCreate> = Vec::with_capacity(n);
+        for i in 0..n {
+            let mut ac = AccountCreate::default();
+            ac.email = format!("bulk{:02}@example.com", i);
+            ac.provider = "TEST_CREATE_MANY".to_string();
+            payloads.push(ac);
+        }
+
+        // Act
+        let created: Vec<AccountRow> = create_many(&ctx, &store, payloads).await?;
+
+        // Assert: count matches
+        assert_eq!(created.len(), n);
+
+        // Assert: emails are unique and persisted
+        for (i, row) in created.iter().enumerate() {
+            assert_eq!(row.email, format!("bulk{:02}@example.com", i));
+            // Verify via get()
+            let fetched = store.get(&ctx, row.id).await?;
+            assert_eq!(fetched.id, row.id);
+            assert_eq!(fetched.email, row.email);
+            assert_eq!(fetched.provider, "TEST_CREATE_MANY");
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_update_many_tags() -> Result<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        // Create two baseline accounts
+        let mut c1 = AccountCreate::default();
+        c1.email = "bulk-tags-1@example.com".to_string();
+        c1.provider = "TEST_UPDATE_MANY_TAGS".to_string();
+        let a1: AccountRow = create(&ctx, &store, c1).await?;
+
+        let mut c2 = AccountCreate::default();
+        c2.email = "bulk-tags-2@example.com".to_string();
+        c2.provider = "TEST_UPDATE_MANY_TAGS".to_string();
+        let a2: AccountRow = create(&ctx, &store, c2).await?;
+
+        // Act
+        let upd1 = {
+            let mut u = AccountUpdate::default();
+            u.tags = Some(vec!["alpha".into(), "beta".into()]);
+            u
+        };
+        let upd2 = {
+            let mut u = AccountUpdate::default();
+            u.tags = Some(vec!["gamma".into()]);
+            u
+        };
+        let _updated: Vec<AccountRow> =
+            update_many(&ctx, &store, vec![(a1.id, upd1), (a2.id, upd2)]).await?;
+
+        // Assert (fetch-by-id to avoid relying on RETURNING order)
+        let f1 = store.get(&ctx, a1.id).await?;
+        assert_eq!(f1.tags, ["alpha", "beta"]);
+
+        let f2 = store.get(&ctx, a2.id).await?;
+        assert_eq!(f2.tags, ["gamma"]);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_update_many_meta() -> Result<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        // Create two baseline accounts
+        let mut c1 = AccountCreate::default();
+        c1.email = "bulk-meta-1@example.com".to_string();
+        c1.provider = "TEST_UPDATE_MANY_META".to_string();
+        let a1: AccountRow = create(&ctx, &store, c1).await?;
+
+        let mut c2 = AccountCreate::default();
+        c2.email = "bulk-meta-2@example.com".to_string();
+        c2.provider = "TEST_UPDATE_MANY_META".to_string();
+        let a2: AccountRow = create(&ctx, &store, c2).await?;
+
+        // Act
+        let upd1 = {
+            let mut u = AccountUpdate::default();
+            u.meta = Some(AccountMeta {
+                schema_version: "v1.2.3".into(),
+                ..Default::default()
+            });
+            u
+        };
+        let upd2 = {
+            let mut u = AccountUpdate::default();
+            u.meta = Some(AccountMeta {
+                schema_version: "v9.9.9".into(),
+                ..Default::default()
+            });
+            u
+        };
+        let _updated: Vec<AccountRow> =
+            update_many(&ctx, &store, vec![(a1.id, upd1), (a2.id, upd2)]).await?;
+
+        // Assert
+        let f1 = store.get(&ctx, a1.id).await?;
+        assert_eq!(f1.meta.schema_version, "v1.2.3");
+
+        let f2 = store.get(&ctx, a2.id).await?;
+        assert_eq!(f2.meta.schema_version, "v9.9.9");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_create_many_fail() -> Result<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        // Build a payload intentionally exceeding the validator limit.
+        // (We don't rely on the exact limit; 2000 should be safely over any sane cap.)
+        let over_limit = 2000usize;
+        let mut payloads: Vec<AccountCreate> = Vec::with_capacity(over_limit);
+        for i in 0..over_limit {
+            let mut ac = AccountCreate::default();
+            ac.email = format!("too-many-{:04}@example.com", i);
+            ac.provider = "TEST_CREATE_MANY_FAIL".to_string();
+            payloads.push(ac);
+        }
+
+        // Act
+        let res: crate::store::error::Result<Vec<AccountRow>> =
+            create_many(&ctx, &store, payloads).await;
+
+        // Assert
+        assert!(
+            res.is_err(),
+            "expected create_many to fail when exceeding the max batch size"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_update_many_fail() -> Result<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        // Create a single baseline account to obtain a valid id
+        let mut ac = AccountCreate::default();
+        ac.email = "update-many-fail@example.com".to_string();
+        ac.provider = "TEST_UPDATE_MANY_FAIL".to_string();
+        let row: AccountRow = create(&ctx, &store, ac).await?;
+
+        // Build an updates vector intentionally exceeding the validator limit
+        let over_limit = 2000usize;
+        let mut updates: Vec<(Uuid, AccountUpdate)> = Vec::with_capacity(over_limit);
+        for _ in 0..over_limit {
+            let mut u = AccountUpdate::default();
+            // touch a benign field so it's a real update payload
+            u.name = Some("bulk-name".to_string());
+            updates.push((row.id, u));
+        }
+
+        // Act
+        let res: crate::store::error::Result<Vec<AccountRow>> =
+            update_many(&ctx, &store, updates).await;
+
+        // Assert
+        assert!(
+            res.is_err(),
+            "expected update_many to fail when exceeding the max batch size"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_delete_many() -> Result<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        // Create a few accounts
+        let mut mk = |i: usize| {
+            let mut c = AccountCreate::default();
+            c.email = format!("del-many-{i}@example.com");
+            c.provider = "TEST_DELETE_MANY".into();
+            c
+        };
+        let a1: AccountRow = create(&ctx, &store, mk(1)).await?;
+        let a2: AccountRow = create(&ctx, &store, mk(2)).await?;
+        let a3: AccountRow = create(&ctx, &store, mk(3)).await?;
+
+        // Act
+        let deleted: Vec<AccountRow> = delete_many(&ctx, &store, vec![a1.id, a2.id, a3.id]).await?;
+
+        // Assert: all returned & gone
+        assert_eq!(deleted.len(), 3);
+
+        use crate::store::error::Error;
+        for id in [a1.id, a2.id, a3.id] {
+            let got = store.get(&ctx, id).await;
+            assert!(matches!(got, Err(Error::EntityNotFound { .. })));
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_delete_many_wrong_id() -> Result<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        // Create one account
+        let mut c = AccountCreate::default();
+        c.email = "del-many-wrong@example.com".into();
+        c.provider = "TEST_DELETE_MANY_WRONG".into();
+        let a: AccountRow = create(&ctx, &store, c).await?;
+
+        // Build ids: 1 real + 1 random (non-existent)
+        let wrong = Uuid::new_v4();
+
+        // Act
+        let deleted: Vec<AccountRow> = delete_many(&ctx, &store, vec![a.id, wrong]).await?;
+
+        // Assert: only the existing one is deleted; wrong id is ignored
+        assert_eq!(deleted.len(), 1);
+        assert_eq!(deleted[0].id, a.id);
+
+        // Existing row is gone
+        use crate::store::error::Error;
+        let got = store.get(&ctx, a.id).await;
+        assert!(matches!(got, Err(Error::EntityNotFound { .. })));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_delete_many_fail() -> Result<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        // Intentionally exceed the validator limit with random UUIDs
+        let over_limit = 2000usize;
+        let ids: Vec<Uuid> = (0..over_limit).map(|_| Uuid::new_v4()).collect();
+
+        // Act
+        let res: crate::store::error::Result<Vec<AccountRow>> =
+            delete_many(&ctx, &store, ids).await;
+
+        // Assert
+        assert!(
+            res.is_err(),
+            "expected delete_many to fail when exceeding the max batch size"
+        );
 
         Ok(())
     }

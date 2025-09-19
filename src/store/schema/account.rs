@@ -2,11 +2,12 @@ use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
 use sea_query::{sea_value_to_json_value, Nullable, Value as SeaValue};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value as JsonValue};
 use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::store::error::Error;
 use crate::store::schema::audit::AuditFilter;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
@@ -149,6 +150,14 @@ pub struct AccountFilter {
     pub updated_at: Option<OpValsValue>,
     // #[serde(flatten)]
     // pub audit: AuditFilter,
+}
+
+impl TryFrom<JsonValue> for AccountFilter {
+    type Error = Error;
+
+    fn try_from(value: JsonValue) -> Result<Self, Self::Error> {
+        serde_json::from_value(value).map_err(|e| Error::JsonError(e))
+    }
 }
 
 #[cfg(test)]
