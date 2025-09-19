@@ -202,8 +202,13 @@ mod tests {
         services::error::Error as ServiceError,
         store::{
             error::Error,
-            schema::account::{AccountCreate, AccountFilter, AccountRow, AccountUpdate},
-            stores::{account::AccountStore, base::GetStore},
+            schema::account::{
+                AccountCreate, AccountFilter, AccountMeta, AccountRow, AccountUpdate,
+            },
+            stores::{
+                account::AccountStore,
+                base::{CreateStore, GetStore, UpdateStore},
+            },
         },
     };
 
@@ -474,6 +479,75 @@ mod tests {
 
         // Assert (concise failure style)
         matches!(err, Err(Error::EntityNotFound { .. }));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_update_tags() -> Result<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        // Create a baseline account
+        let mut create = AccountCreate::default();
+        create.email = "tag-update@example.com".to_string();
+        create.provider = "TEST_UPDATE_TAGS".to_string();
+        let created: AccountRow = store.create(&ctx, create).await?;
+
+        // Act: update tags
+        let new_tags = vec!["alpha".to_string(), "beta".to_string(), "gamma".to_string()];
+        let mut upd = AccountUpdate::default();
+        upd.tags = Some(new_tags.clone());
+
+        let updated: AccountRow = store.update(&ctx, created.id, upd).await?;
+
+        // Assert (via returned row)
+        assert_eq!(updated.id, created.id);
+        assert_eq!(updated.tags, new_tags.as_slice());
+
+        // Assert (via get)
+        let fetched = store.get(&ctx, created.id).await?;
+        assert_eq!(fetched.tags, new_tags.as_slice());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_update_meta() -> Result<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = Ctx::new_root();
+
+        // Create a baseline account
+        let mut create = AccountCreate::default();
+        create.email = "meta-update@example.com".to_string();
+        create.provider = "TEST_UPDATE_META".to_string();
+        // If AccountCreate allows setting meta at create-time, you can set it here; otherwise it defaults.
+        let created: AccountRow = store.create(&ctx, create).await?;
+
+        // Act: update meta
+        let mut upd = AccountUpdate::default();
+        upd.meta = Some(AccountMeta {
+            schema_version: "v2".to_string(),
+            // add any future fields here when they exist; defaults cover the rest
+        });
+
+        let updated: AccountRow = store.update(&ctx, created.id, upd).await?;
+
+        // Assert (via returned row)
+        assert_eq!(updated.id, created.id);
+        assert_eq!(updated.meta.schema_version, "v2");
+
+        // Assert (via get)
+        let fetched = store.get(&ctx, created.id).await?;
+        assert_eq!(fetched.meta.schema_version, "v2");
 
         Ok(())
     }
