@@ -46,14 +46,13 @@ where
     Ok(ret)
 }
 
-pub async fn get<T, DB, ID>(ctx: &Ctx, store: &DB, id: ID) -> Result<T>
+pub async fn get_opt<T, DB, ID>(ctx: &Ctx, store: &DB, id: ID) -> Result<Option<T>>
 where
     ID: ToString + Into<sea_query::Value>,
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
 {
     let mut query = Query::select();
-    let id_for_error = id.to_string();
 
     query
         .from(DB::TABLE)
@@ -63,16 +62,24 @@ where
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
     let sqlx_query = query_as_with::<_, T, _>(&sql, vals);
 
-    let ret = store
-        .db()
-        .fetch_optional(sqlx_query)
-        .await?
-        .ok_or(Error::EntityNotFound {
-            entity: DB::TABLE.to_string(),
-            id: id_for_error,
-        })?;
+    let ret = store.db().fetch_optional(sqlx_query).await?;
 
     Ok(ret)
+}
+
+pub async fn get<T, DB>(ctx: &Ctx, store: &DB, id: DB::Id) -> Result<T>
+where
+    DB: MetaStore,
+    T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
+{
+    let id_str = id.to_string();
+    match get_opt(ctx, store, id).await? {
+        Some(t) => Ok(t),
+        None => Err(Error::EntityNotFound {
+            entity: DB::TABLE.to_string(),
+            id: id_str,
+        }),
+    }
 }
 
 pub async fn list<T, F, DB>(
@@ -115,15 +122,13 @@ where
     Ok(ret)
 }
 
-pub async fn update<T, DB, U>(ctx: &Ctx, store: &DB, id: DB::Id, data: U) -> Result<T>
+pub async fn update_opt<T, DB, U>(ctx: &Ctx, store: &DB, id: DB::Id, data: U) -> Result<Option<T>>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     U: HasSeaFields,
 {
     let mut query = Query::update();
-    // let mut where_query = Query::select();
-    let id_str = id.to_string();
     let user_id = ctx.user_id().to_string();
 
     let mut fields = data.not_none_sea_fields();
@@ -144,21 +149,28 @@ where
 
     let sqlx = sqlx::query_as_with::<_, T, _>(&sql, vals);
 
-    let ret = store.db().fetch_one(sqlx).await.map_err(|e| match e {
-        Error::Sqlx(e) => match e {
-            sqlx::Error::RowNotFound => Error::EntityNotFound {
-                entity: DB::TABLE.to_string(),
-                id: id_str,
-            },
-            _ => Error::Sqlx(e),
-        },
-        _ => e,
-    })?;
+    let ret = store.db().fetch_optional(sqlx).await?;
 
     Ok(ret)
 }
 
-pub async fn delete<T, DB>(ctx: &Ctx, store: &DB, id: DB::Id) -> Result<T>
+pub async fn update<T, DB, U>(ctx: &Ctx, store: &DB, id: DB::Id, data: U) -> Result<T>
+where
+    DB: MetaStore,
+    T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
+    U: HasSeaFields,
+{
+    let id_str = id.to_string();
+    match update_opt(ctx, store, id, data).await? {
+        Some(t) => Ok(t),
+        None => Err(Error::EntityNotFound {
+            entity: DB::TABLE.to_string(),
+            id: id_str,
+        }),
+    }
+}
+
+pub async fn delete_opt<T, DB>(ctx: &Ctx, store: &DB, id: DB::Id) -> Result<Option<T>>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -175,18 +187,24 @@ where
 
     let sqlx = sqlx::query_as_with::<_, T, _>(&sql, vals);
 
-    let ret = store.db().fetch_one(sqlx).await.map_err(|e| match e {
-        Error::Sqlx(e) => match e {
-            sqlx::Error::RowNotFound => Error::EntityNotFound {
-                entity: DB::TABLE.to_string(),
-                id: id_str,
-            },
-            _ => Error::Sqlx(e),
-        },
-        _ => e,
-    })?;
+    let ret = store.db().fetch_optional(sqlx).await?;
 
     Ok(ret)
+}
+
+pub async fn delete<T, DB>(ctx: &Ctx, store: &DB, id: DB::Id) -> Result<T>
+where
+    DB: MetaStore,
+    T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
+{
+    let id_str = id.to_string();
+    match delete_opt(ctx, store, id).await? {
+        Some(t) => Ok(t),
+        None => Err(Error::EntityNotFound {
+            entity: DB::TABLE.to_string(),
+            id: id_str,
+        }),
+    }
 }
 
 #[cfg(test)]

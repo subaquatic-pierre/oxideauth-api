@@ -14,8 +14,8 @@ use crate::store::{
     queries::{
         batch::{create_many, delete_many, update_many},
         count::count,
-        crud::{delete, list, update},
-        first::{self, first},
+        crud::{delete, delete_opt, get_opt, list, update, update_opt},
+        first::{self, first, first_opt},
     },
     schema::iden::TableIden,
 };
@@ -86,6 +86,11 @@ where
     async fn get(&self, ctx: &Ctx, id: Self::Id) -> Result<Self::Row> {
         get(&ctx, self, id).await
     }
+
+    /// TODO: Docs
+    async fn get_opt(&self, ctx: &Ctx, id: Self::Id) -> Result<Option<Self::Row>> {
+        get_opt(&ctx, self, id).await
+    }
 }
 
 /// Trait for "list/filter" capability of a store.
@@ -126,6 +131,16 @@ where
     ) -> Result<Self::Row> {
         update(ctx, self, id, data).await
     }
+
+    /// TODO: Docs
+    async fn update_opt(
+        &self,
+        ctx: &Ctx,
+        id: Self::Id,
+        data: Self::UpdateStoreParams,
+    ) -> Result<Option<Self::Row>> {
+        update_opt(ctx, self, id, data).await
+    }
 }
 
 /// Trait for "delete" capability of a store.
@@ -139,6 +154,11 @@ where
     /// just an affected count, you can adjust here).
     async fn delete(&self, ctx: &Ctx, id: Self::Id) -> Result<Self::Row> {
         delete(ctx, self, id).await
+    }
+
+    /// TODO: Docs
+    async fn delete_opt(&self, ctx: &Ctx, id: Self::Id) -> Result<Option<Self::Row>> {
+        delete_opt(ctx, self, id).await
     }
 }
 
@@ -194,6 +214,15 @@ where
         opts: Option<ListOptions>,
     ) -> Result<Self::Row> {
         first(ctx, self, filter, opts).await
+    }
+
+    async fn first_opt(
+        &self,
+        ctx: &Ctx,
+        filter: Option<Self::FilterStoreParams>,
+        opts: Option<ListOptions>,
+    ) -> Result<Option<Self::Row>> {
+        first_opt(ctx, self, filter, opts).await
     }
 }
 
