@@ -1,0 +1,1 @@
+-- fixtures/06_role.sql

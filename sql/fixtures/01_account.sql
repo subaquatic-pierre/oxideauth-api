@@ -1,4 +1,4 @@
--- migrations/01_account.sql
+-- fixtures/01_account.sql
 CREATE TABLE IF NOT EXISTS
   account (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),

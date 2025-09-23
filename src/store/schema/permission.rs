@@ -10,14 +10,13 @@ use crate::store::schema::audit::AuditFields;
 use crate::store::utils::time_to_sea_value;
 
 // --- Row (DB-facing) ---
-#[derive(Debug, FromRow, Deserialize)]
+#[derive(Debug, FromRow)]
 pub struct PermissionRow {
     pub id: Uuid,
     pub name: String,
     pub description: Option<String>,
 
     // Audit
-    #[serde(flatten)]
     #[sqlx(flatten)]
     pub audit: AuditFields,
 }

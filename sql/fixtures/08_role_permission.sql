@@ -1,0 +1,1 @@
+-- fixtures/08_role_permission.sql

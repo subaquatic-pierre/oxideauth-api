@@ -56,18 +56,4 @@ VALUES
     NULL,
     now(),
     NULL
-  ),
-  (
-    '00000000-0000-0000-0000-100000000001',
-    'test@example.com',
-    'hash_admin',
-    'TEST User',
-    'TEST',
-    'local',
-    TRUE,
-    TRUE,
-    '00000000-0000-0000-0000-000000000001',
-    NULL,
-    now(),
-    NULL
   );

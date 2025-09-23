@@ -33,7 +33,6 @@ pub struct AccountRow {
     // END Meta & Tags
 
     // START Audit
-    #[serde(flatten)]
     #[sqlx(flatten)]
     pub audit: AuditFields,
     // END Audit

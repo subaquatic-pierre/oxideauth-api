@@ -1,0 +1,1 @@
+-- fixtures/04_enums.sql

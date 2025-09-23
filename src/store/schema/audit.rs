@@ -7,18 +7,18 @@ use uuid::Uuid;
 
 use crate::store::utils::time_to_sea_value;
 
-#[derive(Debug, Deserialize, FromRow)]
+#[derive(Debug, FromRow, Deserialize)]
 pub struct AuditFields {
     pub created_by: Uuid,
     pub created_at: OffsetDateTime,
     pub updated_by: Option<Uuid>,
     pub updated_at: Option<OffsetDateTime>,
 
-    #[sqlx(json, rename = "audit_meta")]
+    #[sqlx(json, rename = "audit")]
     pub meta: AuditMeta,
 }
 
-#[derive(Debug, Default, Fields, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct AuditMeta {
     pub schema_version: String,
