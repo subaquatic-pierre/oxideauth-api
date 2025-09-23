@@ -1,30 +1,59 @@
 -- fixtures/01_account.sql
-CREATE TABLE IF NOT EXISTS
+INSERT INTO
   account (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
-    email TEXT NOT NULL,
-    name TEXT NOT NULL,
-    avatar_url TEXT,
-    description TEXT,
-    verified BOOLEAN NOT NULL DEFAULT FALSE,
-    enabled BOOLEAN NOT NULL DEFAULT FALSE,
-    -- START Meta & Tags
-    tags TEXT[] NOT NULL DEFAULT '{}',
-    meta JSONB NOT NULL DEFAULT '{}'::jsonb,
-    -- END Meta & Tags
-    -- START Audit
-    created_by UUID NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_by UUID,
-    updated_at TIMESTAMPTZ,
-    audit JSONB NOT NULL DEFAULT '{}'::jsonb,
-    -- END Audit
-    -- constraints
-    CONSTRAINT account_audit_is_object CHECK (jsonb_typeof(audit) = 'object'),
-    CONSTRAINT account_meta_is_object CHECK (jsonb_typeof(meta) = 'object')
+    id,
+    email,
+    password_hash,
+    name,
+    acc_type,
+    provider,
+    verified,
+    enabled,
+    created_by,
+    updated_by,
+    created_at,
+    updated_at
+  )
+VALUES
+  (
+    '00000000-0000-0000-0000-000000000001',
+    'owner@example.com',
+    'hash_owner',
+    'Owner User',
+    'owner',
+    'local',
+    TRUE,
+    TRUE,
+    '00000000-0000-0000-0000-000000000001',
+    NULL,
+    now(),
+    NULL
+  ),
+  (
+    '00000000-0000-0000-0000-000000000002',
+    'admin@example.com',
+    'hash_admin',
+    'Admin User',
+    'admin',
+    'local',
+    TRUE,
+    TRUE,
+    '00000000-0000-0000-0000-000000000001',
+    NULL,
+    now(),
+    NULL
+  ),
+  (
+    '00000000-0000-0000-0000-000000000003',
+    'user@example.com',
+    'hash_user',
+    'Normal User',
+    'user',
+    'local',
+    TRUE,
+    TRUE,
+    '00000000-0000-0000-0000-000000000001',
+    NULL,
+    now(),
+    NULL
   );
-
--- Optional global uniqueness (case-insensitive) 
-CREATE UNIQUE INDEX IF NOT EXISTS account_email_lower_key ON account (lower(email))
-WHERE
-  email IS NOT NULL;
