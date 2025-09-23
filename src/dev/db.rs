@@ -67,7 +67,7 @@ pub async fn init_dev_db(pool: &DbPool) {
 
 pub async fn init_test_db(pool: &DbPool) {
     reset_db(pool).await.unwrap();
-    run_migrations(pool, "test").await.unwrap();
+    run_migrations(pool, "dev").await.unwrap();
     load_all_fixtures(pool).await.unwrap();
 }
 

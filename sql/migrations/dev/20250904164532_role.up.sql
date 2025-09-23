@@ -5,7 +5,16 @@ CREATE TABLE IF NOT EXISTS
   role (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
     name TEXT NOT NULL,
-    description TEXT
+    description TEXT,
+    -- Audit
+    created_by UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_by UUID,
+    updated_at TIMESTAMPTZ,
+    -- ---------- Constraints ----------
+    CONSTRAINT role_name_key UNIQUE (name),
+    CONSTRAINT role_created_by_fkey FOREIGN KEY (created_by) REFERENCES account (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT role_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES account (id) ON UPDATE CASCADE ON DELETE SET NULL
   );
 
 -- Optional uniqueness on role name:
@@ -16,7 +25,12 @@ CREATE TABLE IF NOT EXISTS
     name TEXT PRIMARY KEY,
     -- If you don't need a UUID here, drop this column entirely.
     id UUID DEFAULT gen_random_uuid (),
-    description TEXT
+    description TEXT,
+    -- Audit
+    created_by UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_by UUID,
+    updated_at TIMESTAMPTZ
   );
 
 -- Role <-> Permission (many-to-many)

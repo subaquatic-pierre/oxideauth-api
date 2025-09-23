@@ -289,19 +289,19 @@ mod tests {
         for i in 0..5 {
             let mut d = AccountCreate::default();
             d.email = format!("in_{}@example.com", i);
-            d.provider = "LIST_FILTER_MATCH".to_string();
+            d.name = "LIST_FILTER_MATCH".to_string();
             create::<AccountRow, _, _>(&ctx, &acc_store, d).await?;
         }
         for i in 0..2 {
             let mut d = AccountCreate::default();
             d.email = format!("out_{}@example.com", i);
-            d.provider = "OTHER_PROVIDER".to_string();
+            d.name = "OTHER_PROVIDER".to_string();
             create::<AccountRow, _, _>(&ctx, &acc_store, d).await?;
         }
 
-        // Filter: provider contains LIST_FILTER
+        // Filter: name contains LIST_FILTER
         let filter: AccountFilter =
-            from_value(json!({"provider":{"$contains":"LIST_FILTER"}})).unwrap();
+            from_value(json!({"name":{"$contains":"LIST_FILTER"}})).unwrap();
 
         // Limit to 3 results
         let opts = Some(ListOptions {
@@ -316,8 +316,8 @@ mod tests {
 
         // Assert
         assert_eq!(rows.len(), 3, "list should respect the limit");
-        // sanity: all rows must match the provider filter
-        assert!(rows.iter().all(|r| r.provider.contains("LIST_FILTER")));
+        // sanity: all rows must match the name filter
+        assert!(rows.iter().all(|r| r.name.contains("LIST_FILTER")));
         Ok(())
     }
 
@@ -334,12 +334,11 @@ mod tests {
         for i in 0..6 {
             let mut d = AccountCreate::default();
             d.email = format!("page_{}@example.com", i);
-            d.provider = "LIST_PAGINATION".to_string();
+            d.name = "LIST_PAGINATION".to_string();
             create::<AccountRow, _, _>(&ctx, &acc_store, d).await?;
         }
 
-        let filter: AccountFilter =
-            from_value(json!({"provider":{"$eq":"LIST_PAGINATION"}})).unwrap();
+        let filter: AccountFilter = from_value(json!({"name":{"$eq":"LIST_PAGINATION"}})).unwrap();
 
         // Page 1: limit 3, offset 0
         let page1_opts = Some(ListOptions {
@@ -357,8 +356,7 @@ mod tests {
             ..Default::default()
         });
 
-        let filter: AccountFilter =
-            from_value(json!({"provider":{"$eq":"LIST_PAGINATION"}})).unwrap();
+        let filter: AccountFilter = from_value(json!({"name":{"$eq":"LIST_PAGINATION"}})).unwrap();
         let p2: Vec<AccountRow> = list(&ctx, &acc_store, Some(filter), page2_opts).await?;
         assert_eq!(p2.len(), 3);
 
@@ -384,12 +382,12 @@ mod tests {
         // Optional: ensure there is at least some data (not required for this failure)
         let mut d = AccountCreate::default();
         d.email = "limit_fail@example.com".into();
-        d.provider = "LIMIT_FAIL".into();
+        d.name = "LIMIT_FAIL".into();
         create::<AccountRow, _, _>(&ctx, &acc_store, d).await?;
 
         // Any filter (or None) — doesn't matter for limit validation
         let filter: Option<AccountFilter> =
-            Some(from_value(json!({"provider":{"$eq":"LIMIT_FAIL"}})).unwrap());
+            Some(from_value(json!({"name":{"$eq":"LIMIT_FAIL"}})).unwrap());
 
         // Invalid limit: zero (validator should reject)
         let opts = Some(ListOptions {
@@ -419,19 +417,19 @@ mod tests {
         // Create a row to update
         let mut d = AccountCreate::default();
         d.email = "update_ok@example.com".into();
-        d.provider = "UPDATE_BEFORE".into();
+        d.name = "UPDATE_BEFORE".into();
         let created: AccountRow = create(&ctx, &acc_store, d).await?;
 
-        // Prepare update (change provider)
+        // Prepare update (change name)
         let mut u = AccountUpdate::default();
-        u.provider = Some("UPDATE_AFTER".into());
+        u.name = Some("UPDATE_AFTER".into());
 
         // Act
         let updated: AccountRow = update(&ctx, &acc_store, created.id, u).await?;
 
         // Assert
         assert_eq!(updated.id, created.id);
-        assert_eq!(updated.provider, "UPDATE_AFTER");
+        assert_eq!(updated.name, "UPDATE_AFTER");
         Ok(())
     }
 
@@ -449,7 +447,7 @@ mod tests {
 
         // Provide at least one field to update
         let mut u = AccountUpdate::default();
-        u.provider = Some("WON'T_APPLY".into());
+        u.name = Some("WON'T_APPLY".into());
 
         // Act
         let err = update::<AccountRow, _, _>(&ctx, &acc_store, missing_id, u).await;
@@ -472,7 +470,7 @@ mod tests {
         // Create a row to delete
         let mut d = AccountCreate::default();
         d.email = "delete_ok@example.com".into();
-        d.provider = "DELETE_ME".into();
+        d.name = "DELETE_ME".into();
         let created: AccountRow = create(&ctx, &acc_store, d).await?;
 
         // Act
@@ -480,7 +478,7 @@ mod tests {
 
         // Assert
         assert_eq!(deleted.id, created.id);
-        assert_eq!(deleted.provider, "DELETE_ME");
+        assert_eq!(deleted.name, "DELETE_ME");
         Ok(())
     }
 
@@ -517,7 +515,7 @@ mod tests {
         // Create a baseline account
         let mut create = AccountCreate::default();
         create.email = "tag-update@example.com".to_string();
-        create.provider = "TEST_UPDATE_TAGS".to_string();
+        create.name = "TEST_UPDATE_TAGS".to_string();
         let created: AccountRow = store.create(&ctx, create).await?;
 
         // Act: update tags
@@ -550,7 +548,7 @@ mod tests {
         // Create a baseline account
         let mut create = AccountCreate::default();
         create.email = "meta-update@example.com".to_string();
-        create.provider = "TEST_UPDATE_META".to_string();
+        create.name = "TEST_UPDATE_META".to_string();
         // If AccountCreate allows setting meta at create-time, you can set it here; otherwise it defaults.
         let created: AccountRow = store.create(&ctx, create).await?;
 
@@ -583,32 +581,32 @@ mod tests {
         let store = AccountStore::new(dbx);
         let ctx = Ctx::new_root();
 
-        // Create a small cohort under a unique provider tag
-        let provider_tag = "TEST_LIST_FILTER_BY_CREATED_BY";
+        // Create a small cohort under a unique name tag
+        let name_tag = "TEST_LIST_FILTER_BY_CREATED_BY";
         let mut data = vec![];
         for i in 0..3 {
             let mut ac = AccountCreate::default();
             ac.email = format!("lfcb-{i}-{i}@example.com");
-            ac.provider = provider_tag.into();
+            ac.name = name_tag.into();
             data.push(ac)
         }
 
         let created: Vec<AccountRow> = create_many(&ctx, &store, data).await?;
 
-        // Build filter: by provider AND by created_by (= ctx.user_id via audit fields)
+        // Build filter: by name AND by created_by (= ctx.user_id via audit fields)
         let filter = AccountFilter::try_from(serde_json::json!({
-            "provider": provider_tag,
+            "name": name_tag,
             "created_by":  ctx.user_id()
         }))?;
 
         // Act
         let rows: Vec<AccountRow> = list(&ctx, &store, Some(filter), None).await?;
 
-        // Assert: all returned rows have matching provider and cid
+        // Assert: all returned rows have matching name and cid
         assert!(!rows.is_empty());
         for r in &rows {
-            assert_eq!(r.provider, provider_tag);
-            assert_eq!(r.created_by, ctx.user_id());
+            assert_eq!(r.name, name_tag);
+            assert_eq!(r.audit.created_by, ctx.user_id());
         }
 
         Ok(())
@@ -623,7 +621,7 @@ mod tests {
         let store = AccountStore::new(dbx);
         let ctx = Ctx::new_root();
 
-        let provider_tag = "TEST_LIST_FILTER_BY_CREATED_AT";
+        let name_tag = "TEST_LIST_FILTER_BY_CREATED_AT";
 
         // Establish a time window around "now"
         let start = now_utc() - Duration::minutes(1);
@@ -631,16 +629,16 @@ mod tests {
         for i in 0..3 {
             let mut ac = AccountCreate::default();
             ac.email = format!("lfcb-{}@example.com", i);
-            ac.provider = provider_tag.into();
+            ac.name = name_tag.into();
             data.push(ac)
         }
 
         let created: Vec<AccountRow> = create_many(&ctx, &store, data).await?;
         let end = now_utc() + Duration::minutes(1);
 
-        // Build filter: provider AND ctime window
+        // Build filter: name AND ctime window
         let filter: AccountFilter = serde_json::json!({
-            "provider": { "$eq": provider_tag },
+            "name": { "$eq": name_tag },
             "created_at": {
                 "$gte": time_to_string(start),
                 "$lte": time_to_string(end)
@@ -654,9 +652,9 @@ mod tests {
         // Assert
         assert!(!rows.is_empty());
         for r in &rows {
-            assert_eq!(r.provider, provider_tag);
+            assert_eq!(r.name, name_tag);
             // (Optional) sanity: r.created_at should lie in [start, end]
-            assert!(r.created_at >= start && r.created_at <= end);
+            assert!(r.audit.created_at >= start && r.audit.created_at <= end);
         }
 
         Ok(())
@@ -673,24 +671,24 @@ mod tests {
         let store = AccountStore::new(dbx);
         let ctx = Ctx::new_root();
 
-        let provider_tag = "TEST_LIST_ORDER_BY_CREATED_AT";
+        let name_tag = "TEST_LIST_ORDER_BY_CREATED_AT";
 
         // Create two rows with a slight delay to ensure different ctime
         let mut a1 = AccountCreate::default();
         a1.email = "loca-1@example.com".into();
-        a1.provider = provider_tag.into();
+        a1.name = name_tag.into();
         let r1: AccountRow = create(&ctx, &store, a1).await?;
 
         sleep(Duration::from_millis(10)).await;
 
         let mut a2 = AccountCreate::default();
         a2.email = "loca-2@example.com".into();
-        a2.provider = provider_tag.into();
+        a2.name = name_tag.into();
         let r2: AccountRow = create(&ctx, &store, a2).await?;
 
-        // Filter down to this provider, order by ctime ASC
+        // Filter down to this name, order by ctime ASC
         let filter = AccountFilter::try_from(serde_json::json!({
-            "provider": { "$eq": provider_tag }
+            "name": { "$eq": name_tag }
         }))?;
 
         let mut opts = ListOptions::default();
@@ -715,7 +713,7 @@ mod tests {
         assert!(idx1 < idx2, "expected loca-1 before loca-2 with ctime ASC");
 
         // Extra sanity
-        assert!(r1.created_at <= r2.created_at);
+        assert!(r1.audit.created_at <= r2.audit.created_at);
 
         Ok(())
     }

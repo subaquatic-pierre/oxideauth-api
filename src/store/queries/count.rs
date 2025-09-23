@@ -71,7 +71,6 @@ mod tests {
         let mut ac = |i: usize| {
             let mut data = AccountCreate::default();
             data.email = format!("user{}@example.com", i);
-            data.provider = "TEST_FILTER_MATCH_COUNT".to_string();
             data
         };
 

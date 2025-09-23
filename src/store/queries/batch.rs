@@ -272,7 +272,6 @@ mod tests {
             let mut ac = AccountCreate::default();
             ac.email = format!("bulk{:02}@example.com", i);
             ac.description = Some(desc.clone());
-            ac.provider = "TEST_CREATE_MANY".to_string();
             payloads.push(ac);
         }
 
@@ -319,7 +318,6 @@ mod tests {
         for i in 0..n {
             let mut ac = AccountCreate::default();
             ac.email = format!("bulk{:02}@example.com", i);
-            ac.provider = "TEST_CREATE_MANY".to_string();
             payloads.push(ac);
         }
 
@@ -336,7 +334,6 @@ mod tests {
             let fetched = store.get(&ctx, row.id).await?;
             assert_eq!(fetched.id, row.id);
             assert_eq!(fetched.email, row.email);
-            assert_eq!(fetched.provider, "TEST_CREATE_MANY");
         }
 
         Ok(())
@@ -354,12 +351,10 @@ mod tests {
         // Create two baseline accounts
         let mut c1 = AccountCreate::default();
         c1.email = "bulk-tags-1@example.com".to_string();
-        c1.provider = "TEST_UPDATE_MANY_TAGS".to_string();
         let a1: AccountRow = create(&ctx, &store, c1).await?;
 
         let mut c2 = AccountCreate::default();
         c2.email = "bulk-tags-2@example.com".to_string();
-        c2.provider = "TEST_UPDATE_MANY_TAGS".to_string();
         let a2: AccountRow = create(&ctx, &store, c2).await?;
 
         // Act
@@ -398,12 +393,10 @@ mod tests {
         // Create two baseline accounts
         let mut c1 = AccountCreate::default();
         c1.email = "bulk-meta-1@example.com".to_string();
-        c1.provider = "TEST_UPDATE_MANY_META".to_string();
         let a1: AccountRow = create(&ctx, &store, c1).await?;
 
         let mut c2 = AccountCreate::default();
         c2.email = "bulk-meta-2@example.com".to_string();
-        c2.provider = "TEST_UPDATE_MANY_META".to_string();
         let a2: AccountRow = create(&ctx, &store, c2).await?;
 
         // Act
@@ -452,7 +445,6 @@ mod tests {
         for i in 0..over_limit {
             let mut ac = AccountCreate::default();
             ac.email = format!("too-many-{:04}@example.com", i);
-            ac.provider = "TEST_CREATE_MANY_FAIL".to_string();
             payloads.push(ac);
         }
 
@@ -481,7 +473,6 @@ mod tests {
         // Create a single baseline account to obtain a valid id
         let mut ac = AccountCreate::default();
         ac.email = "update-many-fail@example.com".to_string();
-        ac.provider = "TEST_UPDATE_MANY_FAIL".to_string();
         let row: AccountRow = create(&ctx, &store, ac).await?;
 
         // Build an updates vector intentionally exceeding the validator limit
@@ -520,7 +511,6 @@ mod tests {
         let mut mk = |i: usize| {
             let mut c = AccountCreate::default();
             c.email = format!("del-many-{i}@example.com");
-            c.provider = "TEST_DELETE_MANY".into();
             c
         };
         let a1: AccountRow = create(&ctx, &store, mk(1)).await?;
@@ -554,7 +544,6 @@ mod tests {
         // Create one account
         let mut c = AccountCreate::default();
         c.email = "del-many-wrong@example.com".into();
-        c.provider = "TEST_DELETE_MANY_WRONG".into();
         let a: AccountRow = create(&ctx, &store, c).await?;
 
         // Build ids: 1 real + 1 random (non-existent)

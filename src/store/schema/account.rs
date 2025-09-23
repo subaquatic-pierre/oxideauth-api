@@ -8,61 +8,48 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::store::error::Error;
-use crate::store::schema::audit::AuditFilter;
+use crate::store::schema::audit::{AuditFields, AuditFilter};
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 // --- Row (DB-facing) ---
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Deserialize)]
 pub struct AccountRow {
     pub id: Uuid,
 
     // Identity
     pub email: String,
-    pub password_hash: String, // internal only
     pub name: String,
-    pub acc_type: String,
-    pub provider: String,
-    pub provider_id: Option<String>,
     pub description: Option<String>,
-    pub image_url: Option<String>,
-    pub verified: bool,
+    pub avatar_url: Option<String>,
+
+    // Global Status
     pub enabled: bool,
+    pub verified: bool,
 
-    // Scope
-    pub namespace_id: Option<Uuid>,
-    pub project_id: Option<Uuid>,
-
-    // Free-form
+    // START Meta & Tags
     pub tags: Vec<String>,
     #[sqlx(json)]
     pub meta: AccountMeta,
+    // END Meta & Tags
 
-    // Audit
-    pub created_by: Uuid,
-    pub created_at: OffsetDateTime,
-    pub updated_by: Option<Uuid>,
-    pub updated_at: Option<OffsetDateTime>,
+    // START Audit
+    #[serde(flatten)]
+    #[sqlx(flatten)]
+    pub audit: AuditFields,
+    // END Audit
 }
 
 // --- Create (store input) ---
 #[derive(Debug, Fields)]
 pub struct AccountCreate {
-    // Identity
     pub email: String,
-    pub password_hash: String,
     pub name: String,
-    pub acc_type: String,
-    pub provider: String,
-    pub provider_id: Option<String>,
     pub description: Option<String>,
-    pub image_url: Option<String>,
-    pub verified: bool,
-    pub enabled: bool,
+    pub avatar_url: Option<String>,
 
-    // Scope
-    pub namespace_id: Option<Uuid>,
-    pub project_id: Option<Uuid>,
-    // Free-form
+    pub enabled: bool,
+    pub verified: bool,
+
     pub tags: Vec<String>,
     pub meta: AccountMeta,
 }
@@ -70,20 +57,14 @@ pub struct AccountCreate {
 // --- Update (store input) ---
 #[derive(Debug, Fields, Clone)]
 pub struct AccountUpdate {
+    pub email: Option<String>,
     pub name: Option<String>,
-    pub acc_type: Option<String>,
-    pub provider: Option<String>,
-    pub provider_id: Option<String>,
     pub description: Option<String>,
-    pub image_url: Option<String>,
-    pub verified: Option<bool>,
+    pub avatar_url: Option<String>,
+
     pub enabled: Option<bool>,
+    pub verified: Option<bool>,
 
-    // Scope
-    pub namespace_id: Option<Uuid>,
-    pub project_id: Option<Uuid>,
-
-    // Free-form
     pub tags: Option<Vec<String>>,
     pub meta: Option<AccountMeta>,
 }
@@ -109,25 +90,15 @@ impl From<AccountMeta> for SeaValue {
 /// Filtering options for queries
 #[derive(FilterNodes, Deserialize, Default, Debug)]
 pub struct AccountFilter {
-    // Core identifiers / status
     #[modql(cast_as = "uuid")]
-    pub id: Option<String>, // UUID (eq/in)
+    pub id: Option<String>,
     pub email: Option<OpValsString>,
     pub name: Option<OpValsString>,
-    pub acc_type: Option<OpValsString>,
-    pub provider: Option<OpValsString>,
-    pub provider_id: Option<OpValsString>,
     pub description: Option<OpValsString>,
-    pub image_url: Option<OpValsString>,
+    pub avatar_url: Option<OpValsString>,
 
     pub verified: Option<OpValsValue>, // bool
     pub enabled: Option<OpValsValue>,  // bool
-
-    // Scope
-    #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<String>, // UUID (eq/in)
-    #[modql(cast_as = "uuid")]
-    pub project_id: Option<String>, // UUID (eq/in)
 
     // TODO: Must update modql to handle filter by text[] and jsonb
     // Free-form filtering
@@ -148,7 +119,7 @@ pub struct AccountFilter {
 
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
-    // #[serde(flatten)]
+    // TODO: #[serde(flatten)]
     // pub audit: AuditFilter,
 }
 
@@ -165,17 +136,11 @@ impl Default for AccountCreate {
     fn default() -> Self {
         Self {
             email: "user1@example.com".into(),
-            password_hash: "$argon2id$v=19$m=65536,t=3,p=1$testsalt$testhash".into(),
             name: "Test User".into(),
-            acc_type: "user".into(),
-            provider: "local".into(),
-            provider_id: None,
             description: Some("Fixture account for create() test".into()),
-            image_url: None,
+            avatar_url: Some("avatar_url.com".into()),
             verified: false,
             enabled: true,
-            namespace_id: None,
-            project_id: None,
             tags: vec![],
             meta: AccountMeta {
                 schema_version: "1".into(),
@@ -188,21 +153,14 @@ impl Default for AccountCreate {
 impl Default for AccountUpdate {
     fn default() -> Self {
         Self {
-            // Basic identity
             name: None,
-            acc_type: None,    // e.g. "user" | "admin" | "service"
-            provider: None,    // e.g. "local" | "google" | "github"
-            provider_id: None, // set if provider != local
+            email: None,
 
             // Profile / status
             description: None,
-            image_url: None,
+            avatar_url: None,
             verified: None,
             enabled: None,
-
-            // Scope (left unset by default to avoid FK issues)
-            namespace_id: None,
-            project_id: None,
 
             // Free-form meta; keep structure present but empty
             meta: None,
