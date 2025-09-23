@@ -1,6 +1,6 @@
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
-use sea_query::{Nullable, Value as SeaValue};
+use sea_query::{sea_value_to_json_value, Nullable, Value as SeaValue};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as JsonValue};
 use sqlx::prelude::FromRow;
@@ -8,24 +8,28 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::store::error::Error;
-use crate::store::schema::audit::{AuditFields, AuditFilter};
+use crate::store::schema::audit::{AuditFields, AuditFilter, AuditMeta};
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 // --- Row (DB-facing) ---
-/// Maps to the `role` SQL table.
+/// Maps to the `namespace` SQL table.
 #[derive(Debug, FromRow, Deserialize)]
-pub struct RoleRow {
+pub struct NamespaceRow {
     pub id: Uuid,
-    pub namespace_id: Uuid,
 
-    // Role identity
+    // Identity
     pub name: String,
+    pub slug: String,
     pub description: Option<String>,
+
+    // Config
+    #[sqlx(json)]
+    pub config: NamespaceConfig,
 
     // START Meta & Tags
     pub tags: Vec<String>,
     #[sqlx(json)]
-    pub meta: RoleMeta,
+    pub meta: NamespaceMeta,
     // END Meta & Tags
 
     // START Audit
@@ -35,55 +39,76 @@ pub struct RoleRow {
 }
 
 // --- Create (store input) ---
-/// Input for creating a new `role`.
+/// Input for creating a new `namespace`.
 #[derive(Debug, Fields)]
-pub struct RoleCreate {
-    pub namespace_id: Uuid,
+pub struct NamespaceCreate {
     pub name: String,
+    pub slug: String,
     pub description: Option<String>,
+    pub config: NamespaceConfig,
     pub tags: Vec<String>,
-    pub meta: RoleMeta,
+    pub meta: NamespaceMeta,
 }
 
 // --- Update (store input) ---
-/// Input for updating an existing `role`.
+/// Input for updating an existing `namespace`.
 #[derive(Debug, Fields, Clone)]
-pub struct RoleUpdate {
+pub struct NamespaceUpdate {
     pub name: Option<String>,
+    pub slug: Option<String>,
     pub description: Option<String>,
+    pub config: Option<NamespaceConfig>,
     pub tags: Option<Vec<String>>,
-    pub meta: Option<RoleMeta>,
+    pub meta: Option<NamespaceMeta>,
 }
 
 #[derive(Debug, Default, Fields, Serialize, Deserialize, Clone)]
 #[serde(default)]
-pub struct RoleMeta {
+pub struct NamespaceConfig {
     pub schema_version: String,
 }
 
-impl Nullable for RoleMeta {
+impl Nullable for NamespaceConfig {
     fn null() -> SeaValue {
         SeaValue::Json(None)
     }
 }
 
-impl From<RoleMeta> for SeaValue {
-    fn from(value: RoleMeta) -> Self {
+impl From<NamespaceConfig> for SeaValue {
+    fn from(value: NamespaceConfig) -> Self {
         json_to_sea_value(serde_json::to_value(value).unwrap()).unwrap()
     }
 }
 
-/// Filtering options for `role` queries.
+#[derive(Debug, Default, Fields, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct NamespaceMeta {
+    pub schema_version: String,
+}
+
+impl Nullable for NamespaceMeta {
+    fn null() -> SeaValue {
+        SeaValue::Json(None)
+    }
+}
+
+impl From<NamespaceMeta> for SeaValue {
+    fn from(value: NamespaceMeta) -> Self {
+        json_to_sea_value(serde_json::to_value(value).unwrap()).unwrap()
+    }
+}
+
+/// Filtering options for `namespace` queries.
 #[derive(FilterNodes, Deserialize, Default, Debug)]
-pub struct RoleFilter {
+pub struct NamespaceFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<String>,
-    #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<String>,
     pub name: Option<OpValsString>,
+    pub slug: Option<OpValsString>,
     pub description: Option<OpValsString>,
 
-    // NOTE: Filtering on JSONB and TEXT[] fields would require custom modql logic.
+    // NOTE: Filtering on JSONB fields like `config` and `meta` would require custom modql logic.
+    // pub config: Option<OpValsValue>,
     // pub tags: Option<OpValsValue>,
     // pub meta: Option<OpValsValue>,
 
@@ -98,7 +123,7 @@ pub struct RoleFilter {
     pub updated_at: Option<OpValsValue>,
 }
 
-impl TryFrom<JsonValue> for RoleFilter {
+impl TryFrom<JsonValue> for NamespaceFilter {
     type Error = Error;
 
     fn try_from(value: JsonValue) -> Result<Self, Self::Error> {
@@ -108,26 +133,31 @@ impl TryFrom<JsonValue> for RoleFilter {
 
 // --- Defaults for testing ---
 #[cfg(test)]
-impl Default for RoleCreate {
+impl Default for NamespaceCreate {
     fn default() -> Self {
         Self {
-            namespace_id: Uuid::new_v4(),
-            name: "default-role".to_string(),
-            description: Some("A default role for testing.".to_string()),
+            name: "Default Namespace".into(),
+            slug: "default-namespace".into(),
+            description: Some("A default namespace for testing.".into()),
+            config: NamespaceConfig {
+                schema_version: "1".into(),
+            },
             tags: vec![],
-            meta: RoleMeta {
-                schema_version: "1".to_string(),
+            meta: NamespaceMeta {
+                schema_version: "1".into(),
             },
         }
     }
 }
 
 #[cfg(test)]
-impl Default for RoleUpdate {
+impl Default for NamespaceUpdate {
     fn default() -> Self {
         Self {
             name: None,
+            slug: None,
             description: None,
+            config: None,
             tags: None,
             meta: None,
         }

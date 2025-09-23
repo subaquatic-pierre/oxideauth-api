@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS
     -- How (authentication kind: password, oauth, sso, api_key)
     kind TEXT NOT NULL, -- 'password','oauth','sso','api_key'
     -- External identity provider metadata
-    provider TEXT, -- e.g. 'local','google','github','saml'
+    provider TEXT NOT NULL, -- e.g. 'local','google','github','saml'
     provider_id TEXT, -- external subject/user id (for oauth/sso)
     -- Login details
     email TEXT, -- email for password login or IdP email
