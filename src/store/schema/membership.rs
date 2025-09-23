@@ -4,13 +4,14 @@ use sea_query::{Nullable, Value as SeaValue};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as JsonValue};
 use sqlx::prelude::FromRow;
+use sqlx::Type;
 use std::fmt::{self, Display};
 use strum_macros::{Display, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::store::error::Error;
-use crate::store::schema::audit::{AuditFields,  AuditMeta};
+use crate::store::schema::audit::{AuditFields, AuditMeta};
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 // --- Row (DB-facing) ---
@@ -30,7 +31,7 @@ pub struct MembershipRow {
     pub audit: AuditFields,
 }
 
-#[derive(Debug, Display, Serialize, Deserialize, Clone)]
+#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum MembershipScope {
@@ -51,7 +52,7 @@ impl Nullable for MembershipScope {
     }
 }
 
-#[derive(Debug, Display, Serialize, Deserialize, Clone)]
+#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum MembershipStatus {

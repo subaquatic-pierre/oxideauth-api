@@ -4,12 +4,13 @@ use sea_query::{Nullable, Value as SeaValue};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as JsonValue};
 use sqlx::prelude::FromRow;
+use sqlx::Type;
 use strum_macros::{Display, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::store::error::Error;
-use crate::store::schema::audit::{AuditFields,  AuditMeta};
+use crate::store::schema::audit::{AuditFields, AuditMeta};
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 // --- Row (DB-facing) ---
@@ -19,8 +20,11 @@ pub struct CredentialRow {
     pub id: Uuid,
     pub account_id: Uuid,
     pub namespace_id: Uuid,
+    #[sqlx(string)]
     pub kind: CredentialKind,
+    #[sqlx(string)]
     pub provider: CredentialProvider,
+    #[sqlx(string)]
     pub status: CredentialStatus,
     pub provider_id: Option<String>,
     pub email: Option<String>,
@@ -35,7 +39,7 @@ pub struct CredentialRow {
     pub audit: AuditFields,
 }
 
-#[derive(Debug, Display, Serialize, Deserialize, Clone)]
+#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum CredentialStatus {
@@ -57,7 +61,7 @@ impl Nullable for CredentialStatus {
     }
 }
 
-#[derive(Debug, Display, Serialize, Deserialize, Clone)]
+#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum CredentialProvider {
@@ -79,7 +83,7 @@ impl Nullable for CredentialProvider {
     }
 }
 
-#[derive(Debug, Display, Serialize, Deserialize, Clone)]
+#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
 pub enum CredentialKind {
     #[serde(rename = "password")]
     Password,

@@ -5,7 +5,6 @@ use sea_query::{Iden, IntoTableRef};
 #[derive(Iden)]
 pub enum CommonIden {
     Id,
-    OwnerId,
     NamespaceId,
     ProjectId,
     Tags,
@@ -18,11 +17,17 @@ pub enum AuditIden {
     CreatedAt,
     UpdatedBy,
     UpdatedAt,
-    // DeletedBy, // enable later if you add soft delete
-    // DeletedAt,
 }
 
 #[derive(Iden)]
 pub enum TableIden {
     Account,
+    Credential,
+    Membership,
+    MembershipRole,
+    Namespace,
+    Permission,
+    Project,
+    Role,
+    RolePermission,
 }
