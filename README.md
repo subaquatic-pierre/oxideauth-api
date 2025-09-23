@@ -124,15 +124,6 @@ cargo db-prod-run
 cargo db-prod-info
 cargo db-prod-revert # USE ONLY IN EMERGENCIES
 
-4. Promotion workflow
-
----
-
-- Create and test new migrations in dev/.
-- Promote them to test/ when stable.
-- Finally, copy to prod/ before deployment.
-- Ensure filenames are identical across environments so migration checksums remain consistent.
-
 5. Notes
 
 ---
@@ -140,3 +131,27 @@ cargo db-prod-revert # USE ONLY IN EMERGENCIES
 - The [env] section in `.cargo/config.toml` provides variables to your Rust application (`cargo run`, `cargo test`, etc.), but sqlx-cli ignores them.
 - That is why aliases explicitly include the `--database-url`.
 - Keep your actual secrets local; only `config.example.toml` is shared.
+
+## Database Dump
+
+```sh
+pg_dump -h localhost -U oxideauth -d db_dev -F p > db_bak.sql
+```
+
+## Schema Dump
+
+```sh
+pg_dump -h localhost -U oxideauth -d db_dev -s > schema.sql
+```
+
+## Database Dump
+
+```sh
+pg_dump -h localhost -U oxideauth -d db_dev -F p > db_bak.sql
+```
+
+## Write DBML
+
+```sh
+db2dbml postgres 'postgresql://oxideauth:password@localhost:5432/db_dev?schemas=public' -o schema.dbml
+```

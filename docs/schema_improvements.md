@@ -1,5 +1,16 @@
 # Database Schema
 
+How the Entities Connect
+Accounts
+
+An Account represents a person or system user.
+
+Each account can:
+
+Have multiple Credentials (passwords, OAuth logins, API keys).
+
+Hold multiple Memberships (which define their access inside different Namespaces or Projects).
+
 ## Schema Improvements
 
 ### Account
