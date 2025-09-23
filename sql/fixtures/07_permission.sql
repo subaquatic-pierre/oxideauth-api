@@ -1,1 +1,0 @@
--- fixtures/07_permission.sql

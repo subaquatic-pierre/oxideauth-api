@@ -1,1 +1,0 @@
--- fixtures/09_membership.sql

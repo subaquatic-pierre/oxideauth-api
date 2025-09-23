@@ -1,59 +1,36 @@
 -- fixtures/01_account.sql
+-- Purpose: Seed initial system accounts for development, testing, and bootstrap.
+-- Notes:
+--   - These accounts are referenced by fixtures in later files (e.g., namespaces, roles).
+--   - Passwords should be handled securely in production; for fixtures we use placeholders.
 INSERT INTO
-  account (
-    id,
-    email,
-    password_hash,
-    name,
-    acc_type,
-    provider,
-    verified,
-    enabled,
-    created_by,
-    updated_by,
-    created_at,
-    updated_at
-  )
+  account (id, email, name, verified, enabled, created_by)
 VALUES
+  -- Root system account
   (
     '00000000-0000-0000-0000-000000000001',
-    'owner@example.com',
-    'hash_owner',
-    'Owner User',
-    'owner',
-    'local',
+    'root@system.local',
+    'Root Account',
     TRUE,
     TRUE,
-    '00000000-0000-0000-0000-000000000001',
-    NULL,
-    now(),
-    NULL
+    '00000000-0000-0000-0000-000000000001'
   ),
+  -- Owner/admin account
   (
     '00000000-0000-0000-0000-000000000002',
-    'admin@example.com',
-    'hash_admin',
-    'Admin User',
-    'admin',
-    'local',
+    'owner@system.local',
+    'Owner Account',
     TRUE,
     TRUE,
-    '00000000-0000-0000-0000-000000000001',
-    NULL,
-    now(),
-    NULL
+    '00000000-0000-0000-0000-000000000001'
   ),
+  -- Example test account
   (
     '00000000-0000-0000-0000-000000000003',
-    'user@example.com',
-    'hash_user',
-    'Normal User',
-    'user',
-    'local',
+    'test@example.com',
+    'Test Account',
     TRUE,
     TRUE,
-    '00000000-0000-0000-0000-000000000001',
-    NULL,
-    now(),
-    NULL
-  );
+    '00000000-0000-0000-0000-000000000001'
+  ) ON CONFLICT (id)
+DO NOTHING;
