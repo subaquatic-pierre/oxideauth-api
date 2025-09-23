@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::store::error::Error;
-use crate::store::schema::audit::{AuditFields, AuditFilter};
+use crate::store::schema::audit::AuditFields;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 // --- Row (DB-facing) ---
@@ -26,16 +26,12 @@ pub struct AccountRow {
     pub enabled: bool,
     pub verified: bool,
 
-    // START Meta & Tags
     pub tags: Vec<String>,
     #[sqlx(json)]
     pub meta: AccountMeta,
-    // END Meta & Tags
 
-    // START Audit
     #[sqlx(flatten)]
     pub audit: AuditFields,
-    // END Audit
 }
 
 // --- Create (store input) ---
@@ -118,8 +114,6 @@ pub struct AccountFilter {
 
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
-    // TODO: #[serde(flatten)]
-    // pub audit: AuditFilter,
 }
 
 impl TryFrom<JsonValue> for AccountFilter {

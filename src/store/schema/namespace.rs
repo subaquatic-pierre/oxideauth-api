@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::store::error::Error;
-use crate::store::schema::audit::{AuditFields, AuditFilter, AuditMeta};
+use crate::store::schema::audit::{AuditFields, AuditMeta};
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 // --- Row (DB-facing) ---
@@ -26,16 +26,12 @@ pub struct NamespaceRow {
     #[sqlx(json)]
     pub config: NamespaceConfig,
 
-    // START Meta & Tags
     pub tags: Vec<String>,
     #[sqlx(json)]
     pub meta: NamespaceMeta,
-    // END Meta & Tags
 
-    // START Audit
     #[sqlx(flatten)]
     pub audit: AuditFields,
-    // END Audit
 }
 
 // --- Create (store input) ---
