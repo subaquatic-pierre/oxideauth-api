@@ -2,12 +2,12 @@ use std::str::FromStr;
 
 use uuid::Uuid;
 
-pub struct Ctx {
+pub struct StoreCtx {
     user_id: Uuid,
     ns_id: Uuid,
 }
 
-impl Ctx {
+impl StoreCtx {
     pub fn new(user_id: Uuid, ns_id: Uuid) -> Self {
         Self { user_id, ns_id }
     }

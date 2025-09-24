@@ -2,7 +2,7 @@ use modql::filter::ListOptions;
 use sea_query::Iden;
 use serde::Deserialize;
 
-use crate::store::error::{Error, Result};
+use crate::store::error::{Result, StoreError};
 use crate::store::schema::iden::AuditIden;
 use crate::store::stores::base::MetaStore;
 
@@ -73,7 +73,7 @@ impl ListOptionsValidator {
 
     pub fn validate_limit(limit: i64) -> Result<()> {
         if limit > LIST_LIMIT_MAX {
-            return Err(Error::InvalidListOptions {
+            return Err(StoreError::InvalidListOptions {
                 max: LIST_LIMIT_MAX,
                 actual: limit,
             });
@@ -185,7 +185,7 @@ mod tests {
             ListOptionsValidator::validate_list_opts(Some(opts), /*has_audit_fields*/ false)
                 .unwrap_err();
         match err {
-            Error::InvalidListOptions { max, actual } => {
+            StoreError::InvalidListOptions { max, actual } => {
                 assert_eq!(max, LIST_LIMIT_MAX);
                 assert_eq!(actual, LIST_LIMIT_MAX + 1);
             }

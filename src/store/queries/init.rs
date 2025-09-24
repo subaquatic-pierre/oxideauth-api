@@ -21,26 +21,6 @@ use super::{
 pub async fn drop_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
 
-    // sqlx::query!("DROP TABLE IF EXISTS role_bindings;")
-    //     .execute(&mut *tx)
-    //     .await?;
-    // sqlx::query!("DROP TABLE IF EXISTS permission_bindings;")
-    //     .execute(&mut *tx)
-    //     .await?;
-    // sqlx::query!("DROP TABLE IF EXISTS roles;")
-    //     .execute(&mut *tx)
-    //     .await?;
-    // sqlx::query!("DROP TABLE IF EXISTS permissions;")
-    //     .execute(&mut *tx)
-    //     .await?;
-    // sqlx::query!("DROP TABLE IF EXISTS accounts;")
-    //     .execute(&mut *tx)
-    //     .await?;
-    // sqlx::query!("DROP TABLE IF EXISTS services;")
-    //     .execute(&mut *tx)
-    //     .await?;
-
-    // tx.commit().await?;
     Ok(())
 }
 

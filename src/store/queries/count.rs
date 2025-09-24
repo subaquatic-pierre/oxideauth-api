@@ -1,6 +1,3 @@
-use crate::store::error::{Error, Result};
-use crate::store::{ctx::Ctx, manager::StoreManager};
-use crate::store::{opts::ListOptionsValidator, stores::base::MetaStore};
 use modql::filter::{FilterGroups, ListOptions};
 use sea_query::{Asterisk, Condition, PostgresQueryBuilder, Query};
 use sea_query::{Expr, Func, Iden};
@@ -9,7 +6,11 @@ use sqlx::Row;
 use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, query_scalar_with, query_with, Value};
 
-pub async fn count<F, DB>(_ctx: &Ctx, store: &DB, filter: Option<F>) -> Result<i64>
+use crate::store::error::{Result, StoreError};
+use crate::store::{ctx::StoreCtx, manager::StoreManager};
+use crate::store::{opts::ListOptionsValidator, stores::base::MetaStore};
+
+pub async fn count<F, DB>(_ctx: &StoreCtx, store: &DB, filter: Option<F>) -> Result<i64>
 where
     DB: MetaStore,
     F: Into<FilterGroups>,
@@ -48,7 +49,7 @@ mod tests {
     use crate::{
         dev::init::init_test,
         store::{
-            ctx::Ctx,
+            ctx::StoreCtx,
             queries::crud::create,
             schema::account::{AccountCreate, AccountFilter, AccountRow},
             stores::{
@@ -66,7 +67,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let acc_store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         let mut ac = |i: usize| {
             let mut data = AccountCreate::default();

@@ -7,7 +7,7 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::store::error::{Error, Result};
+use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::AuditFields;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
@@ -99,10 +99,11 @@ pub struct PermissionFilter {
 }
 
 impl TryFrom<JsonValue> for PermissionFilter {
-    type Error = Error;
+    type Error = StoreError;
 
     fn try_from(value: JsonValue) -> Result<Self> {
-        serde_json::from_value(value).map_err(|e| Error::JsonError(e))
+        let res = serde_json::from_value(value)?;
+        Ok(res)
     }
 }
 

@@ -10,15 +10,15 @@ use sqlx::{query_as_with, Postgres, QueryBuilder, Value};
 use uuid::Uuid;
 
 use crate::store::dbx::Dbx;
-use crate::store::error::{Error, Result};
+use crate::store::error::{Result, StoreError};
 use crate::store::opts::ListOptionsValidator;
 use crate::store::schema::iden::CommonIden;
 use crate::store::stores::base::MetaStore;
 use crate::store::utils::{pg_type_of, prepare_audit_fields, push_sq_value};
-use crate::store::{ctx::Ctx, manager::StoreManager};
+use crate::store::{ctx::StoreCtx, manager::StoreManager};
 use sea_query::{Iden, IntoIden, TableRef};
 
-pub async fn create_many<T, C, DB>(ctx: &Ctx, store: &DB, data: Vec<C>) -> Result<Vec<T>>
+pub async fn create_many<T, C, DB>(ctx: &StoreCtx, store: &DB, data: Vec<C>) -> Result<Vec<T>>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -69,7 +69,11 @@ where
     Ok(ret)
 }
 
-pub async fn update_many<T, DB, U>(ctx: &Ctx, store: &DB, data: Vec<(DB::Id, U)>) -> Result<Vec<T>>
+pub async fn update_many<T, DB, U>(
+    ctx: &StoreCtx,
+    store: &DB,
+    data: Vec<(DB::Id, U)>,
+) -> Result<Vec<T>>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -175,7 +179,7 @@ where
     Ok(ret)
 }
 
-pub async fn delete_many<T, DB>(ctx: &Ctx, store: &DB, ids: Vec<DB::Id>) -> Result<Vec<T>>
+pub async fn delete_many<T, DB>(ctx: &StoreCtx, store: &DB, ids: Vec<DB::Id>) -> Result<Vec<T>>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -231,7 +235,7 @@ mod tests {
 
         let acc_store = AccountStore::new(dbx);
 
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         let data = AccountCreate::default();
         // println!("DATA 1: {:#?}", data);
@@ -261,7 +265,7 @@ mod tests {
 
         let acc_store = AccountStore::new(dbx);
 
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Prepare multiple unique payloads
         let n = 3usize;
@@ -310,7 +314,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Prepare multiple unique payloads
         let n = 3usize;
@@ -346,7 +350,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Create two baseline accounts
         let mut c1 = AccountCreate::default();
@@ -388,7 +392,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Create two baseline accounts
         let mut c1 = AccountCreate::default();
@@ -436,7 +440,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Build a payload intentionally exceeding the validator limit.
         // (We don't rely on the exact limit; 2000 should be safely over any sane cap.)
@@ -468,7 +472,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Create a single baseline account to obtain a valid id
         let mut ac = AccountCreate::default();
@@ -505,7 +509,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Create a few accounts
         let mut mk = |i: usize| {
@@ -523,10 +527,10 @@ mod tests {
         // Assert: all returned & gone
         assert_eq!(deleted.len(), 3);
 
-        use crate::store::error::{Result,Error};
+        use crate::store::error::{Result, StoreError};
         for id in [a1.id, a2.id, a3.id] {
             let got = store.get(&ctx, id).await;
-            assert!(matches!(got, Err(Error::EntityNotFound { .. })));
+            assert!(matches!(got, Err(StoreError::EntityNotFound { .. })));
         }
 
         Ok(())
@@ -539,7 +543,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Create one account
         let mut c = AccountCreate::default();
@@ -557,9 +561,9 @@ mod tests {
         assert_eq!(deleted[0].id, a.id);
 
         // Existing row is gone
-        use crate::store::error::{Result,Error};
+        use crate::store::error::{Result, StoreError};
         let got = store.get(&ctx, a.id).await;
-        assert!(matches!(got, Err(Error::EntityNotFound { .. })));
+        assert!(matches!(got, Err(StoreError::EntityNotFound { .. })));
 
         Ok(())
     }
@@ -571,7 +575,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Intentionally exceed the validator limit with random UUIDs
         let over_limit = 2000usize;
@@ -590,35 +594,3 @@ mod tests {
         Ok(())
     }
 }
-
-// UPDATE account AS t
-// SET
-//   name        = COALESCE(v.name,        t.name),
-//   acc_type    = COALESCE(v.acc_type,    t.acc_type),
-//   provider    = COALESCE(v.provider,    t.provider),
-//   description = COALESCE(v.description, t.description),
-//   verified    = COALESCE(v.verified,    t.verified),
-//   enabled     = COALESCE(v.enabled,     t.enabled),
-//   meta        = COALESCE(v.meta,        t.meta),
-//   updated_by  = v.updated_by,                 -- or a single $param / CURRENT_USER
-//   updated_at  = v.updated_at                  -- or NOW()
-// FROM (
-//   VALUES
-//     -- row 1: (id, name, acc_type, provider, description, verified, enabled, meta, updated_by, updated_at)
-//     ($1, $2,  $3,       $4,       $5,          $6,       $7,      $8,   $9,         $10),
-//     -- row 2:
-//     ($11,$12, $13,      $14,      $15,         $16,      $17,     $18,  $19,        $20)
-// ) AS v (
-//   id,
-//   name,
-//   acc_type,
-//   provider,
-//   description,
-//   verified,
-//   enabled,
-//   meta,
-//   updated_by,
-//   updated_at
-// )
-// WHERE t.id = v.id
-// RETURNING t.*;

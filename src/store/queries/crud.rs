@@ -3,21 +3,21 @@ use modql::filter::{FilterGroups, ListOptions};
 use sea_query::{
     Alias, Asterisk, Condition, Expr, IdenList, IntoValueTuple, PostgresQueryBuilder, Query,
 };
+use sea_query::{Iden, IntoIden, TableRef};
 use sea_query_binder::SqlxBinder;
 use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, Value};
 use uuid::Uuid;
 
 use crate::store::dbx::Dbx;
-use crate::store::error::{Error, Result};
+use crate::store::error::{Result, StoreError};
 use crate::store::opts::ListOptionsValidator;
 use crate::store::schema::iden::CommonIden;
 use crate::store::stores::base::MetaStore;
 use crate::store::utils::prepare_audit_fields;
-use crate::store::{ctx::Ctx, manager::StoreManager};
-use sea_query::{Iden, IntoIden, TableRef};
+use crate::store::{ctx::StoreCtx, manager::StoreManager};
 
-pub async fn create<T, C, DB>(ctx: &Ctx, store: &DB, data: C) -> Result<T>
+pub async fn create<T, C, DB>(ctx: &StoreCtx, store: &DB, data: C) -> Result<T>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -46,7 +46,7 @@ where
     Ok(ret)
 }
 
-pub async fn get_opt<T, DB, ID>(ctx: &Ctx, store: &DB, id: ID) -> Result<Option<T>>
+pub async fn get_opt<T, DB, ID>(ctx: &StoreCtx, store: &DB, id: ID) -> Result<Option<T>>
 where
     ID: ToString + Into<sea_query::Value>,
     DB: MetaStore,
@@ -67,7 +67,7 @@ where
     Ok(ret)
 }
 
-pub async fn get<T, DB>(ctx: &Ctx, store: &DB, id: DB::Id) -> Result<T>
+pub async fn get<T, DB>(ctx: &StoreCtx, store: &DB, id: DB::Id) -> Result<T>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -75,7 +75,7 @@ where
     let id_str = id.to_string();
     match get_opt(ctx, store, id).await? {
         Some(t) => Ok(t),
-        None => Err(Error::EntityNotFound {
+        None => Err(StoreError::EntityNotFound {
             entity: DB::TABLE.to_string(),
             id: id_str,
         }),
@@ -83,7 +83,7 @@ where
 }
 
 pub async fn list<T, F, DB>(
-    ctx: &Ctx,
+    ctx: &StoreCtx,
     store: &DB,
     filter: Option<F>,
     opts: Option<ListOptions>,
@@ -122,7 +122,12 @@ where
     Ok(ret)
 }
 
-pub async fn update_opt<T, DB, U>(ctx: &Ctx, store: &DB, id: DB::Id, data: U) -> Result<Option<T>>
+pub async fn update_opt<T, DB, U>(
+    ctx: &StoreCtx,
+    store: &DB,
+    id: DB::Id,
+    data: U,
+) -> Result<Option<T>>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -154,7 +159,7 @@ where
     Ok(ret)
 }
 
-pub async fn update<T, DB, U>(ctx: &Ctx, store: &DB, id: DB::Id, data: U) -> Result<T>
+pub async fn update<T, DB, U>(ctx: &StoreCtx, store: &DB, id: DB::Id, data: U) -> Result<T>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -163,14 +168,14 @@ where
     let id_str = id.to_string();
     match update_opt(ctx, store, id, data).await? {
         Some(t) => Ok(t),
-        None => Err(Error::EntityNotFound {
+        None => Err(StoreError::EntityNotFound {
             entity: DB::TABLE.to_string(),
             id: id_str,
         }),
     }
 }
 
-pub async fn delete_opt<T, DB>(ctx: &Ctx, store: &DB, id: DB::Id) -> Result<Option<T>>
+pub async fn delete_opt<T, DB>(ctx: &StoreCtx, store: &DB, id: DB::Id) -> Result<Option<T>>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -192,7 +197,7 @@ where
     Ok(ret)
 }
 
-pub async fn delete<T, DB>(ctx: &Ctx, store: &DB, id: DB::Id) -> Result<T>
+pub async fn delete<T, DB>(ctx: &StoreCtx, store: &DB, id: DB::Id) -> Result<T>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -200,7 +205,7 @@ where
     let id_str = id.to_string();
     match delete_opt(ctx, store, id).await? {
         Some(t) => Ok(t),
-        None => Err(Error::EntityNotFound {
+        None => Err(StoreError::EntityNotFound {
             entity: DB::TABLE.to_string(),
             id: id_str,
         }),
@@ -213,14 +218,13 @@ mod tests {
     use serde_json::{from_value, json};
     use serial_test::serial;
     use sqlx::{query_as, Postgres};
-    use time::Duration;
+    use time::{Duration, OffsetDateTime};
     use uuid::Uuid;
 
     use crate::{
         dev::init::init_test,
-        services::error::Error as ServiceError,
         store::{
-            error::Error,
+            error::StoreError,
             queries::batch::create_many,
             schema::account::{
                 AccountCreate, AccountFilter, AccountMeta, AccountRow, AccountUpdate,
@@ -231,7 +235,6 @@ mod tests {
             },
             utils::time_to_string,
         },
-        utils::time::now_utc,
     };
 
     use super::*;
@@ -244,7 +247,7 @@ mod tests {
 
         let acc_store = AccountStore::new(dbx);
 
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         let data = AccountCreate::default();
 
@@ -263,7 +266,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let acc_store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Pick a random UUID that won't exist
         let missing_id = Uuid::new_v4();
@@ -271,7 +274,7 @@ mod tests {
         // Act
         let err = acc_store.get(&ctx, missing_id).await;
 
-        matches!(err, Err(Error::EntityNotFound { .. }));
+        matches!(err, Err(StoreError::EntityNotFound { .. }));
 
         Ok(())
     }
@@ -283,7 +286,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let acc_store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Create accounts in two groups so filter can select only one group
         for i in 0..5 {
@@ -328,7 +331,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let acc_store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Create 6 rows in the matching group to test two pages of size 3
         for i in 0..6 {
@@ -377,7 +380,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let acc_store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Optional: ensure there is at least some data (not required for this failure)
         let mut d = AccountCreate::default();
@@ -400,7 +403,7 @@ mod tests {
         let err = list::<AccountRow, _, _>(&ctx, &acc_store, filter, opts).await;
 
         // Assert (use your concise failure style)
-        matches!(err, Err(Error::InvalidListOptions { .. }));
+        matches!(err, Err(StoreError::InvalidListOptions { .. }));
 
         Ok(())
     }
@@ -412,7 +415,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let acc_store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Create a row to update
         let mut d = AccountCreate::default();
@@ -440,7 +443,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let acc_store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Non-existent ID
         let missing_id = Uuid::new_v4();
@@ -453,7 +456,7 @@ mod tests {
         let err = update::<AccountRow, _, _>(&ctx, &acc_store, missing_id, u).await;
 
         // Assert (concise failure style)
-        matches!(err, Err(Error::EntityNotFound { .. }));
+        matches!(err, Err(StoreError::EntityNotFound { .. }));
 
         Ok(())
     }
@@ -465,7 +468,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let acc_store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Create a row to delete
         let mut d = AccountCreate::default();
@@ -489,7 +492,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let acc_store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Non-existent ID
         let missing_id = Uuid::new_v4();
@@ -498,7 +501,7 @@ mod tests {
         let err = delete::<AccountRow, _>(&ctx, &acc_store, missing_id).await;
 
         // Assert (concise failure style)
-        matches!(err, Err(Error::EntityNotFound { .. }));
+        matches!(err, Err(StoreError::EntityNotFound { .. }));
 
         Ok(())
     }
@@ -510,7 +513,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Create a baseline account
         let mut create = AccountCreate::default();
@@ -543,7 +546,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Create a baseline account
         let mut create = AccountCreate::default();
@@ -579,7 +582,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         // Create a small cohort under a unique name tag
         let name_tag = "TEST_LIST_FILTER_BY_CREATED_BY";
@@ -619,12 +622,12 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         let name_tag = "TEST_LIST_FILTER_BY_CREATED_AT";
 
         // Establish a time window around "now"
-        let start = now_utc() - Duration::minutes(1);
+        let start = OffsetDateTime::now_utc() - Duration::minutes(1);
         let mut data = vec![];
         for i in 0..3 {
             let mut ac = AccountCreate::default();
@@ -634,7 +637,7 @@ mod tests {
         }
 
         let created: Vec<AccountRow> = create_many(&ctx, &store, data).await?;
-        let end = now_utc() + Duration::minutes(1);
+        let end = OffsetDateTime::now_utc() + Duration::minutes(1);
 
         // Build filter: name AND ctime window
         let filter: AccountFilter = serde_json::json!({
@@ -669,7 +672,7 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = AccountStore::new(dbx);
-        let ctx = Ctx::new_root();
+        let ctx = StoreCtx::new_root();
 
         let name_tag = "TEST_LIST_ORDER_BY_CREATED_AT";
 

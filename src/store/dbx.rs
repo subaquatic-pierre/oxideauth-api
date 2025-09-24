@@ -18,7 +18,7 @@ use tokio::{
 use tracing::error;
 
 use crate::store::{
-    error::{Error, Result},
+    error::{StoreError, Result},
     init::DbPool,
 };
 
@@ -75,7 +75,7 @@ impl Dbx {
     /// `#![deny(unused_must_use)]` to make ignoring it a compile error.
     pub async fn begin_txn(&self) -> Result<TxnGuard> {
         if !self.with_txn {
-            return Err(Error::WithTxnFalse);
+            return Err(StoreError::WithTxnFalse);
         }
 
         let mut txh_g = self.txn_holder.lock().await;
@@ -115,7 +115,7 @@ impl Dbx {
             }
             Ok(())
         } else {
-            Err(Error::NoTxn)
+            Err(StoreError::NoTxn)
         }
     }
 
@@ -123,7 +123,7 @@ impl Dbx {
     /// - Decrements the counter; if it reaches 0, commits the physical txn and clears the holder.
     pub async fn commit_txn(&self) -> Result<()> {
         if !self.with_txn {
-            return Err(Error::WithTxnFalse);
+            return Err(StoreError::WithTxnFalse);
         }
 
         let mut txh_g = self.txn_holder.lock().await;
@@ -141,7 +141,7 @@ impl Dbx {
             }
             Ok(())
         } else {
-            Err(Error::NoTxn)
+            Err(StoreError::NoTxn)
         }
     }
 
@@ -466,7 +466,7 @@ mod tests {
 
         let res = dbx.begin_txn().await;
 
-        assert!(matches!(res, Err(Error::WithTxnFalse)));
+        assert!(matches!(res, Err(StoreError::WithTxnFalse)));
     }
 
     #[tokio::test]
@@ -492,7 +492,7 @@ mod tests {
 
         let res = dbx.rollback_txn().await;
 
-        assert!(matches!(res, Err(Error::NoTxn)))
+        assert!(matches!(res, Err(StoreError::NoTxn)))
     }
 
     #[tokio::test]
@@ -503,7 +503,7 @@ mod tests {
 
         let res = dbx.commit_txn().await;
 
-        assert!(matches!(res, Err(Error::NoTxn)))
+        assert!(matches!(res, Err(StoreError::NoTxn)))
     }
 
     #[tokio::test]
@@ -776,7 +776,7 @@ mod tests {
 
         // holder should be cleared by watchdog; commit should now fail with NoTxn
         let commit_res = dbx.commit_txn().await;
-        assert!(matches!(commit_res, Err(Error::NoTxn)));
+        assert!(matches!(commit_res, Err(StoreError::NoTxn)));
 
         let exists = account_exists(&dbx, id).await?;
         assert!(

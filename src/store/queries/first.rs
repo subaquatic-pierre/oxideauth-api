@@ -1,6 +1,3 @@
-use crate::store::error::{Error, Result};
-use crate::store::{ctx::Ctx, manager::StoreManager};
-use crate::store::{opts::ListOptionsValidator, stores::base::MetaStore};
 use modql::filter::{FilterGroups, ListOptions};
 use sea_query::Iden;
 use sea_query::{Asterisk, Condition, PostgresQueryBuilder, Query};
@@ -8,8 +5,12 @@ use sea_query_binder::SqlxBinder;
 use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, Value};
 
+use crate::store::error::{Result, StoreError};
+use crate::store::{ctx::StoreCtx, manager::StoreManager};
+use crate::store::{opts::ListOptionsValidator, stores::base::MetaStore};
+
 pub async fn first<T, F, DB>(
-    ctx: &Ctx,
+    ctx: &StoreCtx,
     store: &DB,
     filter: Option<F>,
     opts: Option<ListOptions>,
@@ -52,7 +53,7 @@ where
         .db()
         .fetch_optional(sqlx)
         .await?
-        .ok_or(Error::EntityNotFound {
+        .ok_or(StoreError::EntityNotFound {
             entity: DB::TABLE.to_string(),
             id: "first".to_string(),
         })?;
@@ -61,7 +62,7 @@ where
 }
 
 pub async fn first_opt<T, F, DB>(
-    ctx: &Ctx,
+    ctx: &StoreCtx,
     store: &DB,
     filter: Option<F>,
     opts: Option<ListOptions>,
@@ -73,7 +74,7 @@ where
 {
     match first(ctx, store, filter, opts).await {
         Err(e) => match e {
-            Error::EntityNotFound { .. } => Ok(None),
+            StoreError::EntityNotFound { .. } => Ok(None),
             _ => Err(e),
         },
         Ok(t) => Ok(Some(t)),

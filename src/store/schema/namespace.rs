@@ -7,7 +7,7 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::store::error::{Result,Error};
+use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::{AuditFields, AuditMeta};
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
@@ -120,10 +120,11 @@ pub struct NamespaceFilter {
 }
 
 impl TryFrom<JsonValue> for NamespaceFilter {
-    type Error = Error;
+    type Error = StoreError;
 
     fn try_from(value: JsonValue) -> Result<Self> {
-        serde_json::from_value(value).map_err(|e| Error::JsonError(e))
+        let res = serde_json::from_value(value)?;
+        Ok(res)
     }
 }
 
