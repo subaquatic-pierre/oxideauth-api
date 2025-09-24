@@ -7,18 +7,6 @@ use time::{format_description::well_known::Rfc3339, serde::rfc3339, OffsetDateTi
 
 use crate::store::error::{Error, Result};
 
-pub fn time_to_sea_value(json_value: JsonValue) -> SeaResult<SeaValue> {
-    Ok(rfc3339::deserialize(json_value)?.into())
-}
-
-pub fn time_to_string(time: OffsetDateTime) -> String {
-    time.format(&Rfc3339).unwrap()
-}
-
-pub fn time_string_string(time: &str) -> Result<OffsetDateTime> {
-    OffsetDateTime::parse(time, &Rfc3339).map_err(|e| Error::TimeError(e))
-}
-
 pub fn json_to_sea_value(v: JsonValue) -> SeaResult<SeaValue> {
     match serde_json::to_value(v) {
         Ok(v) => Ok(SeaValue::Json(Some(Box::new(v)))),
@@ -27,4 +15,8 @@ pub fn json_to_sea_value(v: JsonValue) -> SeaResult<SeaValue> {
             Err(e.into())
         }
     }
+}
+
+pub fn bytes_to_sea_value(bytes: &[u8]) -> SeaValue {
+    SeaValue::Bytes(Some(bytes.to_vec().into()))
 }

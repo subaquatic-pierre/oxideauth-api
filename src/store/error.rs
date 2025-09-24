@@ -1,10 +1,11 @@
 use std::fmt::Display;
 
 use derive_more::From;
+use hex::FromHexError;
 use serde::{Deserialize, Serialize};
 use serde_json::Error as JsonError;
 use serde_with::{serde_as, DisplayFromStr};
-use time::error::Parse;
+use time::error::{Format, Parse};
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -31,7 +32,7 @@ pub enum Error {
 
     // --- Externals
     #[from]
-    TimeError(#[serde_as(as = "DisplayFromStr")] Parse),
+    HexError(#[serde_as(as = "DisplayFromStr")] FromHexError),
     #[from]
     JsonError(#[serde_as(as = "DisplayFromStr")] JsonError),
     #[from]
@@ -40,16 +41,12 @@ pub enum Error {
     Sqlx(#[serde_as(as = "DisplayFromStr")] sqlx::Error),
     #[from]
     SeaQueryError(#[serde_as(as = "DisplayFromStr")] sea_query::error::Error),
-}
 
-// impl From<sqlx::Error> for Error {
-//     fn from(value: sqlx::Error) -> Self {
-//         match value {
-//             sqlx::Error::RowNotFound => todo!(),
-//             _ => todo!(),
-//         }
-//     }
-// }
+    #[from]
+    TimeParseError(#[serde_as(as = "DisplayFromStr")] Parse),
+    #[from]
+    TimeFormatError(#[serde_as(as = "DisplayFromStr")] Format),
+}
 
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

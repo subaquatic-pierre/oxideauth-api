@@ -6,3 +6,4 @@ pub mod namespace;
 pub mod permission;
 pub mod project;
 pub mod role;
+pub mod token_blacklist;

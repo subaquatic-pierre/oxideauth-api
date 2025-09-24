@@ -30,4 +30,5 @@ pub enum TableIden {
     Project,
     Role,
     RolePermission,
+    TokenBlacklist,
 }

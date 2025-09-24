@@ -46,6 +46,8 @@ serde_with = "3.14.0"
 time = {version = "0.3", features = ["formatting", "parsing", "serde"]}
 strum = "0.24"
 strum_macros = "0.24"
+hex = "0.4.3"
+sha2 = "0.10.6"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Auth / Security

@@ -1012,3 +1012,69 @@ SQL:
 
 - Existing indexes (role_id) and (permission_id) are adequate for join paths.
 - If you frequently query by both, a covering index on (role_id, permission_id) is redundant with the PK, so no need to add one.
+
+### Token Blacklist
+
+### Data Integrity and Enforcement
+
+This section is for enforcing constraints on the data to ensure its validity. The `token_hash` length check is crucial for security.
+
+```sql
+-- [1] Data Integrity
+-- Enforce 32 bytes for SHA-256 hash.
+ALTER TABLE token_blacklist
+  ADD CONSTRAINT token_blacklist_token_hash_len
+  CHECK (octet_length(token_hash) = 32);
+
+-- Ensure the reason field is not an empty string if it's provided.
+ALTER TABLE token_blacklist
+  ADD CONSTRAINT token_blacklist_reason_not_empty
+  CHECK (reason IS NULL OR reason <> '');
+
+-- Check for valid JSONB objects in the meta and audit fields.
+ALTER TABLE token_blacklist
+  ADD CONSTRAINT token_blacklist_audit_is_object CHECK (jsonb_typeof(audit) = 'object');
+ALTER TABLE token_blacklist
+  ADD CONSTRAINT token_blacklist_meta_is_object CHECK (jsonb_typeof(meta) = 'object');
+```
+
+### Indexes for Common Lookups
+
+These indexes are optimized for the most frequent queries on this table: checking for a blacklisted token and sweeping expired entries.
+
+```sql
+-- [2] Indexes for common lookups
+-- The primary index for fast lookup of a token hash within a specific namespace.
+-- This is used for the most common check: is this token blacklisted for this user/namespace?
+CREATE INDEX IF NOT EXISTS token_blacklist_namespace_hash_idx
+  ON token_blacklist (namespace_id, token_hash);
+
+-- Index to optimize the application-level sweep function.
+-- This allows the scheduled job to quickly find and delete all expired tokens.
+CREATE INDEX IF NOT EXISTS token_blacklist_expires_at_idx
+  ON token_blacklist (expires_at);
+```
+
+### Security Checks (RLS & Views)
+
+This provides Row-Level Security for multi-tenant isolation and a convenience view for queries.
+
+```sql
+-- [3] Security Checks
+-- Convenience VIEW to simplify queries for active, non-expired tokens.
+CREATE OR REPLACE VIEW token_blacklist_active AS
+SELECT *
+FROM token_blacklist
+WHERE
+  now() < expires_at;
+
+-- Row Level Security (RLS) policies for multi-tenant isolation.
+-- 1. Enable RLS on the table.
+ALTER TABLE token_blacklist ENABLE ROW LEVEL SECURITY;
+
+-- 2. Define a policy to allow tenants to only see rows in their own namespace.
+CREATE POLICY token_blacklist_tenant_isolation ON token_blacklist
+  FOR ALL
+  USING (namespace_id = current_setting('app.namespace_id', TRUE)::uuid)
+  WITH CHECK (namespace_id = current_setting('app.namespace_id', TRUE)::uuid);
+```
