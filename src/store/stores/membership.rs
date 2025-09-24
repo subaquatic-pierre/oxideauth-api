@@ -6,11 +6,10 @@ use uuid::Uuid;
 
 use crate::store::{
     dbx::Dbx,
-    schema::{
-        iden::TableIden,
-        membership::{MembershipCreate, MembershipFilter, MembershipRow, MembershipUpdate},
+    schema::membership::{
+        MembershipCreate, MembershipFilter, MembershipIden, MembershipRow, MembershipUpdate,
     },
-    stores::base::{
+    traits::crud::{
         CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
         UpdateStore,
     },
@@ -27,14 +26,22 @@ impl MembershipStore {
 }
 
 impl MetaStore for MembershipStore {
-    type Id = Uuid;
-    type Row = MembershipRow;
+    type TableIden = MembershipIden;
 
-    const TABLE: TableIden = TableIden::Membership;
-    const HAS_AUDIT_FIELDS: bool = true;
+    /// Static table identifiers used in SQL queries.
+    const TABLE_NAME: Self::TableIden = MembershipIden::TableName;
+    const TABLE_PK: Self::TableIden = MembershipIden::Id;
+
+    type IdKind = Uuid;
+
+    type Row = MembershipRow;
 
     fn db(&self) -> &Dbx {
         &self.db
+    }
+
+    fn has_audit_fields() -> bool {
+        true
     }
 }
 

@@ -1,5 +1,4 @@
 pub mod account;
-pub mod base;
 pub mod credential;
 pub mod membership;
 pub mod namespace;

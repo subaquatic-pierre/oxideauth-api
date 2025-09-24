@@ -6,11 +6,8 @@ use uuid::Uuid;
 
 use crate::store::{
     dbx::Dbx,
-    schema::{
-        iden::TableIden,
-        project::{ProjectCreate, ProjectFilter, ProjectRow, ProjectUpdate},
-    },
-    stores::base::{
+    schema::project::{ProjectCreate, ProjectFilter, ProjectIden, ProjectRow, ProjectUpdate},
+    traits::crud::{
         CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
         UpdateStore,
     },
@@ -27,14 +24,22 @@ impl ProjectStore {
 }
 
 impl MetaStore for ProjectStore {
-    type Id = Uuid;
-    type Row = ProjectRow;
+    type TableIden = ProjectIden;
 
-    const TABLE: TableIden = TableIden::Project;
-    const HAS_AUDIT_FIELDS: bool = true;
+    /// Static table identifiers used in SQL queries.
+    const TABLE_NAME: Self::TableIden = ProjectIden::TableName;
+    const TABLE_PK: Self::TableIden = ProjectIden::Id;
+
+    type IdKind = Uuid;
+
+    type Row = ProjectRow;
 
     fn db(&self) -> &Dbx {
         &self.db
+    }
+
+    fn has_audit_fields() -> bool {
+        true
     }
 }
 

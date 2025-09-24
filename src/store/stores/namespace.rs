@@ -6,11 +6,10 @@ use uuid::Uuid;
 
 use crate::store::{
     dbx::Dbx,
-    schema::{
-        iden::TableIden,
-        namespace::{NamespaceCreate, NamespaceFilter, NamespaceRow, NamespaceUpdate},
+    schema::namespace::{
+        NamespaceCreate, NamespaceFilter, NamespaceIden, NamespaceRow, NamespaceUpdate,
     },
-    stores::base::{
+    traits::crud::{
         CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
         UpdateStore,
     },
@@ -27,14 +26,22 @@ impl NamespaceStore {
 }
 
 impl MetaStore for NamespaceStore {
-    type Id = Uuid;
-    type Row = NamespaceRow;
+    type TableIden = NamespaceIden;
 
-    const TABLE: TableIden = TableIden::Namespace;
-    const HAS_AUDIT_FIELDS: bool = true;
+    /// Static table identifiers used in SQL queries.
+    const TABLE_NAME: Self::TableIden = NamespaceIden::TableName;
+    const TABLE_PK: Self::TableIden = NamespaceIden::Id;
+
+    type IdKind = Uuid;
+
+    type Row = NamespaceRow;
 
     fn db(&self) -> &Dbx {
         &self.db
+    }
+
+    fn has_audit_fields() -> bool {
+        true
     }
 }
 

@@ -7,7 +7,7 @@ use sqlx::{query_as_with, Value};
 
 use crate::store::error::{Result, StoreError};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
-use crate::store::{opts::ListOptionsValidator, stores::base::MetaStore};
+use crate::store::{traits::crud::MetaStore, utils::ListOptionsValidator};
 
 pub async fn first<T, F, DB>(
     ctx: &StoreCtx,
@@ -22,8 +22,8 @@ where
 {
     let mut query = Query::select();
 
-    // FROM {DB::TABLE} SELECT *
-    query.from(DB::TABLE).column(Asterisk);
+    // FROM {DB::TABLE_NAME} SELECT *
+    query.from(DB::TABLE_NAME).column(Asterisk);
 
     // apply filter
     if let Some(filter) = filter {
@@ -33,7 +33,7 @@ where
     }
 
     // validate list options
-    let mut list_opts = ListOptionsValidator::validate_list_opts(opts, DB::HAS_AUDIT_FIELDS)?;
+    let mut list_opts = ListOptionsValidator::validate_list_opts(opts, DB::has_audit_fields())?;
     // ensure deterministic first if caller didn’t provide order
     if list_opts.order_bys.is_none() {
         // choose your house default:
@@ -54,7 +54,7 @@ where
         .fetch_optional(sqlx)
         .await?
         .ok_or(StoreError::EntityNotFound {
-            entity: DB::TABLE.to_string(),
+            entity: DB::TABLE_NAME.to_string(),
             id: "first".to_string(),
         })?;
 

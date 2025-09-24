@@ -11,10 +11,9 @@ use uuid::Uuid;
 
 use crate::store::dbx::Dbx;
 use crate::store::error::{Result, StoreError};
-use crate::store::opts::ListOptionsValidator;
-use crate::store::schema::iden::CommonIden;
-use crate::store::stores::base::MetaStore;
+use crate::store::traits::crud::MetaStore;
 use crate::store::utils::prepare_audit_fields;
+use crate::store::utils::ListOptionsValidator;
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 
 pub async fn create<T, C, DB>(ctx: &StoreCtx, store: &DB, data: C) -> Result<T>
@@ -26,14 +25,14 @@ where
     let user_id = ctx.user_id();
     let mut fields = data.not_none_sea_fields();
 
-    if DB::HAS_AUDIT_FIELDS {
+    if DB::has_audit_fields() {
         prepare_audit_fields(&mut fields, user_id, true);
     }
 
     let (cols, vals) = fields.for_sea_insert();
     let mut query = Query::insert();
     query
-        .into_table(DB::TABLE)
+        .into_table(DB::TABLE_NAME)
         .columns(cols)
         .values(vals)?
         .returning_all();
@@ -55,9 +54,9 @@ where
     let mut query = Query::select();
 
     query
-        .from(DB::TABLE)
+        .from(DB::TABLE_NAME)
         .column(Asterisk)
-        .and_where(Expr::col(CommonIden::Id).eq(id));
+        .and_where(Expr::col(DB::TABLE_PK).eq(id));
 
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
     let sqlx_query = query_as_with::<_, T, _>(&sql, vals);
@@ -67,7 +66,7 @@ where
     Ok(ret)
 }
 
-pub async fn get<T, DB>(ctx: &StoreCtx, store: &DB, id: DB::Id) -> Result<T>
+pub async fn get<T, DB>(ctx: &StoreCtx, store: &DB, id: DB::IdKind) -> Result<T>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -76,7 +75,7 @@ where
     match get_opt(ctx, store, id).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
-            entity: DB::TABLE.to_string(),
+            entity: DB::TABLE_NAME.to_string(),
             id: id_str,
         }),
     }
@@ -95,8 +94,8 @@ where
 {
     let mut query = Query::select();
 
-    // FROM {DB::TABLE} SELECT *
-    query.from(DB::TABLE).column(Asterisk);
+    // FROM {DB::TABLE_NAME} SELECT *
+    query.from(DB::TABLE_NAME).column(Asterisk);
 
     // apply filter to query
     if let Some(filter) = filter {
@@ -106,7 +105,7 @@ where
     }
 
     // validate list options
-    let list_options = ListOptionsValidator::validate_list_opts(opts, DB::HAS_AUDIT_FIELDS)?;
+    let list_options = ListOptionsValidator::validate_list_opts(opts, DB::has_audit_fields())?;
     // add list options to query, there will always at least be maximum limit
     list_options.apply_to_sea_query(&mut query);
 
@@ -125,7 +124,7 @@ where
 pub async fn update_opt<T, DB, U>(
     ctx: &StoreCtx,
     store: &DB,
-    id: DB::Id,
+    id: DB::IdKind,
     data: U,
 ) -> Result<Option<T>>
 where
@@ -138,16 +137,16 @@ where
 
     let mut fields = data.not_none_sea_fields();
 
-    if DB::HAS_AUDIT_FIELDS {
+    if DB::has_audit_fields() {
         prepare_audit_fields(&mut fields, ctx.user_id(), false);
     }
 
     let fields = fields.for_sea_update();
 
     let query = query
-        .table(DB::TABLE)
+        .table(DB::TABLE_NAME)
         .values(fields)
-        .and_where(Expr::col(CommonIden::Id).eq(id))
+        .and_where(Expr::col(DB::TABLE_PK).eq(id))
         .returning_all();
 
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
@@ -159,7 +158,7 @@ where
     Ok(ret)
 }
 
-pub async fn update<T, DB, U>(ctx: &StoreCtx, store: &DB, id: DB::Id, data: U) -> Result<T>
+pub async fn update<T, DB, U>(ctx: &StoreCtx, store: &DB, id: DB::IdKind, data: U) -> Result<T>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -169,13 +168,13 @@ where
     match update_opt(ctx, store, id, data).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
-            entity: DB::TABLE.to_string(),
+            entity: DB::TABLE_NAME.to_string(),
             id: id_str,
         }),
     }
 }
 
-pub async fn delete_opt<T, DB>(ctx: &StoreCtx, store: &DB, id: DB::Id) -> Result<Option<T>>
+pub async fn delete_opt<T, DB>(ctx: &StoreCtx, store: &DB, id: DB::IdKind) -> Result<Option<T>>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -184,8 +183,8 @@ where
     let mut query = Query::delete();
 
     query
-        .from_table(DB::TABLE)
-        .and_where(Expr::col(CommonIden::Id).eq(id))
+        .from_table(DB::TABLE_NAME)
+        .and_where(Expr::col(DB::TABLE_PK).eq(id))
         .returning_all();
 
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
@@ -197,7 +196,7 @@ where
     Ok(ret)
 }
 
-pub async fn delete<T, DB>(ctx: &StoreCtx, store: &DB, id: DB::Id) -> Result<T>
+pub async fn delete<T, DB>(ctx: &StoreCtx, store: &DB, id: DB::IdKind) -> Result<T>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -206,7 +205,7 @@ where
     match delete_opt(ctx, store, id).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
-            entity: DB::TABLE.to_string(),
+            entity: DB::TABLE_NAME.to_string(),
             id: id_str,
         }),
     }
@@ -229,10 +228,8 @@ mod tests {
             schema::account::{
                 AccountCreate, AccountFilter, AccountMeta, AccountRow, AccountUpdate,
             },
-            stores::{
-                account::AccountStore,
-                base::{CreateStore, GetStore, UpdateStore},
-            },
+            stores::account::AccountStore,
+            traits::crud::{CreateStore, GetStore, UpdateStore},
             utils::time_to_string,
         },
     };

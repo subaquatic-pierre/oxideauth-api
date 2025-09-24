@@ -6,11 +6,10 @@ use uuid::Uuid;
 
 use crate::store::{
     dbx::Dbx,
-    schema::{
-        credential::{CredentialCreate, CredentialFilter, CredentialRow, CredentialUpdate},
-        iden::TableIden,
+    schema::credential::{
+        CredentialCreate, CredentialFilter, CredentialIden, CredentialRow, CredentialUpdate,
     },
-    stores::base::{
+    traits::crud::{
         CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
         UpdateStore,
     },
@@ -27,14 +26,22 @@ impl CredentialStore {
 }
 
 impl MetaStore for CredentialStore {
-    type Id = Uuid;
-    type Row = CredentialRow;
+    type TableIden = CredentialIden;
 
-    const TABLE: TableIden = TableIden::Credential;
-    const HAS_AUDIT_FIELDS: bool = true;
+    /// Static table identifiers used in SQL queries.
+    const TABLE_NAME: Self::TableIden = CredentialIden::TableName;
+    const TABLE_PK: Self::TableIden = CredentialIden::Id;
+
+    type IdKind = Uuid;
+
+    type Row = CredentialRow;
 
     fn db(&self) -> &Dbx {
         &self.db
+    }
+
+    fn has_audit_fields() -> bool {
+        true
     }
 }
 

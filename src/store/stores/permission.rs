@@ -6,11 +6,10 @@ use uuid::Uuid;
 
 use crate::store::{
     dbx::Dbx,
-    schema::{
-        iden::TableIden,
-        permission::{PermissionCreate, PermissionFilter, PermissionRow, PermissionUpdate},
+    schema::permission::{
+        PermissionCreate, PermissionFilter, PermissionIden, PermissionRow, PermissionUpdate,
     },
-    stores::base::{
+    traits::crud::{
         CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
         UpdateStore,
     },
@@ -27,14 +26,22 @@ impl PermissionStore {
 }
 
 impl MetaStore for PermissionStore {
-    type Id = Uuid;
-    type Row = PermissionRow;
+    type TableIden = PermissionIden;
 
-    const TABLE: TableIden = TableIden::Permission;
-    const HAS_AUDIT_FIELDS: bool = true;
+    /// Static table identifiers used in SQL queries.
+    const TABLE_NAME: Self::TableIden = PermissionIden::TableName;
+    const TABLE_PK: Self::TableIden = PermissionIden::Id;
+
+    type IdKind = Uuid;
+
+    type Row = PermissionRow;
 
     fn db(&self) -> &Dbx {
         &self.db
+    }
+
+    fn has_audit_fields() -> bool {
+        true
     }
 }
 

@@ -17,20 +17,15 @@ use crate::store::{
         crud::{delete, delete_opt, get_opt, list, update, update_opt},
         first::{self, first, first_opt},
     },
-    schema::iden::TableIden,
 };
 use async_trait::async_trait;
 
-use crate::{
-    store::{
-        ctx::StoreCtx,
-        dbx::Dbx,
-        init::DbPool,
-        queries::crud::{create, get},
-        schema::iden::AuditIden,
-        utils::prepare_audit_fields,
-    },
-    utils::time::now_utc,
+use crate::store::{
+    ctx::StoreCtx,
+    dbx::Dbx,
+    init::DbPool,
+    queries::crud::{create, get},
+    utils::prepare_audit_fields,
 };
 
 /// Base trait describing static metadata every store must provide.
@@ -40,18 +35,18 @@ use crate::{
 /// accessor for database access.
 #[async_trait]
 pub trait MetaStore {
-    /// Static table name used in SQL queries.
-    const TABLE: TableIden;
+    /// Table identifiers
+    type TableIden: 'static + Iden;
 
-    /// Whether the table includes audit fields
-    /// (`ctime`, `mtime`, `cid`, `mid`).
-    const HAS_AUDIT_FIELDS: bool = false;
+    /// Static table identifiers used in SQL queries.
+    const TABLE_NAME: Self::TableIden;
+    const TABLE_PK: Self::TableIden;
 
-    /// Primary key type.
+    /// Primary key kind.
     /// - `ToString`: for logging/debugging
     /// - `Into<Value>`: so it can embed in SeaQuery expressions
     /// - `Send`: so it can cross `await` points safely
-    type Id: ToString + Into<sea_query::Value> + Send;
+    type IdKind: ToString + Into<sea_query::Value> + Send;
 
     /// Row type returned from queries.
     /// Must be able to map from a Postgres row
@@ -59,6 +54,10 @@ pub trait MetaStore {
 
     /// Access to the underlying connection wrapper.
     fn db(&self) -> &Dbx;
+
+    fn has_audit_fields() -> bool {
+        false
+    }
 }
 
 /// Trait for "create" capability of a store.
@@ -83,12 +82,12 @@ where
     Self: MetaStore + Send + Sync + Sized,
 {
     /// Fetch a single row by its primary key.
-    async fn get(&self, ctx: &StoreCtx, id: Self::Id) -> Result<Self::Row> {
+    async fn get(&self, ctx: &StoreCtx, id: Self::IdKind) -> Result<Self::Row> {
         get(&ctx, self, id).await
     }
 
     /// TODO: Docs
-    async fn get_opt(&self, ctx: &StoreCtx, id: Self::Id) -> Result<Option<Self::Row>> {
+    async fn get_opt(&self, ctx: &StoreCtx, id: Self::IdKind) -> Result<Option<Self::Row>> {
         get_opt(&ctx, self, id).await
     }
 }
@@ -126,7 +125,7 @@ where
     async fn update(
         &self,
         ctx: &StoreCtx,
-        id: Self::Id,
+        id: Self::IdKind,
         data: Self::UpdateStoreParams,
     ) -> Result<Self::Row> {
         update(ctx, self, id, data).await
@@ -136,7 +135,7 @@ where
     async fn update_opt(
         &self,
         ctx: &StoreCtx,
-        id: Self::Id,
+        id: Self::IdKind,
         data: Self::UpdateStoreParams,
     ) -> Result<Option<Self::Row>> {
         update_opt(ctx, self, id, data).await
@@ -152,12 +151,12 @@ where
     /// Delete a row by its primary key.
     /// By default returns the deleted row (if you want
     /// just an affected count, you can adjust here).
-    async fn delete(&self, ctx: &StoreCtx, id: Self::Id) -> Result<Self::Row> {
+    async fn delete(&self, ctx: &StoreCtx, id: Self::IdKind) -> Result<Self::Row> {
         delete(ctx, self, id).await
     }
 
     /// TODO: Docs
-    async fn delete_opt(&self, ctx: &StoreCtx, id: Self::Id) -> Result<Option<Self::Row>> {
+    async fn delete_opt(&self, ctx: &StoreCtx, id: Self::IdKind) -> Result<Option<Self::Row>> {
         delete_opt(ctx, self, id).await
     }
 }
@@ -186,7 +185,7 @@ where
     async fn update_many(
         &self,
         ctx: &StoreCtx,
-        data: Vec<(Self::Id, Self::UpdateStoreParams)>,
+        data: Vec<(Self::IdKind, Self::UpdateStoreParams)>,
     ) -> Result<Vec<Self::Row>> {
         update_many(ctx, self, data).await
     }
@@ -197,7 +196,7 @@ pub trait DeleteManyStore
 where
     Self: MetaStore + DeleteStore + Send + Sync + Sized,
 {
-    async fn delete_many(&self, ctx: &StoreCtx, ids: Vec<Self::Id>) -> Result<Vec<Self::Row>> {
+    async fn delete_many(&self, ctx: &StoreCtx, ids: Vec<Self::IdKind>) -> Result<Vec<Self::Row>> {
         delete_many(ctx, self, ids).await
     }
 }

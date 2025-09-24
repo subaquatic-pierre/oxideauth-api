@@ -1,6 +1,6 @@
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
-use sea_query::{Nullable, Value as SeaValue};
+use sea_query::{Iden, Nullable, Value as SeaValue};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as JsonValue};
 use sqlx::prelude::FromRow;
@@ -12,6 +12,13 @@ use uuid::Uuid;
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::{AuditFields, AuditMeta};
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
+
+#[derive(Iden)]
+pub enum CredentialIden {
+    #[iden = "credential"]
+    TableName, // TABLE_NAME
+    Id, // TABLE_PK
+}
 
 // --- Row (DB-facing) ---
 /// Maps to the `credential` SQL table.

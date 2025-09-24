@@ -2,7 +2,6 @@ pub mod account;
 pub mod audit;
 pub mod credential;
 pub mod hash;
-pub mod iden;
 pub mod membership;
 pub mod namespace;
 pub mod permission;

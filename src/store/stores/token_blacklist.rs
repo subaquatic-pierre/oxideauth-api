@@ -6,13 +6,11 @@ use uuid::Uuid;
 
 use crate::store::{
     dbx::Dbx,
-    schema::{
-        iden::TableIden,
-        token_blacklist::{
-            TokenBlacklistCreate, TokenBlacklistFilter, TokenBlacklistRow, TokenBlacklistUpdate,
-        },
+    schema::token_blacklist::{
+        TokenBlacklistCreate, TokenBlacklistFilter, TokenBlacklistIden, TokenBlacklistRow,
+        TokenBlacklistUpdate,
     },
-    stores::base::{
+    traits::crud::{
         CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
         UpdateStore,
     },
@@ -29,14 +27,22 @@ impl TokenBlacklistStore {
 }
 
 impl MetaStore for TokenBlacklistStore {
-    type Id = Uuid;
-    type Row = TokenBlacklistRow;
+    type TableIden = TokenBlacklistIden;
 
-    const TABLE: TableIden = TableIden::TokenBlacklist;
-    const HAS_AUDIT_FIELDS: bool = false;
+    /// Static table identifiers used in SQL queries.
+    const TABLE_NAME: Self::TableIden = TokenBlacklistIden::TableName;
+    const TABLE_PK: Self::TableIden = TokenBlacklistIden::Id;
+
+    type IdKind = Uuid;
+
+    type Row = TokenBlacklistRow;
 
     fn db(&self) -> &Dbx {
         &self.db
+    }
+
+    fn has_audit_fields() -> bool {
+        true
     }
 }
 

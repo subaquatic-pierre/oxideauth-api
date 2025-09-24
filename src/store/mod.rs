@@ -5,10 +5,10 @@ pub mod dbx;
 pub mod error;
 pub mod init;
 pub mod manager;
-pub mod opts;
 pub mod queries;
 pub mod schema;
 pub mod stores;
+pub mod traits;
 pub mod utils;
 
 pub use init::DbPool;

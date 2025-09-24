@@ -1,11 +1,20 @@
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsValue};
+use sea_query::Iden;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::store::utils::time_to_sea_value;
+
+#[derive(Iden)]
+pub enum AuditIden {
+    CreatedBy,
+    CreatedAt,
+    UpdatedBy,
+    UpdatedAt,
+}
 
 #[derive(Debug, FromRow, Deserialize)]
 pub struct AuditFields {

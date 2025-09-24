@@ -6,11 +6,8 @@ use uuid::Uuid;
 
 use crate::store::{
     dbx::Dbx,
-    schema::{
-        iden::TableIden,
-        role::{RoleCreate, RoleFilter, RoleRow, RoleUpdate},
-    },
-    stores::base::{
+    schema::role::{RoleCreate, RoleFilter, RoleIden, RoleRow, RoleUpdate},
+    traits::crud::{
         CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
         UpdateStore,
     },
@@ -27,14 +24,22 @@ impl RoleStore {
 }
 
 impl MetaStore for RoleStore {
-    type Id = Uuid;
-    type Row = RoleRow;
+    type TableIden = RoleIden;
 
-    const TABLE: TableIden = TableIden::Role;
-    const HAS_AUDIT_FIELDS: bool = true;
+    /// Static table identifiers used in SQL queries.
+    const TABLE_NAME: Self::TableIden = RoleIden::TableName;
+    const TABLE_PK: Self::TableIden = RoleIden::Id;
+
+    type IdKind = Uuid;
+
+    type Row = RoleRow;
 
     fn db(&self) -> &Dbx {
         &self.db
+    }
+
+    fn has_audit_fields() -> bool {
+        true
     }
 }
 

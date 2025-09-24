@@ -1,6 +1,6 @@
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
-use sea_query::{sea_value_to_json_value, Nullable, Value as SeaValue};
+use sea_query::{sea_value_to_json_value, Iden, Nullable, Value as SeaValue};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as JsonValue};
 use sqlx::prelude::FromRow;
@@ -10,6 +10,13 @@ use uuid::Uuid;
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::AuditFields;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
+
+#[derive(Iden)]
+pub enum AccountIden {
+    #[iden = "account"]
+    TableName, // TABLE_NAME
+    Id, // TABLE_PK
+}
 
 // --- Row (DB-facing) ---
 #[derive(Debug, FromRow, Deserialize)]

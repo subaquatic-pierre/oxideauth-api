@@ -11,9 +11,8 @@ use uuid::Uuid;
 
 use crate::store::dbx::Dbx;
 use crate::store::error::{Result, StoreError};
-use crate::store::opts::ListOptionsValidator;
-use crate::store::schema::iden::CommonIden;
-use crate::store::stores::base::MetaStore;
+use crate::store::traits::crud::MetaStore;
+use crate::store::utils::ListOptionsValidator;
 use crate::store::utils::{pg_type_of, prepare_audit_fields, push_sq_value};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 use sea_query::{Iden, IntoIden, TableRef};
@@ -34,7 +33,7 @@ where
     let user_id = ctx.user_id();
     let mut query = Query::insert();
 
-    query.into_table(DB::TABLE);
+    query.into_table(DB::TABLE_NAME);
 
     // flag to only set columns for the first item
     // do not add columns again for any more items
@@ -43,7 +42,7 @@ where
     for el in data {
         let mut fields = el.not_none_sea_fields();
 
-        if DB::HAS_AUDIT_FIELDS {
+        if DB::has_audit_fields() {
             prepare_audit_fields(&mut fields, user_id, true);
         }
 
@@ -72,7 +71,7 @@ where
 pub async fn update_many<T, DB, U>(
     ctx: &StoreCtx,
     store: &DB,
-    data: Vec<(DB::Id, U)>,
+    data: Vec<(DB::IdKind, U)>,
 ) -> Result<Vec<T>>
 where
     DB: MetaStore,
@@ -91,7 +90,7 @@ where
     let mut col_names: Vec<String> = vec![];
 
     // construct the initial statement
-    let update_statement = format!("UPDATE {} AS t SET ", DB::TABLE.to_string());
+    let update_statement = format!("UPDATE {} AS t SET ", DB::TABLE_NAME.to_string());
 
     // initialize the query builder with the initial statement
     let mut qb = QueryBuilder::<Postgres>::new(update_statement);
@@ -108,7 +107,7 @@ where
         let mut fields = el.all_sea_fields();
 
         // prepare audit fields if model HAS_AUDIT_FIELDS
-        if DB::HAS_AUDIT_FIELDS {
+        if DB::has_audit_fields() {
             prepare_audit_fields(&mut fields, ctx.user_id(), false);
         }
 
@@ -165,7 +164,7 @@ where
     qb.push(")");
 
     // ) AS v(id, col1, col2, ...)
-    let id_name = CommonIden::Id.to_string();
+    let id_name = DB::TABLE_PK.to_string();
     let as_statement = format!(" AS v({}, {})", id_name, col_names.join(", "));
     qb.push(as_statement);
 
@@ -179,7 +178,7 @@ where
     Ok(ret)
 }
 
-pub async fn delete_many<T, DB>(ctx: &StoreCtx, store: &DB, ids: Vec<DB::Id>) -> Result<Vec<T>>
+pub async fn delete_many<T, DB>(ctx: &StoreCtx, store: &DB, ids: Vec<DB::IdKind>) -> Result<Vec<T>>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -194,8 +193,8 @@ where
     let mut query = Query::delete();
 
     query
-        .from_table(DB::TABLE)
-        .and_where(Expr::col(CommonIden::Id).is_in(ids))
+        .from_table(DB::TABLE_NAME)
+        .and_where(Expr::col(DB::TABLE_PK).is_in(ids))
         .returning_all();
 
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
@@ -221,7 +220,8 @@ mod tests {
             schema::account::{
                 AccountCreate, AccountFilter, AccountMeta, AccountRow, AccountUpdate,
             },
-            stores::{account::AccountStore, base::GetStore},
+            stores::account::AccountStore,
+            traits::crud::GetStore,
         },
     };
 

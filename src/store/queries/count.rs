@@ -8,7 +8,7 @@ use sqlx::{query_as_with, query_scalar_with, query_with, Value};
 
 use crate::store::error::{Result, StoreError};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
-use crate::store::{opts::ListOptionsValidator, stores::base::MetaStore};
+use crate::store::{traits::crud::MetaStore, utils::ListOptionsValidator};
 
 pub async fn count<F, DB>(_ctx: &StoreCtx, store: &DB, filter: Option<F>) -> Result<i64>
 where
@@ -20,7 +20,7 @@ where
     // SELECT COUNT(*)
     query
         .expr_as(Func::count(Expr::col(Asterisk)), "count")
-        .from(DB::TABLE);
+        .from(DB::TABLE_NAME);
 
     // apply filter
     if let Some(filter) = filter {
@@ -52,10 +52,8 @@ mod tests {
             ctx::StoreCtx,
             queries::crud::create,
             schema::account::{AccountCreate, AccountFilter, AccountRow},
-            stores::{
-                account::AccountStore,
-                base::{CreateStore, GetStore},
-            },
+            stores::account::AccountStore,
+            traits::crud::{CreateStore, GetStore},
         },
     };
 

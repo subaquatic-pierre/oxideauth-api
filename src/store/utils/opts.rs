@@ -3,8 +3,8 @@ use sea_query::Iden;
 use serde::Deserialize;
 
 use crate::store::error::{Result, StoreError};
-use crate::store::schema::iden::AuditIden;
-use crate::store::stores::base::MetaStore;
+use crate::store::schema::audit::AuditIden;
+use crate::store::traits::crud::MetaStore;
 
 /// Default number of rows to return in a list query.
 pub const LIST_LIMIT_DEFAULT: i64 = 100;

@@ -1,10 +1,11 @@
 use modql::field::{SeaField, SeaFields};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{store::schema::iden::AuditIden, utils::time::now_utc};
+use crate::store::schema::audit::AuditIden;
 
 pub fn prepare_audit_fields(fields: &mut SeaFields, user_id: Uuid, is_create: bool) {
-    let now = now_utc();
+    let now = OffsetDateTime::now_utc();
 
     if is_create {
         fields.push(SeaField::new(AuditIden::CreatedBy, user_id));
