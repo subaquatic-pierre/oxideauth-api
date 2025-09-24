@@ -7,8 +7,8 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::store::error::Error;
-use crate::store::schema::audit::{AuditFields, };
+use crate::store::error::{Result,Error};
+use crate::store::schema::audit::AuditFields;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 // --- Row (DB-facing) ---
@@ -126,7 +126,7 @@ pub struct ProjectFilter {
 impl TryFrom<JsonValue> for ProjectFilter {
     type Error = Error;
 
-    fn try_from(value: JsonValue) -> Result<Self, Self::Error> {
+    fn try_from(value: JsonValue) -> Result<Self> {
         serde_json::from_value(value).map_err(|e| Error::JsonError(e))
     }
 }

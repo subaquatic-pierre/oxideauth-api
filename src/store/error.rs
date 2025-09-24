@@ -32,6 +32,8 @@ pub enum Error {
 
     // --- Externals
     #[from]
+    BincodeError(#[serde_as(as = "DisplayFromStr")] bincode::Error),
+    #[from]
     HexError(#[serde_as(as = "DisplayFromStr")] FromHexError),
     #[from]
     JsonError(#[serde_as(as = "DisplayFromStr")] JsonError),

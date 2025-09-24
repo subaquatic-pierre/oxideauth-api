@@ -523,7 +523,7 @@ mod tests {
         // Assert: all returned & gone
         assert_eq!(deleted.len(), 3);
 
-        use crate::store::error::Error;
+        use crate::store::error::{Result,Error};
         for id in [a1.id, a2.id, a3.id] {
             let got = store.get(&ctx, id).await;
             assert!(matches!(got, Err(Error::EntityNotFound { .. })));
@@ -557,7 +557,7 @@ mod tests {
         assert_eq!(deleted[0].id, a.id);
 
         // Existing row is gone
-        use crate::store::error::Error;
+        use crate::store::error::{Result,Error};
         let got = store.get(&ctx, a.id).await;
         assert!(matches!(got, Err(Error::EntityNotFound { .. })));
 
