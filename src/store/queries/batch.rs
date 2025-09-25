@@ -1,8 +1,8 @@
 use modql::field::HasSeaFields;
 use modql::filter::{FilterGroups, ListOptions};
 use sea_query::{
-    Alias, Asterisk, Condition, Expr, IdenList, IntoValueTuple, PostgresQueryBuilder, Query,
-    WithQuery,
+    Alias, Asterisk, CaseStatement, Condition, Expr, IdenList, IntoValueTuple,
+    PostgresQueryBuilder, Query, SeaRc, SimpleExpr, WithQuery,
 };
 use sea_query_binder::SqlxBinder;
 use sqlx::{postgres::PgRow, FromRow};
@@ -68,7 +68,6 @@ where
     Ok(ret)
 }
 
-// TODO: change raw sql builder to use sea_query DSL
 pub async fn update_many<T, DB, U>(
     ctx: &StoreCtx,
     store: &DB,
@@ -87,96 +86,40 @@ where
     // validate list options, ie. max limit
     ListOptionsValidator::validate_limit(data.len() as i64)?;
 
-    // build list of column names as strings once (for SET clause and v alias).
-    let mut col_names: Vec<String> = vec![];
+    let mut updated_rows = Vec::with_capacity(data.len());
 
-    // construct the initial statement
-    let update_statement = format!("UPDATE {} AS t SET ", DB::TABLE_NAME.to_string());
+    let mut txn = store.db().begin().await?;
 
-    // initialize the query builder with the initial statement
-    let mut qb = QueryBuilder::<Postgres>::new(update_statement);
+    for (id, updates) in data {
+        let mut query = Query::update();
 
-    for (i, (id, el)) in data.into_iter().enumerate() {
-        // get type of element ID
-        // all IDs should be of type UUID
-        let id_type = match Uuid::parse_str(&id.to_string()) {
-            Ok(id) => "::uuid".to_string(),
-            Err(e) => "::text".to_string(),
-        };
+        let mut fields = updates.not_none_sea_fields();
 
-        // get all fields from each element in data array
-        let mut fields = el.all_sea_fields();
-
-        // prepare audit fields if model HAS_AUDIT_FIELDS
         if DB::has_audit_fields() {
             prepare_audit_fields(&mut fields, ctx.user_id(), false);
         }
 
-        // determine the update columns (and order) from the first payload.
-        if i == 0 {
-            let (cols, vals) = fields.clone().for_sea_insert();
+        let fields = fields.for_sea_update();
 
-            // build columns names, this is used later in the query string too
-            cols.iter().for_each(|el| col_names.push(el.to_string()));
+        let query = query
+            .table(DB::TABLE_NAME)
+            .values(fields)
+            .and_where(Expr::col(DB::TABLE_PK).eq(id.clone()))
+            .returning_all();
 
-            // SET t.col = v.col, ...
-            let set_statement = col_names
-                .iter()
-                .map(|col| format!("{col} = COALESCE(v.{col}, t.{col})"))
-                .collect::<Vec<String>>()
-                .join(", ");
-            qb.push(set_statement);
+        let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
 
-            // FROM (VALUES ...)
-            // open value statement
-            qb.push(" FROM (VALUES ");
-        } else {
-            // add comma after each row, skip first row
-            qb.push(", ");
+        let res = sqlx::query_as_with::<_, T, _>(&sql, vals)
+            .fetch_optional(&mut *txn)
+            .await?;
+
+        if let Some(ret) = res {
+            updated_rows.push(ret);
         }
-
-        // open value row
-        qb.push("(");
-
-        // this is row for element, (id, name, email, ...)
-        // always start id
-        qb.push_bind(id.to_string());
-        qb.push(id_type);
-        for field in fields {
-            qb.push(", ");
-
-            match field.sea_value() {
-                Some(v) => {
-                    push_sq_value(&mut qb, v);
-                    let pg_type = format!("::{}", pg_type_of(v));
-                    qb.push(pg_type);
-                }
-                // should never reach this value
-                None => {
-                    qb.push("NULL");
-                }
-            }
-        }
-
-        // close value row
-        qb.push(")");
     }
-    // close value statement
-    qb.push(")");
 
-    // ) AS v(id, col1, col2, ...)
-    let id_name = DB::TABLE_PK.to_string();
-    let as_statement = format!(" AS v({}, {})", id_name, col_names.join(", "));
-    qb.push(as_statement);
-
-    // WHERE t.id = v.id RETURNING t.*
-    qb.push("WHERE t.id = v.id RETURNING t.*");
-
-    // execute and return updated rows
-    let query = qb.build_query_as::<T>();
-    let ret = store.db().fetch_all(query).await?;
-
-    Ok(ret)
+    txn.commit().await?;
+    Ok(updated_rows)
 }
 
 pub async fn delete_many<T, DB>(ctx: &StoreCtx, store: &DB, ids: Vec<DB::IdKind>) -> Result<Vec<T>>

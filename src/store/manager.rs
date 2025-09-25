@@ -13,7 +13,7 @@ pub struct StoreManager {
 
 impl StoreManager {
     pub fn new(db: DbPool) -> Self {
-        let dbx = Dbx::new(db, false);
+        let dbx = Dbx::new(db);
         let dbx_c = Arc::new(dbx);
         let account = AccountStore::new(dbx_c.clone());
 
