@@ -4,6 +4,7 @@ pub mod count;
 pub mod crud;
 pub mod first;
 pub mod init;
+pub mod join;
 pub mod role;
 pub mod service;
 pub mod token;

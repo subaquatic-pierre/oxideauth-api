@@ -69,7 +69,8 @@ mod tests {
 
         let mut ac = |i: usize| {
             let mut data = AccountCreate::default();
-            data.email = format!("user{}@example.com", i);
+            data.email = format!("user{i}{i}{i}@example.com");
+            data.avatar_url = Some(format!("TEST_FILTER"));
             data
         };
 
@@ -83,12 +84,12 @@ mod tests {
 
         // Verify via get()
         for r in &created {
-            let found = acc_store.get(&ctx, r.id).await?;
+            let found = acc_store.get(&ctx, &r.id).await?;
             assert_eq!(found.id, r.id);
         }
 
         let filter: AccountFilter =
-            from_value(json!({"provider":{"$contains":"TEST_FILTER"}})).unwrap();
+            from_value(json!({"avatar_url":{"$contains":"TEST_FILTER"}})).unwrap();
 
         // Count should equal n
         let total = count(&ctx, &acc_store, Some(filter)).await?;

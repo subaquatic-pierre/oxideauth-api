@@ -68,6 +68,7 @@ where
     Ok(ret)
 }
 
+// TODO: change raw sql builder to use sea_query DSL
 pub async fn update_many<T, DB, U>(
     ctx: &StoreCtx,
     store: &DB,
@@ -274,7 +275,7 @@ mod tests {
 
         for i in 0..n {
             let mut ac = AccountCreate::default();
-            ac.email = format!("bulk{:02}@example.com", i);
+            ac.email = format!("bulk{:02}{i}@example.com", i);
             ac.description = Some(desc.clone());
             payloads.push(ac);
         }
@@ -335,7 +336,7 @@ mod tests {
         for (i, row) in created.iter().enumerate() {
             assert_eq!(row.email, format!("bulk{:02}@example.com", i));
             // Verify via get()
-            let fetched = store.get(&ctx, row.id).await?;
+            let fetched = store.get(&ctx, &row.id).await?;
             assert_eq!(fetched.id, row.id);
             assert_eq!(fetched.email, row.email);
         }
@@ -376,10 +377,10 @@ mod tests {
             update_many(&ctx, &store, vec![(a1.id, upd1), (a2.id, upd2)]).await?;
 
         // Assert (fetch-by-id to avoid relying on RETURNING order)
-        let f1 = store.get(&ctx, a1.id).await?;
+        let f1 = store.get(&ctx, &a1.id).await?;
         assert_eq!(f1.tags, ["alpha", "beta"]);
 
-        let f2 = store.get(&ctx, a2.id).await?;
+        let f2 = store.get(&ctx, &a2.id).await?;
         assert_eq!(f2.tags, ["gamma"]);
 
         Ok(())
@@ -424,10 +425,10 @@ mod tests {
             update_many(&ctx, &store, vec![(a1.id, upd1), (a2.id, upd2)]).await?;
 
         // Assert
-        let f1 = store.get(&ctx, a1.id).await?;
+        let f1 = store.get(&ctx, &a1.id).await?;
         assert_eq!(f1.meta.schema_version, "v1.2.3");
 
-        let f2 = store.get(&ctx, a2.id).await?;
+        let f2 = store.get(&ctx, &a2.id).await?;
         assert_eq!(f2.meta.schema_version, "v9.9.9");
 
         Ok(())
@@ -529,7 +530,7 @@ mod tests {
 
         use crate::store::error::{Result, StoreError};
         for id in [a1.id, a2.id, a3.id] {
-            let got = store.get(&ctx, id).await;
+            let got = store.get(&ctx, &id).await;
             assert!(matches!(got, Err(StoreError::EntityNotFound { .. })));
         }
 
@@ -562,7 +563,7 @@ mod tests {
 
         // Existing row is gone
         use crate::store::error::{Result, StoreError};
-        let got = store.get(&ctx, a.id).await;
+        let got = store.get(&ctx, &a.id).await;
         assert!(matches!(got, Err(StoreError::EntityNotFound { .. })));
 
         Ok(())

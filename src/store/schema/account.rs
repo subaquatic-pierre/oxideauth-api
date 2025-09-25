@@ -11,6 +11,17 @@ use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::AuditFields;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
+// The struct to hold the combined result
+// #[derive(FromRow, Debug)]
+// pub struct AccountWithCredentials {
+//     #[sqlx(flatten)]
+//     pub account: AccountRow,
+
+//     #[sqlx(json)]
+//     // This field name MUST match MANY_ALIAS below
+//     pub credentials: Vec<CredentialRow>,
+// }
+
 #[derive(Iden)]
 pub enum AccountIden {
     #[iden = "account"]

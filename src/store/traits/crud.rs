@@ -46,7 +46,7 @@ pub trait MetaStore {
     /// - `ToString`: for logging/debugging
     /// - `Into<Value>`: so it can embed in SeaQuery expressions
     /// - `Send`: so it can cross `await` points safely
-    type IdKind: ToString + Into<sea_query::Value> + Send;
+    type IdKind: ToString + Into<sea_query::Value> + Clone + Send + Sync;
 
     /// Row type returned from queries.
     /// Must be able to map from a Postgres row
@@ -82,12 +82,12 @@ where
     Self: MetaStore + Send + Sync + Sized,
 {
     /// Fetch a single row by its primary key.
-    async fn get(&self, ctx: &StoreCtx, id: Self::IdKind) -> Result<Self::Row> {
+    async fn get(&self, ctx: &StoreCtx, id: &Self::IdKind) -> Result<Self::Row> {
         get(&ctx, self, id).await
     }
 
     /// TODO: Docs
-    async fn get_opt(&self, ctx: &StoreCtx, id: Self::IdKind) -> Result<Option<Self::Row>> {
+    async fn get_opt(&self, ctx: &StoreCtx, id: &Self::IdKind) -> Result<Option<Self::Row>> {
         get_opt(&ctx, self, id).await
     }
 }
@@ -125,7 +125,7 @@ where
     async fn update(
         &self,
         ctx: &StoreCtx,
-        id: Self::IdKind,
+        id: &Self::IdKind,
         data: Self::UpdateStoreParams,
     ) -> Result<Self::Row> {
         update(ctx, self, id, data).await
@@ -135,7 +135,7 @@ where
     async fn update_opt(
         &self,
         ctx: &StoreCtx,
-        id: Self::IdKind,
+        id: &Self::IdKind,
         data: Self::UpdateStoreParams,
     ) -> Result<Option<Self::Row>> {
         update_opt(ctx, self, id, data).await
@@ -151,12 +151,12 @@ where
     /// Delete a row by its primary key.
     /// By default returns the deleted row (if you want
     /// just an affected count, you can adjust here).
-    async fn delete(&self, ctx: &StoreCtx, id: Self::IdKind) -> Result<Self::Row> {
+    async fn delete(&self, ctx: &StoreCtx, id: &Self::IdKind) -> Result<Self::Row> {
         delete(ctx, self, id).await
     }
 
     /// TODO: Docs
-    async fn delete_opt(&self, ctx: &StoreCtx, id: Self::IdKind) -> Result<Option<Self::Row>> {
+    async fn delete_opt(&self, ctx: &StoreCtx, id: &Self::IdKind) -> Result<Option<Self::Row>> {
         delete_opt(ctx, self, id).await
     }
 }

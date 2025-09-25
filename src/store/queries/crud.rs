@@ -45,9 +45,8 @@ where
     Ok(ret)
 }
 
-pub async fn get_opt<T, DB, ID>(ctx: &StoreCtx, store: &DB, id: ID) -> Result<Option<T>>
+pub async fn get_opt<T, DB>(ctx: &StoreCtx, store: &DB, id: &DB::IdKind) -> Result<Option<T>>
 where
-    ID: ToString + Into<sea_query::Value>,
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
 {
@@ -56,7 +55,7 @@ where
     query
         .from(DB::TABLE_NAME)
         .column(Asterisk)
-        .and_where(Expr::col(DB::TABLE_PK).eq(id));
+        .and_where(Expr::col(DB::TABLE_PK).eq(id.clone()));
 
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
     let sqlx_query = query_as_with::<_, T, _>(&sql, vals);
@@ -66,17 +65,16 @@ where
     Ok(ret)
 }
 
-pub async fn get<T, DB>(ctx: &StoreCtx, store: &DB, id: DB::IdKind) -> Result<T>
+pub async fn get<T, DB>(ctx: &StoreCtx, store: &DB, id: &DB::IdKind) -> Result<T>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
 {
-    let id_str = id.to_string();
     match get_opt(ctx, store, id).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
             entity: DB::TABLE_NAME.to_string(),
-            id: id_str,
+            id: id.to_string(),
         }),
     }
 }
@@ -124,7 +122,7 @@ where
 pub async fn update_opt<T, DB, U>(
     ctx: &StoreCtx,
     store: &DB,
-    id: DB::IdKind,
+    id: &DB::IdKind,
     data: U,
 ) -> Result<Option<T>>
 where
@@ -146,7 +144,7 @@ where
     let query = query
         .table(DB::TABLE_NAME)
         .values(fields)
-        .and_where(Expr::col(DB::TABLE_PK).eq(id))
+        .and_where(Expr::col(DB::TABLE_PK).eq(id.clone()))
         .returning_all();
 
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
@@ -158,23 +156,22 @@ where
     Ok(ret)
 }
 
-pub async fn update<T, DB, U>(ctx: &StoreCtx, store: &DB, id: DB::IdKind, data: U) -> Result<T>
+pub async fn update<T, DB, U>(ctx: &StoreCtx, store: &DB, id: &DB::IdKind, data: U) -> Result<T>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     U: HasSeaFields,
 {
-    let id_str = id.to_string();
     match update_opt(ctx, store, id, data).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
             entity: DB::TABLE_NAME.to_string(),
-            id: id_str,
+            id: id.to_string(),
         }),
     }
 }
 
-pub async fn delete_opt<T, DB>(ctx: &StoreCtx, store: &DB, id: DB::IdKind) -> Result<Option<T>>
+pub async fn delete_opt<T, DB>(ctx: &StoreCtx, store: &DB, id: &DB::IdKind) -> Result<Option<T>>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
@@ -184,7 +181,7 @@ where
 
     query
         .from_table(DB::TABLE_NAME)
-        .and_where(Expr::col(DB::TABLE_PK).eq(id))
+        .and_where(Expr::col(DB::TABLE_PK).eq(id.clone()))
         .returning_all();
 
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
@@ -196,17 +193,16 @@ where
     Ok(ret)
 }
 
-pub async fn delete<T, DB>(ctx: &StoreCtx, store: &DB, id: DB::IdKind) -> Result<T>
+pub async fn delete<T, DB>(ctx: &StoreCtx, store: &DB, id: &DB::IdKind) -> Result<T>
 where
     DB: MetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
 {
-    let id_str = id.to_string();
     match delete_opt(ctx, store, id).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
             entity: DB::TABLE_NAME.to_string(),
-            id: id_str,
+            id: id.to_string(),
         }),
     }
 }
@@ -246,11 +242,12 @@ mod tests {
 
         let ctx = StoreCtx::new_root();
 
-        let data = AccountCreate::default();
+        let mut data = AccountCreate::default();
+        data.email = "uninqueEmaeil@ema.c".to_string();
 
         let ret: AccountRow = create(&ctx, &acc_store, data).await?;
 
-        let found: AccountRow = acc_store.get(&ctx, ret.id).await?;
+        let found: AccountRow = acc_store.get(&ctx, &ret.id).await?;
 
         assert_eq!(found.id, ret.id);
         Ok(())
@@ -269,7 +266,7 @@ mod tests {
         let missing_id = Uuid::new_v4();
 
         // Act
-        let err = acc_store.get(&ctx, missing_id).await;
+        let err = acc_store.get(&ctx, &missing_id).await;
 
         matches!(err, Err(StoreError::EntityNotFound { .. }));
 
@@ -425,7 +422,7 @@ mod tests {
         u.name = Some("UPDATE_AFTER".into());
 
         // Act
-        let updated: AccountRow = update(&ctx, &acc_store, created.id, u).await?;
+        let updated: AccountRow = update(&ctx, &acc_store, &created.id, u).await?;
 
         // Assert
         assert_eq!(updated.id, created.id);
@@ -450,7 +447,7 @@ mod tests {
         u.name = Some("WON'T_APPLY".into());
 
         // Act
-        let err = update::<AccountRow, _, _>(&ctx, &acc_store, missing_id, u).await;
+        let err = update::<AccountRow, _, _>(&ctx, &acc_store, &missing_id, u).await;
 
         // Assert (concise failure style)
         matches!(err, Err(StoreError::EntityNotFound { .. }));
@@ -474,7 +471,7 @@ mod tests {
         let created: AccountRow = create(&ctx, &acc_store, d).await?;
 
         // Act
-        let deleted: AccountRow = delete(&ctx, &acc_store, created.id).await?;
+        let deleted: AccountRow = delete(&ctx, &acc_store, &created.id).await?;
 
         // Assert
         assert_eq!(deleted.id, created.id);
@@ -495,7 +492,7 @@ mod tests {
         let missing_id = Uuid::new_v4();
 
         // Act
-        let err = delete::<AccountRow, _>(&ctx, &acc_store, missing_id).await;
+        let err = delete::<AccountRow, _>(&ctx, &acc_store, &missing_id).await;
 
         // Assert (concise failure style)
         matches!(err, Err(StoreError::EntityNotFound { .. }));
@@ -523,14 +520,14 @@ mod tests {
         let mut upd = AccountUpdate::default();
         upd.tags = Some(new_tags.clone());
 
-        let updated: AccountRow = store.update(&ctx, created.id, upd).await?;
+        let updated: AccountRow = store.update(&ctx, &created.id, upd).await?;
 
         // Assert (via returned row)
         assert_eq!(updated.id, created.id);
         assert_eq!(updated.tags, new_tags.as_slice());
 
         // Assert (via get)
-        let fetched = store.get(&ctx, created.id).await?;
+        let fetched = store.get(&ctx, &created.id).await?;
         assert_eq!(fetched.tags, new_tags.as_slice());
 
         Ok(())
@@ -559,14 +556,14 @@ mod tests {
             // add any future fields here when they exist; defaults cover the rest
         });
 
-        let updated: AccountRow = store.update(&ctx, created.id, upd).await?;
+        let updated: AccountRow = store.update(&ctx, &created.id, upd).await?;
 
         // Assert (via returned row)
         assert_eq!(updated.id, created.id);
         assert_eq!(updated.meta.schema_version, "v2");
 
         // Assert (via get)
-        let fetched = store.get(&ctx, created.id).await?;
+        let fetched = store.get(&ctx, &created.id).await?;
         assert_eq!(fetched.meta.schema_version, "v2");
 
         Ok(())
