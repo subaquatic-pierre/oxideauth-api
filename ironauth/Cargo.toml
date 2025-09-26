@@ -1,0 +1,120 @@
+[package]
+name = "ironauth"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Runtime, Async, Utilities
+# ──────────────────────────────────────────────────────────────────────────────
+anyhow = "1"
+async-trait = "0.1.81"
+ctrlc = "3.2"
+dotenv = "0.15.0"
+rand = "0.7"
+uuid = { version = "1.3.3", features = ["v4", "fast-rng", "macro-diagnostics", "serde"] }
+tokio = { version = "1", features = ["full"] }
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Logging
+# ──────────────────────────────────────────────────────────────────────────────
+env_logger = "0.10.0"
+log = "0.4.18"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# ──────────────────────────────────────────────────────────────────────────────
+# CLI / HTTP Client
+# ──────────────────────────────────────────────────────────────────────────────
+clap = { version = "4.0", features = ["derive"] }
+reqwest = { version = "0.12.5", features = ["json"] }
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Web (Actix)
+# ──────────────────────────────────────────────────────────────────────────────
+actix-cors = "0.7.0"
+actix-http = "3.9.0"
+actix-web = "4.8.0"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Serialization
+# ──────────────────────────────────────────────────────────────────────────────
+serde = "1.0.203"
+serde_json = "1.0.119"
+serde_with = "3.14.0"
+time = {version = "0.3", features = ["formatting", "parsing", "serde"]}
+strum = "0.24"
+strum_macros = "0.24"
+hex = "0.4.3"
+sha2 = "0.10.6"
+bincode = "1.3.3"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Auth / Security
+# ──────────────────────────────────────────────────────────────────────────────
+jsonwebtoken = "9.3.0"
+rust-argon2 = "0.5"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# AWS SDKs
+# ──────────────────────────────────────────────────────────────────────────────
+aws-sdk-s3  = { version = "1.42.0", features = ["behavior-version-latest"] }
+aws-sdk-ses = { version = "1.36.0", features = ["behavior-version-latest"] }
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Email / Templates
+# ──────────────────────────────────────────────────────────────────────────────
+lettre = "0.11.7"
+lettre_email = "0.9.4"
+tera = "1.20.0"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Database (SQLx)
+# ──────────────────────────────────────────────────────────────────────────────
+sqlx = { version = "0.8.6", features = [
+    "runtime-tokio-rustls", # Tokio + rustls TLS
+    "postgres",             # Postgres driver
+    "uuid",                 # UUID (for id columns)
+    # "chrono",               # Date/Time support
+    "migrate",               # Enable sqlx::migrate!(),
+    "macros", 
+    "json",
+    "rust_decimal"
+] }
+sea-query = { version= "0.32.7", features = ["backend-postgres", "with-uuid", "with-json","postgres-array"] }
+sea-query-binder = { version = "0.7", features = ["sqlx-postgres", "with-uuid", "with-time", "with-json", "postgres-array" ] }
+modql = { version = "0.4.1", features = ["with-sea-query"]}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Test / Mock
+# ──────────────────────────────────────────────────────────────────────────────
+mockito = "1.5.0"
+derive_more = "2.0.1"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Macros
+# ──────────────────────────────────────────────────────────────────────────────
+# Add this line to use your local macro crate
+ironauth-macros = { path = "../ironauth-macros" }
+
+# ──────────────────────────────────────────────────────────────────────────────
+# (Optional) Diesel stack (kept for reference)
+# ──────────────────────────────────────────────────────────────────────────────
+# diesel = { version = "2", features = ["postgres", "r2d2", "chrono", "uuid", "serde_json"] }
+# diesel_migrations = "2"
+# diesel-async = { version = "0.6.1", features = ["postgres", "tokio", "bb8"] }
+# r2d2 = "0.8"
+
+[dev-dependencies]
+actix-rt = "2.5"
+cargo-watch = "7.8"
+mockall = "0.13.0"
+serial_test = "0.6"
+
+[lints.rust]
+unused = "allow"
+unsafe_code = "forbid"
+
+[features]
+# default = ["sqlx/offline"] 

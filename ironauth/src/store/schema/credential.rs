@@ -1,0 +1,246 @@
+use modql::field::Fields;
+use modql::filter::{FilterNodes, OpValsString, OpValsValue};
+use sea_query::{Iden, Nullable, Value as SeaValue};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value as JsonValue};
+use sqlx::prelude::FromRow;
+use sqlx::Type;
+use strum_macros::{Display, EnumString};
+use time::OffsetDateTime;
+use uuid::Uuid;
+
+use crate::store::error::{Result, StoreError};
+use crate::store::schema::audit::{AuditFields, AuditMeta};
+use crate::store::utils::{json_to_sea_value, time_to_sea_value};
+
+#[derive(Iden)]
+pub enum CredentialIden {
+    #[iden = "credential"]
+    Table, // TABLE_NAME
+    Id, // TABLE_PK
+}
+
+// --- Row (DB-facing) ---
+/// Maps to the `credential` SQL table.
+#[derive(Debug, FromRow, Deserialize)]
+pub struct CredentialRow {
+    pub id: Uuid,
+    pub account_id: Uuid,
+    pub namespace_id: Uuid,
+    #[sqlx(string)]
+    pub kind: CredentialKind,
+    #[sqlx(string)]
+    pub provider: CredentialProvider,
+    #[sqlx(string)]
+    pub status: CredentialStatus,
+    pub provider_id: Option<String>,
+    pub email: Option<String>,
+    pub secret: Option<String>,
+    pub last_used_at: Option<OffsetDateTime>,
+    pub tags: Vec<String>,
+
+    #[sqlx(json)]
+    pub meta: CredentialMeta,
+
+    #[sqlx(flatten)]
+    pub audit: AuditFields,
+}
+
+#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum CredentialStatus {
+    Active,
+    Revoked,
+    Pending,
+}
+
+impl From<CredentialStatus> for SeaValue {
+    fn from(value: CredentialStatus) -> Self {
+        let s = format!("{value}");
+        SeaValue::String(Some(Box::new(s)))
+    }
+}
+
+impl Nullable for CredentialStatus {
+    fn null() -> SeaValue {
+        SeaValue::Json(None)
+    }
+}
+
+#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum CredentialProvider {
+    Local,
+    Google,
+    Github,
+}
+
+impl From<CredentialProvider> for SeaValue {
+    fn from(value: CredentialProvider) -> Self {
+        let s = format!("{value}");
+        SeaValue::String(Some(Box::new(s)))
+    }
+}
+
+impl Nullable for CredentialProvider {
+    fn null() -> SeaValue {
+        SeaValue::Json(None)
+    }
+}
+
+#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
+pub enum CredentialKind {
+    #[serde(rename = "password")]
+    Password,
+    #[serde(rename = "oauth")]
+    OAuth,
+    #[serde(rename = "sso")]
+    SSO,
+    #[serde(rename = "api_key")]
+    ApiKey,
+}
+
+impl From<CredentialKind> for SeaValue {
+    fn from(value: CredentialKind) -> Self {
+        let s = format!("{value}");
+        SeaValue::String(Some(Box::new(s)))
+    }
+}
+
+impl Nullable for CredentialKind {
+    fn null() -> SeaValue {
+        SeaValue::Json(None)
+    }
+}
+
+// --- Create (store input) ---
+/// Input for creating a new `credential`.
+#[derive(Debug, Fields)]
+pub struct CredentialCreate {
+    pub kind: CredentialKind,
+    pub provider: CredentialProvider,
+    pub status: CredentialStatus,
+    pub account_id: Uuid,
+    pub namespace_id: Uuid,
+    pub provider_id: Option<String>,
+    pub email: Option<String>,
+    pub secret: Option<String>,
+    pub last_used_at: Option<OffsetDateTime>,
+    pub tags: Vec<String>,
+    pub meta: CredentialMeta,
+}
+
+// --- Update (store input) ---
+/// Input for updating an existing `credential`.
+#[derive(Debug, Fields, Clone)]
+pub struct CredentialUpdate {
+    pub kind: Option<CredentialKind>,
+    pub provider: Option<CredentialProvider>,
+    pub status: Option<CredentialStatus>,
+    pub provider_id: Option<String>,
+    pub email: Option<String>,
+    pub secret: Option<String>,
+    pub last_used_at: Option<OffsetDateTime>,
+    pub tags: Option<Vec<String>>,
+    pub meta: Option<CredentialMeta>,
+}
+
+#[derive(Debug, Default, Fields, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct CredentialMeta {
+    pub schema_version: String,
+}
+
+impl Nullable for CredentialMeta {
+    fn null() -> SeaValue {
+        SeaValue::Json(None)
+    }
+}
+
+impl From<CredentialMeta> for SeaValue {
+    fn from(value: CredentialMeta) -> Self {
+        json_to_sea_value(serde_json::to_value(value).unwrap()).unwrap()
+    }
+}
+
+/// Filtering options for `credential` queries.
+#[derive(FilterNodes, Deserialize, Default, Debug)]
+pub struct CredentialFilter {
+    #[modql(cast_as = "uuid")]
+    pub id: Option<String>,
+    #[modql(cast_as = "uuid")]
+    pub account_id: Option<String>,
+    #[modql(cast_as = "uuid")]
+    pub namespace_id: Option<String>,
+    pub kind: Option<String>,
+    pub provider: Option<String>,
+    pub provider_id: Option<OpValsString>,
+    pub email: Option<OpValsString>,
+    pub status: Option<String>,
+
+    #[modql(to_sea_value_fn = "time_to_sea_value")]
+    pub last_used_at: Option<OpValsValue>,
+    // NOTE: Filtering on JSONB and TEXT[] fields would require custom modql logic.
+    // pub tags: Option<OpValsValue>,
+    // pub meta: Option<OpValsValue>,
+
+    // Audit filters (created_by/at, updated_by/at)
+    #[modql(cast_as = "uuid")]
+    pub created_by: Option<String>,
+    #[modql(to_sea_value_fn = "time_to_sea_value")]
+    pub created_at: Option<OpValsValue>,
+    #[modql(cast_as = "uuid")]
+    pub updated_by: Option<String>,
+    #[modql(to_sea_value_fn = "time_to_sea_value")]
+    pub updated_at: Option<OpValsValue>,
+}
+
+impl TryFrom<JsonValue> for CredentialFilter {
+    type Error = StoreError;
+
+    fn try_from(value: JsonValue) -> Result<Self> {
+        let res = serde_json::from_value(value)?;
+        Ok(res)
+    }
+}
+
+// --- Defaults for testing ---
+#[cfg(test)]
+impl Default for CredentialCreate {
+    fn default() -> Self {
+        Self {
+            account_id: Uuid::new_v4(),
+            namespace_id: Uuid::new_v4(),
+            kind: CredentialKind::Password,
+            provider: CredentialProvider::Local,
+            status: CredentialStatus::Active,
+            provider_id: None,
+            email: Some("test@example.com".to_string()),
+            secret: Some("hashed_password_placeholder".to_string()),
+            last_used_at: None,
+            tags: vec![],
+            meta: CredentialMeta {
+                schema_version: "1".to_string(),
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+impl Default for CredentialUpdate {
+    fn default() -> Self {
+        Self {
+            kind: None,
+            provider: None,
+            provider_id: None,
+            email: None,
+            secret: None,
+            status: None,
+            last_used_at: None,
+            tags: None,
+            meta: None,
+        }
+    }
+}
