@@ -9,15 +9,7 @@ use sqlx::{postgres::PgRow, FromRow};
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::store::{
-    error::Result,
-    queries::{
-        batch::{create_many, delete_many, update_many},
-        count::count,
-        crud::{delete, delete_opt, get_opt, list, update, update_opt},
-        first::{self, first, first_opt},
-    },
-};
+use crate::store::error::Result;
 use async_trait::async_trait;
 
 use crate::store::{
@@ -34,7 +26,7 @@ use crate::store::{
 /// defines the types used in CRUD operations, and exposes the `Dbx`
 /// accessor for database access.
 #[async_trait]
-pub trait MetaStore {
+pub trait BaseMetaStore: Sized + Send + Sync {
     /// Table identifiers
     type TableIden: 'static + Iden;
 
@@ -46,7 +38,7 @@ pub trait MetaStore {
     /// - `ToString`: for logging/debugging
     /// - `Into<Value>`: so it can embed in SeaQuery expressions
     /// - `Send`: so it can cross `await` points safely
-    type IdKind: ToString + Into<sea_query::Value> + Send;
+    type IdKind: ToString + Into<sea_query::Value> + Send + Sync + Clone;
 
     /// Row type returned from queries.
     /// Must be able to map from a Postgres row
@@ -58,4 +50,17 @@ pub trait MetaStore {
     fn has_audit_fields() -> bool {
         false
     }
+}
+
+pub struct CrudQueryMeta<I: Iden> {
+    pub table: I,
+    pub pk: I,
+    pub has_audit: bool,
+}
+
+#[async_trait]
+pub trait CrudMetaStore {
+    type Iden: 'static + Iden;
+
+    fn crud_meta(&self) -> CrudQueryMeta<Self::Iden>;
 }

@@ -9,9 +9,12 @@ use crate::store::{
     schema::credential::{
         CredentialCreate, CredentialFilter, CredentialIden, CredentialRow, CredentialUpdate,
     },
-    traits::crud::{
-        CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
-        UpdateStore,
+    traits::{
+        crud::{
+            CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, UpdateManyStore,
+            UpdateStore,
+        },
+        meta::BaseMetaStore,
     },
 };
 
@@ -25,7 +28,7 @@ impl CredentialStore {
     }
 }
 
-impl MetaStore for CredentialStore {
+impl BaseMetaStore for CredentialStore {
     type TableIden = CredentialIden;
 
     /// Static table identifiers used in SQL queries.

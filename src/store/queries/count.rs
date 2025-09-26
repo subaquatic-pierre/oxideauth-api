@@ -8,11 +8,11 @@ use sqlx::{query_as_with, query_scalar_with, query_with, Value};
 
 use crate::store::error::{Result, StoreError};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
-use crate::store::{traits::crud::MetaStore, utils::ListOptionsValidator};
+use crate::store::{traits::meta::BaseMetaStore, utils::ListOptionsValidator};
 
 pub async fn count<F, DB>(_ctx: &StoreCtx, store: &DB, filter: Option<F>) -> Result<i64>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     F: Into<FilterGroups>,
 {
     let mut query = Query::select();

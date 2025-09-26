@@ -6,12 +6,12 @@ use crate::store::ctx::StoreCtx;
 
 use crate::store::error::Result;
 use crate::store::queries::join::get_joined_opt;
-use crate::store::traits::crud::MetaStore;
+use crate::store::traits::meta::BaseMetaStore;
 
 #[async_trait]
 pub trait JoinOneToManyStore
 where
-    Self: MetaStore + Sized,
+    Self: BaseMetaStore,
 {
     // --- Metadata for the "Many" side of the relationship ---
     type ManyRow: for<'r> FromRow<'r, PgRow> + Send + Sync;
@@ -42,7 +42,7 @@ where
 // #[async_trait]
 // pub trait JoinOneToMany
 // where
-//     Self: MetaStore, // Depends on the base MetaStore
+//     Self: BaseMetaStore, // Depends on the base BaseMetaStore
 // {
 //     /// The Iden of the "many" table (e.g., Credential).
 //     type ManyIden: Iden + Copy + Debug;

@@ -9,9 +9,12 @@ use crate::store::{
     schema::permission::{
         PermissionCreate, PermissionFilter, PermissionIden, PermissionRow, PermissionUpdate,
     },
-    traits::crud::{
-        CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
-        UpdateStore,
+    traits::{
+        crud::{
+            CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, UpdateManyStore,
+            UpdateStore,
+        },
+        meta::BaseMetaStore,
     },
 };
 
@@ -25,7 +28,7 @@ impl PermissionStore {
     }
 }
 
-impl MetaStore for PermissionStore {
+impl BaseMetaStore for PermissionStore {
     type TableIden = PermissionIden;
 
     /// Static table identifiers used in SQL queries.

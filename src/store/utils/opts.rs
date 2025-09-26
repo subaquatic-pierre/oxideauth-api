@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::AuditIden;
-use crate::store::traits::crud::MetaStore;
+use crate::store::traits::meta::BaseMetaStore;
 
 /// Default number of rows to return in a list query.
 pub const LIST_LIMIT_DEFAULT: i64 = 100;

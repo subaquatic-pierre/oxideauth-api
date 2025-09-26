@@ -8,9 +8,12 @@ use uuid::Uuid;
 use crate::store::{
     dbx::Dbx,
     schema::account::{AccountCreate, AccountFilter, AccountIden, AccountRow, AccountUpdate},
-    traits::crud::{
-        CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
-        UpdateStore,
+    traits::{
+        crud::{
+            CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, UpdateManyStore,
+            UpdateStore,
+        },
+        meta::{BaseMetaStore, CrudMetaStore, CrudQueryMeta},
     },
 };
 
@@ -24,7 +27,7 @@ impl AccountStore {
     }
 }
 
-impl MetaStore for AccountStore {
+impl BaseMetaStore for AccountStore {
     type TableIden = AccountIden;
 
     /// Static table identifiers used in SQL queries.
@@ -41,6 +44,19 @@ impl MetaStore for AccountStore {
 
     fn has_audit_fields() -> bool {
         true
+    }
+}
+
+impl CrudMetaStore for AccountStore {
+    type Iden = AccountIden;
+
+    fn crud_meta(&self) -> CrudQueryMeta<Self::Iden> {
+        let meta = CrudQueryMeta {
+            table: AccountIden::TableName,
+            pk: AccountIden::Id,
+            has_audit: true,
+        };
+        meta
     }
 }
 

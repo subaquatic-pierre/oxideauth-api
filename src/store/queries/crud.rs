@@ -11,14 +11,20 @@ use uuid::Uuid;
 
 use crate::store::dbx::Dbx;
 use crate::store::error::{Result, StoreError};
-use crate::store::traits::crud::MetaStore;
+use crate::store::traits::meta::BaseMetaStore;
 use crate::store::utils::prepare_audit_fields;
 use crate::store::utils::ListOptionsValidator;
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 
+pub struct CreateQueryMeta<I: Iden> {
+    table: I,
+    pk: I,
+    has_audit: bool,
+}
+
 pub async fn create<T, C, DB>(ctx: &StoreCtx, store: &DB, data: C) -> Result<T>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     C: HasSeaFields,
 {
@@ -47,7 +53,7 @@ where
 
 pub async fn get_opt<T, DB>(ctx: &StoreCtx, store: &DB, id: &DB::IdKind) -> Result<Option<T>>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
 {
     let mut query = Query::select();
@@ -67,7 +73,7 @@ where
 
 pub async fn get<T, DB>(ctx: &StoreCtx, store: &DB, id: &DB::IdKind) -> Result<T>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
 {
     match get_opt(ctx, store, id).await? {
@@ -86,7 +92,7 @@ pub async fn list<T, F, DB>(
     opts: Option<ListOptions>,
 ) -> Result<Vec<T>>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     F: Into<FilterGroups>,
 {
@@ -126,7 +132,7 @@ pub async fn update_opt<T, DB, U>(
     data: U,
 ) -> Result<Option<T>>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     U: HasSeaFields,
 {
@@ -158,7 +164,7 @@ where
 
 pub async fn update<T, DB, U>(ctx: &StoreCtx, store: &DB, id: &DB::IdKind, data: U) -> Result<T>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     U: HasSeaFields,
 {
@@ -173,7 +179,7 @@ where
 
 pub async fn delete_opt<T, DB>(ctx: &StoreCtx, store: &DB, id: &DB::IdKind) -> Result<Option<T>>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
 {
     let id_str = id.to_string();
@@ -195,7 +201,7 @@ where
 
 pub async fn delete<T, DB>(ctx: &StoreCtx, store: &DB, id: &DB::IdKind) -> Result<T>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
 {
     match delete_opt(ctx, store, id).await? {

@@ -7,9 +7,12 @@ use uuid::Uuid;
 use crate::store::{
     dbx::Dbx,
     schema::project::{ProjectCreate, ProjectFilter, ProjectIden, ProjectRow, ProjectUpdate},
-    traits::crud::{
-        CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
-        UpdateStore,
+    traits::{
+        crud::{
+            CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, UpdateManyStore,
+            UpdateStore,
+        },
+        meta::BaseMetaStore,
     },
 };
 
@@ -23,7 +26,7 @@ impl ProjectStore {
     }
 }
 
-impl MetaStore for ProjectStore {
+impl BaseMetaStore for ProjectStore {
     type TableIden = ProjectIden;
 
     /// Static table identifiers used in SQL queries.

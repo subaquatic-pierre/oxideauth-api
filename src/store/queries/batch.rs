@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::store::dbx::Dbx;
 use crate::store::error::{Result, StoreError};
-use crate::store::traits::crud::MetaStore;
+use crate::store::traits::meta::BaseMetaStore;
 use crate::store::utils::ListOptionsValidator;
 use crate::store::utils::{pg_type_of, prepare_audit_fields, push_sq_value};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
@@ -19,7 +19,7 @@ use sea_query::{Iden, IntoIden, TableRef};
 
 pub async fn create_many<T, C, DB>(ctx: &StoreCtx, store: &DB, data: Vec<C>) -> Result<Vec<T>>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     C: HasSeaFields,
 {
@@ -74,7 +74,7 @@ pub async fn update_many<T, DB, U>(
     data: Vec<(DB::IdKind, U)>,
 ) -> Result<Vec<T>>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     U: HasSeaFields + Clone,
 {
@@ -124,7 +124,7 @@ where
 
 pub async fn delete_many<T, DB>(ctx: &StoreCtx, store: &DB, ids: Vec<DB::IdKind>) -> Result<Vec<T>>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
 {
     // --- Early exit: nothing to do, return empty result.

@@ -9,9 +9,12 @@ use crate::store::{
     schema::namespace::{
         NamespaceCreate, NamespaceFilter, NamespaceIden, NamespaceRow, NamespaceUpdate,
     },
-    traits::crud::{
-        CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
-        UpdateStore,
+    traits::{
+        crud::{
+            CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, UpdateManyStore,
+            UpdateStore,
+        },
+        meta::BaseMetaStore,
     },
 };
 
@@ -25,7 +28,7 @@ impl NamespaceStore {
     }
 }
 
-impl MetaStore for NamespaceStore {
+impl BaseMetaStore for NamespaceStore {
     type TableIden = NamespaceIden;
 
     /// Static table identifiers used in SQL queries.

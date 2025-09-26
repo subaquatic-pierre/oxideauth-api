@@ -9,9 +9,12 @@ use crate::store::{
     schema::membership::{
         MembershipCreate, MembershipFilter, MembershipIden, MembershipRow, MembershipUpdate,
     },
-    traits::crud::{
-        CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
-        UpdateStore,
+    traits::{
+        crud::{
+            CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, UpdateManyStore,
+            UpdateStore,
+        },
+        meta::BaseMetaStore,
     },
 };
 
@@ -25,7 +28,7 @@ impl MembershipStore {
     }
 }
 
-impl MetaStore for MembershipStore {
+impl BaseMetaStore for MembershipStore {
     type TableIden = MembershipIden;
 
     /// Static table identifiers used in SQL queries.

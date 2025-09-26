@@ -47,12 +47,12 @@ graph TD
 
 The DAL is built on a "Foundation + Capability" pattern using traits.
 
-### Foundational Trait: `MetaStore`
+### Foundational Trait: `BaseMetaStore`
 
 A single base trait defines the core identity of a data store. The compiler enforces this contract for every store.
 
 ```rust
-pub trait MetaStore {
+pub trait BaseMetaStore {
     // The Iden enum for the store's table and columns.
     type TableIden: 'static + Iden;
 
@@ -74,13 +74,13 @@ Additional traits grant specific abilities (CRUD, Joins, etc.) to a store.
 
 ```rust
 // Example: grants the `.create()` method
-pub trait CreateStore where Self: MetaStore {
+pub trait CreateStore where Self: BaseMetaStore {
     type CreateStoreParams: HasSeaFields + Send;
     async fn create(&self, ctx: &StoreCtx, data: Self::CreateStoreParams) -> Result<Self::Row>;
 }
 
 // Example: grants the `.get_joined()` method for one-to-many relationships
-pub trait JoinOneToManyStore where Self: MetaStore {
+pub trait JoinOneToManyStore where Self: BaseMetaStore {
     // ... metadata for the related table and join condition
     async fn get_joined(&self, ctx: &StoreCtx, id: Self::IdKind) -> Result<Self::JoinedRow>;
 }

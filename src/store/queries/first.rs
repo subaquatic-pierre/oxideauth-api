@@ -7,7 +7,7 @@ use sqlx::{query_as_with, Value};
 
 use crate::store::error::{Result, StoreError};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
-use crate::store::{traits::crud::MetaStore, utils::ListOptionsValidator};
+use crate::store::{traits::meta::BaseMetaStore, utils::ListOptionsValidator};
 
 pub async fn first<T, F, DB>(
     ctx: &StoreCtx,
@@ -16,7 +16,7 @@ pub async fn first<T, F, DB>(
     opts: Option<ListOptions>,
 ) -> Result<T>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     F: Into<FilterGroups>,
 {
@@ -68,7 +68,7 @@ pub async fn first_opt<T, F, DB>(
     opts: Option<ListOptions>,
 ) -> Result<Option<T>>
 where
-    DB: MetaStore,
+    DB: BaseMetaStore,
     T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
     F: Into<FilterGroups>,
 {

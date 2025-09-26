@@ -10,9 +10,12 @@ use crate::store::{
         TokenBlacklistCreate, TokenBlacklistFilter, TokenBlacklistIden, TokenBlacklistRow,
         TokenBlacklistUpdate,
     },
-    traits::crud::{
-        CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
-        UpdateStore,
+    traits::{
+        crud::{
+            CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, UpdateManyStore,
+            UpdateStore,
+        },
+        meta::BaseMetaStore,
     },
 };
 
@@ -26,7 +29,7 @@ impl TokenBlacklistStore {
     }
 }
 
-impl MetaStore for TokenBlacklistStore {
+impl BaseMetaStore for TokenBlacklistStore {
     type TableIden = TokenBlacklistIden;
 
     /// Static table identifiers used in SQL queries.

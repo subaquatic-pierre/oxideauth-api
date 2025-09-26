@@ -7,9 +7,12 @@ use uuid::Uuid;
 use crate::store::{
     dbx::Dbx,
     schema::role::{RoleCreate, RoleFilter, RoleIden, RoleRow, RoleUpdate},
-    traits::crud::{
-        CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, MetaStore, UpdateManyStore,
-        UpdateStore,
+    traits::{
+        crud::{
+            CreateStore, DeleteManyStore, DeleteStore, GetStore, ListStore, UpdateManyStore,
+            UpdateStore,
+        },
+        meta::BaseMetaStore,
     },
 };
 
@@ -23,7 +26,7 @@ impl RoleStore {
     }
 }
 
-impl MetaStore for RoleStore {
+impl BaseMetaStore for RoleStore {
     type TableIden = RoleIden;
 
     /// Static table identifiers used in SQL queries.
