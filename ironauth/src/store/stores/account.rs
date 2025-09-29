@@ -1,80 +1,106 @@
 use std::sync::Arc;
 
 use modql::SIden;
+use sea_query::Iden;
 use sea_query::{IntoIden, TableRef};
 use sqlx::prelude::FromRow;
 use uuid::Uuid;
 
 use crate::store::{
     dbx::Dbx,
-    schema::account::{AccountCreate, AccountFilter, AccountIden, AccountRow, AccountUpdate},
+    schema::{
+        account::{AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountRow},
+        meta::{MutateQueryMeta, ReadQueryMeta},
+    },
     traits::{
-        crud::{Creatable, Deletable, DeletableMany, Listable, Readable, Updatable, UpdatableMany},
-        meta::{Crud, CrudMeta, Store},
+        crud::{
+            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
+            Readable, Updatable, UpdatableMany,
+        },
+        meta::{MutableMeta, ReadableMeta, Store},
     },
 };
-
-pub struct AcCountable {
+/// The struct for our Account store, holding the database connection wrapper.
+pub struct AccountStore {
     db: Arc<Dbx>,
 }
 
-impl AcCountable {
+impl AccountStore {
+    /// Creates a new `AccountStore`.
     pub fn new(db: Arc<Dbx>) -> Self {
         Self { db }
     }
 }
 
-impl Store for AcCountable {
-    type TableIden = AccountIden;
+// region:    --- Base Trait Implementations
+// -----------------------------------------------------------------------------
+// These implementations provide the core metadata for the store.
 
-    /// Static table identifiers used in SQL queries.
-    const TABLE_NAME: Self::TableIden = AccountIden::Table;
-    const TABLE_PK: Self::TableIden = AccountIden::Id;
-
-    type IdKind = Uuid;
-
+impl Store for AccountStore {
+    type Iden = AccountIden;
     type Row = AccountRow;
 
     fn db(&self) -> &Dbx {
         &self.db
     }
-
-    fn has_audit_fields() -> bool {
-        true
-    }
 }
 
-impl Crud for AcCountable {
-    type Iden = AccountIden;
-
-    fn crud_meta(&self) -> CrudMeta<Self::Iden> {
-        let meta = CrudMeta {
+impl ReadableMeta for AccountStore {
+    fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
+        ReadQueryMeta {
             table: AccountIden::Table,
             pk: AccountIden::Id,
             has_audit: true,
-        };
-        meta
+        }
     }
 }
 
-impl Creatable for AcCountable {
-    type CreateStoreParams = AccountCreate;
+impl MutableMeta for AccountStore {
+    fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
+        MutateQueryMeta {
+            table: AccountIden::Table,
+            pk: AccountIden::Id,
+            has_audit: true,
+        }
+    }
 }
 
-impl Readable for AcCountable {}
+// -----------------------------------------------------------------------------
+// endregion: --- Base Trait Implementations
 
-impl Listable for AcCountable {
+// region:    --- Functional Trait Implementations
+// -----------------------------------------------------------------------------
+// With the metadata defined above, these implementations are now very concise.
+// We only need to specify the associated types for params (Create, Update, Filter).
+// The actual method logic is handled by the default implementations in your traits.
+
+impl Creatable for AccountStore {
+    type CreateStoreParams = AccountForCreate;
+}
+
+impl Readable for AccountStore {}
+
+impl Listable for AccountStore {
     type FilterStoreParams = AccountFilter;
 }
 
-impl Updatable for AcCountable {
-    type UpdateStoreParams = AccountUpdate;
+impl Updatable for AccountStore {
+    type UpdateStoreParams = AccountForUpdate;
 }
 
-impl DeletableMany for AcCountable {}
+impl Deletable for AccountStore {}
 
-impl UpdatableMany for AcCountable {
-    type UpdateStoreParams = AccountUpdate;
+impl CreatableMany for AccountStore {}
+
+impl UpdatableMany for AccountStore {
+    type UpdateStoreParams = AccountForUpdate;
 }
 
-impl Deletable for AcCountable {}
+impl DeletableMany for AccountStore {}
+
+impl Firstable for AccountStore {}
+
+impl Countable for AccountStore {}
+
+// -----------------------------------------------------------------------------
+// endregion: --- Functional Trait Implementations

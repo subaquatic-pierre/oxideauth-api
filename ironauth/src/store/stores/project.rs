@@ -1,50 +1,76 @@
 use std::sync::Arc;
 
-use sea_query::{IntoIden, TableRef};
-use sqlx::prelude::FromRow;
-use uuid::Uuid;
-
 use crate::store::{
     dbx::Dbx,
-    schema::project::{ProjectCreate, ProjectFilter, ProjectIden, ProjectRow, ProjectUpdate},
+    schema::{
+        meta::{MutateQueryMeta, ReadQueryMeta},
+        project::{ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow},
+    },
     traits::{
-        crud::{Creatable, Deletable, DeletableMany, Listable, Readable, Updatable, UpdatableMany},
-        meta::Store,
+        crud::{
+            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
+            Readable, Updatable, UpdatableMany,
+        },
+        meta::{MutableMeta, ReadableMeta, Store},
     },
 };
 
+/// The struct for our Project store, holding the database connection wrapper.
 pub struct ProjectStore {
     db: Arc<Dbx>,
 }
 
 impl ProjectStore {
+    /// Creates a new `ProjectStore`.
     pub fn new(db: Arc<Dbx>) -> Self {
         Self { db }
     }
 }
 
+// region:    --- Base Trait Implementations
+// -----------------------------------------------------------------------------
+// These implementations provide the core metadata for the store.
+
 impl Store for ProjectStore {
-    type TableIden = ProjectIden;
-
-    /// Static table identifiers used in SQL queries.
-    const TABLE_NAME: Self::TableIden = ProjectIden::Table;
-    const TABLE_PK: Self::TableIden = ProjectIden::Id;
-
-    type IdKind = Uuid;
-
+    type Iden = ProjectIden;
     type Row = ProjectRow;
 
     fn db(&self) -> &Dbx {
         &self.db
     }
+}
 
-    fn has_audit_fields() -> bool {
-        true
+impl ReadableMeta for ProjectStore {
+    fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
+        ReadQueryMeta {
+            table: ProjectIden::Table,
+            pk: ProjectIden::Id,
+            has_audit: true,
+        }
     }
 }
 
+impl MutableMeta for ProjectStore {
+    fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
+        MutateQueryMeta {
+            table: ProjectIden::Table,
+            pk: ProjectIden::Id,
+            has_audit: true,
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// endregion: --- Base Trait Implementations
+
+// region:    --- Functional Trait Implementations
+// -----------------------------------------------------------------------------
+// With the metadata defined above, these implementations are now very concise.
+// We only need to specify the associated types for params (Create, Update, Filter).
+// The actual method logic is handled by the default implementations in your traits.
+
 impl Creatable for ProjectStore {
-    type CreateStoreParams = ProjectCreate;
+    type CreateStoreParams = ProjectForCreate;
 }
 
 impl Readable for ProjectStore {}
@@ -54,13 +80,22 @@ impl Listable for ProjectStore {
 }
 
 impl Updatable for ProjectStore {
-    type UpdateStoreParams = ProjectUpdate;
+    type UpdateStoreParams = ProjectForUpdate;
+}
+
+impl Deletable for ProjectStore {}
+
+impl CreatableMany for ProjectStore {}
+
+impl UpdatableMany for ProjectStore {
+    type UpdateStoreParams = ProjectForUpdate;
 }
 
 impl DeletableMany for ProjectStore {}
 
-impl UpdatableMany for ProjectStore {
-    type UpdateStoreParams = ProjectUpdate;
-}
+impl Firstable for ProjectStore {}
 
-impl Deletable for ProjectStore {}
+impl Countable for ProjectStore {}
+
+// -----------------------------------------------------------------------------
+// endregion: --- Functional Trait Implementations

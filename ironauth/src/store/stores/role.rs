@@ -1,53 +1,76 @@
 use std::sync::Arc;
 
-use sea_query::{IntoIden, TableRef};
-use sqlx::prelude::FromRow;
-use uuid::Uuid;
-
 use crate::store::{
     dbx::Dbx,
-    schema::role::{RoleCreate, RoleFilter, RoleIden, RoleRow, RoleUpdate},
+    schema::{
+        meta::{MutateQueryMeta, ReadQueryMeta},
+        role::{RoleFilter, RoleForCreate, RoleForUpdate, RoleIden, RoleRow},
+    },
     traits::{
         crud::{
-            Creatable, DeletableMany, Deletable	, Listable, Readable, UpdatableMany,
-            Updatable,
+            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
+            Readable, Updatable, UpdatableMany,
         },
-        meta::Store,
+        meta::{MutableMeta, ReadableMeta, Store},
     },
 };
 
+/// The struct for our Role store, holding the database connection wrapper.
 pub struct RoleStore {
     db: Arc<Dbx>,
 }
 
 impl RoleStore {
+    /// Creates a new `RoleStore`.
     pub fn new(db: Arc<Dbx>) -> Self {
         Self { db }
     }
 }
 
+// region:    --- Base Trait Implementations
+// -----------------------------------------------------------------------------
+// These implementations provide the core metadata for the store.
+
 impl Store for RoleStore {
-    type TableIden = RoleIden;
-
-    /// Static table identifiers used in SQL queries.
-    const TABLE_NAME: Self::TableIden = RoleIden::Table;
-    const TABLE_PK: Self::TableIden = RoleIden::Id;
-
-    type IdKind = Uuid;
-
+    type Iden = RoleIden;
     type Row = RoleRow;
 
     fn db(&self) -> &Dbx {
         &self.db
     }
+}
 
-    fn has_audit_fields() -> bool {
-        true
+impl ReadableMeta for RoleStore {
+    fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
+        ReadQueryMeta {
+            table: RoleIden::Table,
+            pk: RoleIden::Id,
+            has_audit: true,
+        }
     }
 }
 
+impl MutableMeta for RoleStore {
+    fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
+        MutateQueryMeta {
+            table: RoleIden::Table,
+            pk: RoleIden::Id,
+            has_audit: true,
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// endregion: --- Base Trait Implementations
+
+// region:    --- Functional Trait Implementations
+// -----------------------------------------------------------------------------
+// With the metadata defined above, these implementations are now very concise.
+// We only need to specify the associated types for params (Create, Update, Filter).
+// The actual method logic is handled by the default implementations in your traits.
+
 impl Creatable for RoleStore {
-    type CreateStoreParams = RoleCreate;
+    type CreateStoreParams = RoleForCreate;
 }
 
 impl Readable for RoleStore {}
@@ -57,13 +80,22 @@ impl Listable for RoleStore {
 }
 
 impl Updatable for RoleStore {
-    type UpdateStoreParams = RoleUpdate;
+    type UpdateStoreParams = RoleForUpdate;
+}
+
+impl Deletable for RoleStore {}
+
+impl CreatableMany for RoleStore {}
+
+impl UpdatableMany for RoleStore {
+    type UpdateStoreParams = RoleForUpdate;
 }
 
 impl DeletableMany for RoleStore {}
 
-impl UpdatableMany for RoleStore {
-    type UpdateStoreParams = RoleUpdate;
-}
+impl Firstable for RoleStore {}
 
-impl Deletable	 for RoleStore {}
+impl Countable for RoleStore {}
+
+// -----------------------------------------------------------------------------
+// endregion: --- Functional Trait Implementations

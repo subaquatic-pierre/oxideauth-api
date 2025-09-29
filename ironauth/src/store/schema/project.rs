@@ -7,11 +7,14 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::store::traits::meta::HasId;
+use ironauth_macros::HasId;
+
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::AuditFields;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
-#[derive(Iden)]
+#[derive(Iden, Copy, Clone)]
 pub enum ProjectIden {
     #[iden = "project"]
     Table, // TABLE_NAME
@@ -20,7 +23,7 @@ pub enum ProjectIden {
 
 // --- Row (DB-facing) ---
 /// Maps to the `project` SQL table.
-#[derive(Debug, FromRow, Deserialize)]
+#[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct ProjectRow {
     pub id: Uuid,
     pub namespace_id: Uuid,
@@ -45,7 +48,7 @@ pub struct ProjectRow {
 // --- Create (store input) ---
 /// Input for creating a new `project`.
 #[derive(Debug, Fields)]
-pub struct ProjectCreate {
+pub struct ProjectForCreate {
     pub namespace_id: Uuid,
     pub name: String,
     pub code: Option<String>,
@@ -58,7 +61,7 @@ pub struct ProjectCreate {
 // --- Update (store input) ---
 /// Input for updating an existing `project`.
 #[derive(Debug, Fields, Clone)]
-pub struct ProjectUpdate {
+pub struct ProjectForUpdate {
     pub name: Option<String>,
     pub code: Option<String>,
     pub description: Option<String>,
@@ -141,7 +144,7 @@ impl TryFrom<JsonValue> for ProjectFilter {
 
 // --- Defaults for testing ---
 #[cfg(test)]
-impl Default for ProjectCreate {
+impl Default for ProjectForCreate {
     fn default() -> Self {
         Self {
             namespace_id: Uuid::new_v4(),
@@ -160,7 +163,7 @@ impl Default for ProjectCreate {
 }
 
 #[cfg(test)]
-impl Default for ProjectUpdate {
+impl Default for ProjectForUpdate {
     fn default() -> Self {
         Self {
             name: None,

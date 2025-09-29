@@ -1,3 +1,4 @@
+use ironauth_macros::HasId;
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
 use sea_query::{Iden, Nullable, Value as SeaValue};
@@ -12,9 +13,12 @@ use uuid::Uuid;
 
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::{AuditFields, AuditMeta};
+use crate::store::schema::id::DbId;
+use crate::store::traits::meta::HasId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
-#[derive(Iden)]
+#[derive(Iden, Copy, Clone)]
+
 pub enum MembershipIden {
     #[iden = "membership"]
     Table, // TABLE_NAME
@@ -23,9 +27,10 @@ pub enum MembershipIden {
 
 // --- Row (DB-facing) ---
 /// Maps to the `membership` SQL table.
-#[derive(Debug, FromRow, Deserialize)]
+#[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct MembershipRow {
-    pub id: Uuid,
+    pub id: DbId,
+
     pub account_id: Uuid,
     pub namespace_id: Uuid,
     pub scope: MembershipScope,
@@ -84,7 +89,7 @@ impl Nullable for MembershipStatus {
 // --- Create (store input) ---
 /// Input for creating a new `membership`.
 #[derive(Debug, Fields)]
-pub struct MembershipCreate {
+pub struct MembershipForCreate {
     pub account_id: Uuid,
     pub namespace_id: Uuid,
     pub scope: MembershipScope,
@@ -97,7 +102,7 @@ pub struct MembershipCreate {
 // --- Update (store input) ---
 /// Input for updating an existing `membership`.
 #[derive(Debug, Fields, Clone)]
-pub struct MembershipUpdate {
+pub struct MembershipForUpdate {
     pub scope: Option<MembershipScope>,
     pub status: Option<MembershipStatus>,
     pub project_id: Option<Uuid>,
@@ -163,7 +168,7 @@ impl TryFrom<JsonValue> for MembershipFilter {
 
 // --- Defaults for testing ---
 #[cfg(test)]
-impl Default for MembershipCreate {
+impl Default for MembershipForCreate {
     fn default() -> Self {
         Self {
             account_id: Uuid::new_v4(),
@@ -180,7 +185,7 @@ impl Default for MembershipCreate {
 }
 
 #[cfg(test)]
-impl Default for MembershipUpdate {
+impl Default for MembershipForUpdate {
     fn default() -> Self {
         Self {
             scope: None,

@@ -13,26 +13,26 @@ pub trait JoinOneToManyStore
 where
     Self: Store,
 {
-    // --- Metadata for the "Many" side of the relationship ---
-    type ManyRow: for<'r> FromRow<'r, PgRow> + Send + Sync;
+    // // --- Metadata for the "Many" side of the relationship ---
+    // type ManyRow: for<'r> FromRow<'r, PgRow> + Send + Sync;
 
-    // --- Metadata for the final, combined result ---
-    type JoinedRow: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin;
+    // // --- Metadata for the final, combined result ---
+    // type JoinedRow: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin;
 
-    // --- Constants to define the JOIN ---
-    const MANY_TABLE: Self::TableIden;
-    const MANY_FK_COL: Self::TableIden; // The foreign key on the "many" table
-    const MANY_ALIAS_NAME: Self::TableIden; // The name for the JSON_AGG column, e.g., "credentials"
+    // // --- Constants to define the JOIN ---
+    // const MANY_TABLE: Self::TableIden;
+    // const MANY_FK_COL: Self::TableIden; // The foreign key on the "many" table
+    // const MANY_ALIAS_NAME: Self::TableIden; // The name for the JSON_AGG column, e.g., "credentials"
 
-    /// A generic method that builds and executes the one-to-many join query.
-    async fn get_joined_opt(
-        &self,
-        ctx: &StoreCtx,
-        id: &Self::IdKind,
-    ) -> Result<Option<Self::JoinedRow>> {
-        get_joined_opt(ctx, self, id).await
-    }
-    async fn get_joined(&self, ctx: &StoreCtx, id: &Self::IdKind) -> Result<Self::JoinedRow>;
+    // /// A generic method that builds and executes the one-to-many join query.
+    // async fn get_joined_opt(
+    //     &self,
+    //     ctx: &StoreCtx,
+    //     id: &Self::IdKind,
+    // ) -> Result<Option<Self::JoinedRow>> {
+    //     get_joined_opt(ctx, self, id).await
+    // }
+    // async fn get_joined(&self, ctx: &StoreCtx, id: &Self::IdKind) -> Result<Self::JoinedRow>;
 }
 
 // use sea_query::{Iden, IntoIden, SelectStatement};
@@ -125,7 +125,7 @@ where
 
 // In your account store implementation file
 // #[async_trait]
-// impl JoinOneToMany for AcCountable {
+// impl JoinOneToMany for AccountStore {
 //     type ManyIden = Credential; // The Iden for the 'credential' table
 //     type ManyRow = CredentialRow;
 //     type Joined = AccountWithCredentials;

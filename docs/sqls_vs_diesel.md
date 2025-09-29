@@ -68,7 +68,7 @@ This is the most fundamental difference that shapes everything else.
   **Example:** The `.await` is clean and idiomatic.
 
   ```rust
-  async fn create_account(&self, ..., data: AccountCreate) -> Result<AccountRow> {
+  async fn create_account(&self, ..., data: AccountForCreate) -> Result<AccountRow> {
       // ... build query with sea-query ...
       let account = sqlx::query_as_with(&sql, values)
           .fetch_one(&self.db)

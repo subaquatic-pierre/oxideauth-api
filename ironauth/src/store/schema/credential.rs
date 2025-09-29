@@ -1,3 +1,4 @@
+use ironauth_macros::HasId;
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
 use sea_query::{Iden, Nullable, Value as SeaValue};
@@ -11,9 +12,11 @@ use uuid::Uuid;
 
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::{AuditFields, AuditMeta};
+use crate::store::schema::id::DbId;
+use crate::store::traits::meta::HasId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
-#[derive(Iden)]
+#[derive(Iden, Copy, Clone)]
 pub enum CredentialIden {
     #[iden = "credential"]
     Table, // TABLE_NAME
@@ -22,9 +25,10 @@ pub enum CredentialIden {
 
 // --- Row (DB-facing) ---
 /// Maps to the `credential` SQL table.
-#[derive(Debug, FromRow, Deserialize)]
+#[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct CredentialRow {
-    pub id: Uuid,
+    pub id: DbId,
+
     pub account_id: Uuid,
     pub namespace_id: Uuid,
     #[sqlx(string)]
@@ -118,7 +122,7 @@ impl Nullable for CredentialKind {
 // --- Create (store input) ---
 /// Input for creating a new `credential`.
 #[derive(Debug, Fields)]
-pub struct CredentialCreate {
+pub struct CredentialForCreate {
     pub kind: CredentialKind,
     pub provider: CredentialProvider,
     pub status: CredentialStatus,
@@ -135,7 +139,7 @@ pub struct CredentialCreate {
 // --- Update (store input) ---
 /// Input for updating an existing `credential`.
 #[derive(Debug, Fields, Clone)]
-pub struct CredentialUpdate {
+pub struct CredentialForUpdate {
     pub kind: Option<CredentialKind>,
     pub provider: Option<CredentialProvider>,
     pub status: Option<CredentialStatus>,
@@ -208,7 +212,7 @@ impl TryFrom<JsonValue> for CredentialFilter {
 
 // --- Defaults for testing ---
 #[cfg(test)]
-impl Default for CredentialCreate {
+impl Default for CredentialForCreate {
     fn default() -> Self {
         Self {
             account_id: Uuid::new_v4(),
@@ -229,7 +233,7 @@ impl Default for CredentialCreate {
 }
 
 #[cfg(test)]
-impl Default for CredentialUpdate {
+impl Default for CredentialForUpdate {
     fn default() -> Self {
         Self {
             kind: None,

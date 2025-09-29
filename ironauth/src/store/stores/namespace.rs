@@ -1,71 +1,104 @@
 use std::sync::Arc;
 
-use sea_query::{IntoIden, TableRef};
-use sqlx::prelude::FromRow;
-use uuid::Uuid;
-
 use crate::store::{
     dbx::Dbx,
-    schema::namespace::{
-        NamespaceCreate, NamespaceFilter, NamespaceIden, NamespaceRow, NamespaceUpdate,
+    schema::{
+        membership::{
+            MembershipFilter, MembershipForCreate, MembershipForUpdate, MembershipIden,
+            MembershipRow,
+        },
+        meta::{MutateQueryMeta, ReadQueryMeta},
     },
     traits::{
         crud::{
-            Creatable, DeletableMany, Deletable	, Listable, Readable, UpdatableMany,
-            Updatable,
+            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
+            Readable, Updatable, UpdatableMany,
         },
-        meta::Store,
+        meta::{MutableMeta, ReadableMeta, Store},
     },
 };
 
-pub struct NamespaceStore {
+/// The struct for our Membership store, holding the database connection wrapper.
+pub struct MembershipStore {
     db: Arc<Dbx>,
 }
 
-impl NamespaceStore {
+impl MembershipStore {
+    /// Creates a new `MembershipStore`.
     pub fn new(db: Arc<Dbx>) -> Self {
         Self { db }
     }
 }
 
-impl Store for NamespaceStore {
-    type TableIden = NamespaceIden;
+// region:    --- Base Trait Implementations
+// -----------------------------------------------------------------------------
+// These implementations provide the core metadata for the store.
 
-    /// Static table identifiers used in SQL queries.
-    const TABLE_NAME: Self::TableIden = NamespaceIden::Table;
-    const TABLE_PK: Self::TableIden = NamespaceIden::Id;
-
-    type IdKind = Uuid;
-
-    type Row = NamespaceRow;
+impl Store for MembershipStore {
+    type Iden = MembershipIden;
+    type Row = MembershipRow;
 
     fn db(&self) -> &Dbx {
         &self.db
     }
+}
 
-    fn has_audit_fields() -> bool {
-        true
+impl ReadableMeta for MembershipStore {
+    fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
+        ReadQueryMeta {
+            table: MembershipIden::Table,
+            pk: MembershipIden::Id,
+            has_audit: true,
+        }
     }
 }
 
-impl Creatable for NamespaceStore {
-    type CreateStoreParams = NamespaceCreate;
+impl MutableMeta for MembershipStore {
+    fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
+        MutateQueryMeta {
+            table: MembershipIden::Table,
+            pk: MembershipIden::Id,
+            has_audit: true,
+        }
+    }
 }
 
-impl Readable for NamespaceStore {}
+// -----------------------------------------------------------------------------
+// endregion: --- Base Trait Implementations
 
-impl Listable for NamespaceStore {
-    type FilterStoreParams = NamespaceFilter;
+// region:    --- Functional Trait Implementations
+// -----------------------------------------------------------------------------
+// With the metadata defined above, these implementations are now very concise.
+// We only need to specify the associated types for params (Create, Update, Filter).
+// The actual method logic is handled by the default implementations in your traits.
+
+impl Creatable for MembershipStore {
+    type CreateStoreParams = MembershipForCreate;
 }
 
-impl Updatable for NamespaceStore {
-    type UpdateStoreParams = NamespaceUpdate;
+impl Readable for MembershipStore {}
+
+impl Listable for MembershipStore {
+    type FilterStoreParams = MembershipFilter;
 }
 
-impl DeletableMany for NamespaceStore {}
-
-impl UpdatableMany for NamespaceStore {
-    type UpdateStoreParams = NamespaceUpdate;
+impl Updatable for MembershipStore {
+    type UpdateStoreParams = MembershipForUpdate;
 }
 
-impl Deletable	 for NamespaceStore {}
+impl Deletable for MembershipStore {}
+
+impl CreatableMany for MembershipStore {}
+
+impl UpdatableMany for MembershipStore {
+    type UpdateStoreParams = MembershipForUpdate;
+}
+
+impl DeletableMany for MembershipStore {}
+
+impl Firstable for MembershipStore {}
+
+impl Countable for MembershipStore {}
+
+// -----------------------------------------------------------------------------
+// endregion: --- Functional Trait Implementations

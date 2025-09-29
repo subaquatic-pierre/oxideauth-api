@@ -9,7 +9,11 @@ use sqlx::{postgres::PgRow, FromRow};
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::store::error::Result;
+use crate::store::{
+    error::Result,
+    schema::meta::{MutateQueryMeta, ReadQueryMeta},
+    traits::crud::Creatable,
+};
 use async_trait::async_trait;
 
 use crate::store::{
@@ -19,13 +23,17 @@ use crate::store::{
     queries::crud::{create, get},
     utils::prepare_audit_fields,
 };
+pub trait TableIden: 'static + Copy + Iden + Send + Sync {}
 
-pub trait StoreRow: HasId + for<'r> FromRow<'r, PgRow> + Unpin + Send + Sync {}
-pub trait StoreId: ToString + Into<sea_query::Value> + Send + Sync + Clone {}
-impl StoreId for Uuid {}
+pub trait StoreId: ToString + Into<sea_query::Value> + Send + Sync + Clone + Copy {}
 pub trait HasId {
     type Id: StoreId;
 }
+pub trait StoreRow: HasId + for<'r> FromRow<'r, PgRow> + Unpin + Send + Sync {}
+
+impl<T> StoreRow for T where T: HasId + for<'r> FromRow<'r, PgRow> + Unpin + Send + Sync {}
+impl<T> StoreId for T where T: ToString + Into<sea_query::Value> + Send + Sync + Clone + Copy {}
+impl<T: 'static + Copy + Iden + Send + Sync> TableIden for T {}
 
 /// Base trait describing static metadata every store must provide.
 ///
@@ -34,8 +42,7 @@ pub trait HasId {
 /// accessor for database access.
 #[async_trait]
 pub trait Store: Sized + Send + Sync {
-    type IdKind: StoreId;
-
+    type Iden: TableIden;
     /// Row type returned from queries.
     /// Must be able to map from a Postgres row
     type Row: StoreRow;
@@ -44,32 +51,12 @@ pub trait Store: Sized + Send + Sync {
     fn db(&self) -> &Dbx;
 }
 
-/// Metadata for read-only operations like `list`, `get`, `first`, `count`.
-pub struct ReadMeta<I: Iden> {
-    pub table: I,
-    pub pk: I,
-}
-
-/// Metadata for mutating operations like `create`, `update`, `delete`.
-pub struct MutateMeta<I: Iden> {
-    pub table: I,
-    pub pk: I,
-    pub has_audit: bool,
-}
-
 /// Trait for stores that support read operations.
 pub trait ReadableMeta: Store {
-    type Iden: Iden;
-    fn read_meta(&self) -> ReadMeta<Self::Iden>;
+    fn read_meta(&self) -> ReadQueryMeta<Self::Iden>;
 }
 
 /// Trait for stores that support mutating operations.
 pub trait MutableMeta: Store {
-    type Iden: Iden;
-    fn mutate_meta(&self) -> MutateMeta<Self::Iden>;
+    fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden>;
 }
-
-pub type ReadManyMeta<I> = ReadMeta<I>;
-pub type MutateManyMeta<I> = MutateMeta<I>;
-
-pub type CountMeta<I> = ReadMeta<I>;

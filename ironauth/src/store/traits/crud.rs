@@ -1,3 +1,4 @@
+use ironauth_macros::HasId;
 use modql::{
     field::{HasSeaFields, SeaField, SeaFields},
     filter::{FilterGroups, ListOptions},
@@ -17,10 +18,8 @@ use crate::store::{
         crud::{delete, delete_opt, get_opt, list, update, update_opt},
         first::{self, first, first_opt},
     },
-    traits::meta::{
-        CountMeta, MutableMeta, MutateManyMeta, MutateMeta, ReadManyMeta, ReadMeta, ReadableMeta,
-        Store,
-    },
+    schema::meta::{ListQueryMeta, MutateQueryMeta, ReadQueryMeta},
+    traits::meta::{MutableMeta, ReadableMeta, Store, StoreRow},
 };
 use async_trait::async_trait;
 
@@ -32,6 +31,8 @@ use crate::store::{
     utils::prepare_audit_fields,
 };
 
+use crate::store::traits::meta::HasId;
+
 /// Trait for "create" capability of a store.
 #[async_trait]
 pub trait Creatable
@@ -41,15 +42,15 @@ where
     /// Parameters used to insert a new row.
     type CreateStoreParams: HasSeaFields + Send;
 
-    fn meta(&self) -> MutateMeta<Self::Iden> {
+    fn create_meta(&self) -> MutateQueryMeta<Self::Iden> {
         self.mutate_meta()
     }
 
     /// Insert a new row and return the created record.
     async fn create(&self, ctx: &StoreCtx, data: Self::CreateStoreParams) -> Result<Self::Row> {
         let db = self.db();
-        let meta = self.meta();
-        create(&ctx, self, data).await
+        let meta = self.create_meta();
+        create(&ctx, &db, data, &meta).await
     }
 }
 
@@ -59,22 +60,26 @@ pub trait Readable
 where
     Self: ReadableMeta,
 {
-    fn meta(&self) -> ReadMeta<Self::Iden> {
+    fn get_meta(&self) -> ReadQueryMeta<Self::Iden> {
         self.read_meta()
     }
 
     /// Fetch a single row by its primary key.
-    async fn get(&self, ctx: &StoreCtx, id: &Self::IdKind) -> Result<Self::Row> {
+    async fn get(&self, ctx: &StoreCtx, id: &<Self::Row as HasId>::Id) -> Result<Self::Row> {
         let db = self.db();
-        let meta = self.read_meta();
-        get(&ctx, self, id).await
+        let meta = self.get_meta();
+        get(&ctx, &db, id, &meta).await
     }
 
     /// TODO: Docs
-    async fn get_opt(&self, ctx: &StoreCtx, id: &Self::IdKind) -> Result<Option<Self::Row>> {
+    async fn get_opt(
+        &self,
+        ctx: &StoreCtx,
+        id: &<Self::Row as HasId>::Id,
+    ) -> Result<Option<Self::Row>> {
         let db = self.db();
-        let meta = self.meta();
-        get_opt(&ctx, self, id).await
+        let meta = self.get_meta();
+        get_opt(&ctx, &db, id, &meta).await
     }
 }
 
@@ -87,7 +92,7 @@ where
     /// Parameters used to filter queries.
     type FilterStoreParams: Into<FilterGroups> + Send;
 
-    fn meta(&self) -> ReadMeta<Self::Iden> {
+    fn list_meta(&self) -> ReadQueryMeta<Self::Iden> {
         self.read_meta()
     }
 
@@ -99,8 +104,8 @@ where
         opts: Option<ListOptions>,
     ) -> Result<Vec<Self::Row>> {
         let db = self.db();
-        let meta = self.meta();
-        list(ctx, self, filter, opts).await
+        let meta = self.list_meta();
+        list(ctx, &db, filter, opts, &meta).await
     }
 }
 
@@ -113,7 +118,7 @@ where
     /// Parameters used when updating a row.
     type UpdateStoreParams: HasSeaFields + Send;
 
-    fn meta(&self) -> MutateMeta<Self::Iden> {
+    fn update_meta(&self) -> MutateQueryMeta<Self::Iden> {
         self.mutate_meta()
     }
 
@@ -121,24 +126,24 @@ where
     async fn update(
         &self,
         ctx: &StoreCtx,
-        id: &Self::IdKind,
+        id: &<Self::Row as HasId>::Id,
         data: Self::UpdateStoreParams,
     ) -> Result<Self::Row> {
         let db = self.db();
-        let meta = self.meta();
-        update(ctx, self, id, data).await
+        let meta = self.update_meta();
+        update(ctx, &db, id, data, &meta).await
     }
 
     /// TODO: Docs
     async fn update_opt(
         &self,
         ctx: &StoreCtx,
-        id: &Self::IdKind,
+        id: &<Self::Row as HasId>::Id,
         data: Self::UpdateStoreParams,
     ) -> Result<Option<Self::Row>> {
         let db = self.db();
         let meta = self.update_meta();
-        update_opt(ctx, self, id, data).await
+        update_opt(ctx, &db, id, data, &meta).await
     }
 }
 
@@ -148,24 +153,28 @@ pub trait Deletable
 where
     Self: MutableMeta,
 {
-    fn meta(&self) -> MutateMeta<Self::Iden> {
+    fn delete_meta(&self) -> MutateQueryMeta<Self::Iden> {
         self.mutate_meta()
     }
 
     /// Delete a row by its primary key.
     /// By default returns the deleted row (if you want
     /// just an affected count, you can adjust here).
-    async fn delete(&self, ctx: &StoreCtx, id: &Self::IdKind) -> Result<Self::Row> {
+    async fn delete(&self, ctx: &StoreCtx, id: &<Self::Row as HasId>::Id) -> Result<Self::Row> {
         let db = self.db();
-        let meta = self.meta();
-        delete(ctx, self, id).await
+        let meta = self.delete_meta();
+        delete(ctx, &db, id, &meta).await
     }
 
     /// TODO: Docs
-    async fn delete_opt(&self, ctx: &StoreCtx, id: &Self::IdKind) -> Result<Option<Self::Row>> {
+    async fn delete_opt(
+        &self,
+        ctx: &StoreCtx,
+        id: &<Self::Row as HasId>::Id,
+    ) -> Result<Option<Self::Row>> {
         let db = self.db();
-        let meta = self.meta();
-        delete_opt(ctx, self, id).await
+        let meta = self.delete_meta();
+        delete_opt(ctx, &db, id, &meta).await
     }
 }
 
@@ -174,7 +183,7 @@ pub trait CreatableMany
 where
     Self: Creatable,
 {
-    fn meta(&self) -> MutateManyMeta<Self::Iden> {
+    fn create_many_meta(&self) -> MutateQueryMeta<Self::Iden> {
         self.mutate_meta()
     }
 
@@ -184,8 +193,8 @@ where
         data: Vec<Self::CreateStoreParams>,
     ) -> Result<Vec<Self::Row>> {
         let db = self.db();
-        let meta = self.meta();
-        create_many(ctx, self, data).await
+        let meta = self.create_many_meta();
+        create_many(ctx, &db, data, &meta).await
     }
 }
 
@@ -196,18 +205,18 @@ where
 {
     type UpdateStoreParams: HasSeaFields + Clone + Send + Sync + Sized;
 
-    fn meta(&self) -> MutateManyMeta<Self::Iden> {
+    fn update_many_meta(&self) -> MutateQueryMeta<Self::Iden> {
         self.mutate_meta()
     }
 
     async fn update_many(
         &self,
         ctx: &StoreCtx,
-        data: Vec<(Self::IdKind, Self::UpdateStoreParams)>,
+        data: Vec<(<Self::Row as HasId>::Id, Self::UpdateStoreParams)>,
     ) -> Result<Vec<Self::Row>> {
         let db = self.db();
-        let meta = self.meta();
-        update_many(ctx, self, data).await
+        let meta = self.update_many_meta();
+        update_many(ctx, &db, data, &meta).await
     }
 }
 
@@ -216,14 +225,18 @@ pub trait DeletableMany
 where
     Self: Deletable,
 {
-    fn meta(&self) -> MutateManyMeta<Self::Iden> {
+    fn delete_many_meta(&self) -> MutateQueryMeta<Self::Iden> {
         self.mutate_meta()
     }
 
-    async fn delete_many(&self, ctx: &StoreCtx, ids: Vec<Self::IdKind>) -> Result<Vec<Self::Row>> {
+    async fn delete_many(
+        &self,
+        ctx: &StoreCtx,
+        ids: Vec<<Self::Row as HasId>::Id>,
+    ) -> Result<Vec<Self::Row>> {
         let db = self.db();
-        let meta = self.meta();
-        delete_many(ctx, self, ids).await
+        let meta = self.delete_many_meta();
+        delete_many(ctx, &db, ids, &meta).await
     }
 }
 
@@ -232,7 +245,7 @@ pub trait Firstable
 where
     Self: Listable,
 {
-    fn meta(&self) -> ReadMeta<Self::Iden> {
+    fn first_meta(&self) -> ReadQueryMeta<Self::Iden> {
         self.read_meta()
     }
 
@@ -243,8 +256,8 @@ where
         opts: Option<ListOptions>,
     ) -> Result<Self::Row> {
         let db = self.db();
-        let meta = self.meta();
-        first(ctx, self, filter, opts).await
+        let meta = self.first_meta();
+        first(ctx, &db, filter, opts, &meta).await
     }
 
     async fn first_opt(
@@ -254,8 +267,8 @@ where
         opts: Option<ListOptions>,
     ) -> Result<Option<Self::Row>> {
         let db = self.db();
-        let meta = self.meta();
-        first_opt(ctx, self, filter, opts).await
+        let meta = self.first_meta();
+        first_opt(ctx, &db, filter, opts, &meta).await
     }
 }
 
@@ -264,13 +277,13 @@ pub trait Countable
 where
     Self: Listable,
 {
-    fn meta(&self) -> CountMeta<Self::Iden> {
+    fn count_meta(&self) -> ReadQueryMeta<Self::Iden> {
         self.read_meta()
     }
 
     async fn count(&self, ctx: &StoreCtx, filter: Option<Self::FilterStoreParams>) -> Result<i64> {
         let db = self.db();
-        let meta = self.meta();
-        count(ctx, self, filter).await
+        let meta = self.count_meta();
+        count(ctx, &db, filter, &meta).await
     }
 }

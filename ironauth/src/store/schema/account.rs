@@ -1,3 +1,4 @@
+use derive_more::Display;
 use ironauth_macros::HasId;
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
@@ -10,8 +11,11 @@ use uuid::Uuid;
 
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::AuditFields;
-use crate::store::traits::meta::HasId;
+
+use crate::store::schema::id::DbId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
+
+use crate::store::traits::meta::HasId;
 
 // The struct to hold the combined result
 // #[derive(FromRow, Debug)]
@@ -24,7 +28,7 @@ use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 //     pub credentials: Vec<CredentialRow>,
 // }
 
-#[derive(Iden)]
+#[derive(Iden, Copy, Clone)]
 pub enum AccountIden {
     #[iden = "account"]
     Table, // TABLE_NAME
@@ -34,7 +38,7 @@ pub enum AccountIden {
 // --- Row (DB-facing) ---
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct AccountRow {
-    pub id: Uuid,
+    pub id: DbId,
 
     // Identity
     pub email: String,
@@ -56,7 +60,7 @@ pub struct AccountRow {
 
 // --- Create (store input) ---
 #[derive(Debug, Fields)]
-pub struct AccountCreate {
+pub struct AccountForCreate {
     pub email: String,
     pub name: String,
     pub description: Option<String>,
@@ -71,7 +75,7 @@ pub struct AccountCreate {
 
 // --- Update (store input) ---
 #[derive(Debug, Fields, Clone)]
-pub struct AccountUpdate {
+pub struct AccountForUpdate {
     pub email: Option<String>,
     pub name: Option<String>,
     pub description: Option<String>,
@@ -146,7 +150,7 @@ impl TryFrom<JsonValue> for AccountFilter {
 }
 
 #[cfg(test)]
-impl Default for AccountCreate {
+impl Default for AccountForCreate {
     fn default() -> Self {
         Self {
             email: "user1@example.com".into(),
@@ -164,7 +168,7 @@ impl Default for AccountCreate {
 }
 
 #[cfg(test)]
-impl Default for AccountUpdate {
+impl Default for AccountForUpdate {
     fn default() -> Self {
         Self {
             name: None,

@@ -1,54 +1,79 @@
 use std::sync::Arc;
 
-use sea_query::{IntoIden, TableRef};
-use sqlx::prelude::FromRow;
-use uuid::Uuid;
-
 use crate::store::{
     dbx::Dbx,
-    schema::credential::{
-        CredentialCreate, CredentialFilter, CredentialIden, CredentialRow, CredentialUpdate,
+    schema::{
+        credential::{
+            CredentialFilter, CredentialForCreate, CredentialForUpdate, CredentialIden,
+            CredentialRow,
+        },
+        meta::{MutateQueryMeta, ReadQueryMeta},
     },
     traits::{
         crud::{
-            Creatable, Deletable, DeletableMany, Listable, Readable, Updatable, UpdatableMany,
+            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
+            Readable, Updatable, UpdatableMany,
         },
-        meta::Store,
+        meta::{MutableMeta, ReadableMeta, Store},
     },
 };
 
+/// The struct for our Credential store, holding the database connection wrapper.
 pub struct CredentialStore {
     db: Arc<Dbx>,
 }
 
 impl CredentialStore {
+    /// Creates a new `CredentialStore`.
     pub fn new(db: Arc<Dbx>) -> Self {
         Self { db }
     }
 }
 
+// region:    --- Base Trait Implementations
+// -----------------------------------------------------------------------------
+// These implementations provide the core metadata for the store.
+
 impl Store for CredentialStore {
-    type TableIden = CredentialIden;
-
-    /// Static table identifiers used in SQL queries.
-    const TABLE_NAME: Self::TableIden = CredentialIden::Table;
-    const TABLE_PK: Self::TableIden = CredentialIden::Id;
-
-    type IdKind = Uuid;
-
+    type Iden = CredentialIden;
     type Row = CredentialRow;
 
     fn db(&self) -> &Dbx {
         &self.db
     }
+}
 
-    fn has_audit_fields() -> bool {
-        true
+impl ReadableMeta for CredentialStore {
+    fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
+        ReadQueryMeta {
+            table: CredentialIden::Table,
+            pk: CredentialIden::Id,
+            has_audit: true,
+        }
     }
 }
 
+impl MutableMeta for CredentialStore {
+    fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
+        MutateQueryMeta {
+            table: CredentialIden::Table,
+            pk: CredentialIden::Id,
+            has_audit: true,
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// endregion: --- Base Trait Implementations
+
+// region:    --- Functional Trait Implementations
+// -----------------------------------------------------------------------------
+// With the metadata defined above, these implementations are now very concise.
+// We only need to specify the associated types for params (Create, Update, Filter).
+// The actual method logic is handled by the default implementations in your traits.
+
 impl Creatable for CredentialStore {
-    type CreateStoreParams = CredentialCreate;
+    type CreateStoreParams = CredentialForCreate;
 }
 
 impl Readable for CredentialStore {}
@@ -58,13 +83,22 @@ impl Listable for CredentialStore {
 }
 
 impl Updatable for CredentialStore {
-    type UpdateStoreParams = CredentialUpdate;
+    type UpdateStoreParams = CredentialForUpdate;
+}
+
+impl Deletable for CredentialStore {}
+
+impl CreatableMany for CredentialStore {}
+
+impl UpdatableMany for CredentialStore {
+    type UpdateStoreParams = CredentialForUpdate;
 }
 
 impl DeletableMany for CredentialStore {}
 
-impl UpdatableMany for CredentialStore {
-    type UpdateStoreParams = CredentialUpdate;
-}
+impl Firstable for CredentialStore {}
 
-impl Deletable for CredentialStore {}
+impl Countable for CredentialStore {}
+
+// -----------------------------------------------------------------------------
+// endregion: --- Functional Trait Implementations

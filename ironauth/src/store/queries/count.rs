@@ -6,21 +6,25 @@ use sqlx::Row;
 use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, query_scalar_with, query_with, Value};
 
+use crate::store::dbx::Dbx;
 use crate::store::error::{Result, StoreError};
+use crate::store::schema::meta::ReadQueryMeta;
+use crate::store::traits::meta::TableIden;
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 use crate::store::{traits::meta::Store, utils::ListOptionsValidator};
 
-pub async fn count<F, DB>(_ctx: &StoreCtx, store: &DB, filter: Option<F>) -> Result<i64>
-where
-    DB: Store,
-    F: Into<FilterGroups>,
-{
+pub async fn count<F: Into<FilterGroups>, I: TableIden>(
+    _ctx: &StoreCtx,
+    dbx: &Dbx,
+    filter: Option<F>,
+    meta: &ReadQueryMeta<I>,
+) -> Result<i64> {
     let mut query = Query::select();
 
     // SELECT COUNT(*)
     query
         .expr_as(Func::count(Expr::col(Asterisk)), "count")
-        .from(DB::TABLE_NAME);
+        .from(meta.table);
 
     // apply filter
     if let Some(filter) = filter {
@@ -33,7 +37,7 @@ where
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
     let q = query_with(&sql, vals);
 
-    let row = q.fetch_one(store.db().db()).await?;
+    let row = q.fetch_one(dbx.db()).await?;
 
     // Extract COUNT(*) as i64
     let cnt: i64 = row.try_get("count")?;
@@ -51,9 +55,12 @@ mod tests {
         store::{
             ctx::StoreCtx,
             queries::crud::create,
-            schema::account::{AccountCreate, AccountFilter, AccountRow},
-            stores::account::AcCountable,
-            traits::crud::{Creatable, Readable},
+            schema::account::{AccountFilter, AccountForCreate, AccountRow},
+            stores::account::AccountStore,
+            traits::{
+                crud::{Creatable, Readable},
+                meta::ReadableMeta,
+            },
         },
     };
 
@@ -64,11 +71,11 @@ mod tests {
     async fn test_count_after_inserts_matches_number_of_rows() -> Result<()> {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
-        let acc_store = AcCountable::new(dbx);
+        let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
         let mut ac = |i: usize| {
-            let mut data = AccountCreate::default();
+            let mut data = AccountForCreate::default();
             data.email = format!("user{i}{i}{i}@example.com");
             data.avatar_url = Some(format!("TEST_FILTER"));
             data
@@ -77,7 +84,7 @@ mod tests {
         // Create N accounts
         let n = 3usize;
         let mut created: Vec<AccountRow> = Vec::with_capacity(n);
-        for i in 0..3 {
+        for i in 0..n {
             let row = ac(i);
             created.push(acc_store.create(&ctx, row).await?);
         }
@@ -91,8 +98,9 @@ mod tests {
         let filter: AccountFilter =
             from_value(json!({"avatar_url":{"$contains":"TEST_FILTER"}})).unwrap();
 
-        // Count should equal n
-        let total = count(&ctx, &acc_store, Some(filter)).await?;
+        // Generate meta and call count with the correct arguments
+        let meta = acc_store.read_meta();
+        let total = count(&ctx, &dbx, Some(filter), &meta).await?;
         assert_eq!(total as usize, n);
 
         Ok(())

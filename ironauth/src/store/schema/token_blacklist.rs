@@ -9,12 +9,15 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::store::traits::meta::HasId;
+use ironauth_macros::HasId;
+
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::{AuditFields, AuditMeta};
 use crate::store::schema::hash::Sha256Hash;
 use crate::store::utils::{bytes_to_sea_value, json_to_sea_value, time_to_sea_value};
 
-#[derive(Iden)]
+#[derive(Iden, Copy, Clone)]
 pub enum TokenBlacklistIden {
     #[iden = "token_blacklist"]
     Table, // TABLE_NAME
@@ -23,7 +26,7 @@ pub enum TokenBlacklistIden {
 
 // --- Row (DB-facing) ---
 /// Maps to the `token_blacklist` SQL table.
-#[derive(Debug, FromRow, Deserialize)]
+#[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct TokenBlacklistRow {
     pub id: Uuid,
     pub token_hash: Sha256Hash,
@@ -41,7 +44,7 @@ pub struct TokenBlacklistRow {
 // --- Create (store input) ---
 /// Input for creating a new `token_blacklist` entry.
 #[derive(Debug, Fields)]
-pub struct TokenBlacklistCreate {
+pub struct TokenBlacklistForCreate {
     pub token_hash: Vec<u8>,
     pub account_id: Option<Uuid>,
     pub namespace_id: Option<Uuid>,
@@ -54,7 +57,7 @@ pub struct TokenBlacklistCreate {
 // --- Update (store input) ---
 /// Input for updating an existing `token_blacklist` entry.
 #[derive(Debug, Fields, Clone)]
-pub struct TokenBlacklistUpdate {
+pub struct TokenBlacklistForUpdate {
     pub account_id: Option<Uuid>,
     pub namespace_id: Option<Uuid>,
     pub expires_at: Option<OffsetDateTime>,
@@ -117,7 +120,7 @@ impl TryFrom<JsonValue> for TokenBlacklistFilter {
 
 // --- Defaults for testing ---
 #[cfg(test)]
-impl Default for TokenBlacklistCreate {
+impl Default for TokenBlacklistForCreate {
     fn default() -> Self {
         Self {
             token_hash: vec![0; 32],
@@ -134,7 +137,7 @@ impl Default for TokenBlacklistCreate {
 }
 
 #[cfg(test)]
-impl Default for TokenBlacklistUpdate {
+impl Default for TokenBlacklistForUpdate {
     fn default() -> Self {
         Self {
             account_id: None,

@@ -1,3 +1,4 @@
+use ironauth_macros::HasId;
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
 use sea_query::{sea_value_to_json_value, Iden, Nullable, Value as SeaValue};
@@ -9,9 +10,10 @@ use uuid::Uuid;
 
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::{AuditFields, AuditMeta};
+use crate::store::traits::meta::HasId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
-#[derive(Iden)]
+#[derive(Iden, Copy, Clone)]
 pub enum NamespaceIden {
     #[iden = "namespace"]
     Table, // TABLE_NAME
@@ -20,7 +22,7 @@ pub enum NamespaceIden {
 
 // --- Row (DB-facing) ---
 /// Maps to the `namespace` SQL table.
-#[derive(Debug, FromRow, Deserialize)]
+#[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct NamespaceRow {
     pub id: Uuid,
 
@@ -44,7 +46,7 @@ pub struct NamespaceRow {
 // --- Create (store input) ---
 /// Input for creating a new `namespace`.
 #[derive(Debug, Fields)]
-pub struct NamespaceCreate {
+pub struct NamespaceForCreate {
     pub name: String,
     pub slug: String,
     pub description: Option<String>,
@@ -56,7 +58,7 @@ pub struct NamespaceCreate {
 // --- Update (store input) ---
 /// Input for updating an existing `namespace`.
 #[derive(Debug, Fields, Clone)]
-pub struct NamespaceUpdate {
+pub struct NamespaceForUpdate {
     pub name: Option<String>,
     pub slug: Option<String>,
     pub description: Option<String>,
@@ -137,7 +139,7 @@ impl TryFrom<JsonValue> for NamespaceFilter {
 
 // --- Defaults for testing ---
 #[cfg(test)]
-impl Default for NamespaceCreate {
+impl Default for NamespaceForCreate {
     fn default() -> Self {
         Self {
             name: "Default Namespace".into(),
@@ -155,7 +157,7 @@ impl Default for NamespaceCreate {
 }
 
 #[cfg(test)]
-impl Default for NamespaceUpdate {
+impl Default for NamespaceForUpdate {
     fn default() -> Self {
         Self {
             name: None,

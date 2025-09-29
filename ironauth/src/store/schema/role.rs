@@ -7,11 +7,14 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::store::traits::meta::HasId;
+use ironauth_macros::HasId;
+
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::AuditFields;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
-#[derive(Iden)]
+#[derive(Iden, Copy, Clone)]
 pub enum RoleIden {
     #[iden = "role"]
     Table, // TABLE_NAME
@@ -20,7 +23,7 @@ pub enum RoleIden {
 
 // --- Row (DB-facing) ---
 /// Maps to the `role` SQL table.
-#[derive(Debug, FromRow, Deserialize)]
+#[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct RoleRow {
     pub id: Uuid,
     pub namespace_id: Uuid,
@@ -40,7 +43,7 @@ pub struct RoleRow {
 // --- Create (store input) ---
 /// Input for creating a new `role`.
 #[derive(Debug, Fields)]
-pub struct RoleCreate {
+pub struct RoleForCreate {
     pub namespace_id: Uuid,
     pub name: String,
     pub description: Option<String>,
@@ -51,7 +54,7 @@ pub struct RoleCreate {
 // --- Update (store input) ---
 /// Input for updating an existing `role`.
 #[derive(Debug, Fields, Clone)]
-pub struct RoleUpdate {
+pub struct RoleForUpdate {
     pub name: Option<String>,
     pub description: Option<String>,
     pub tags: Option<Vec<String>>,
@@ -112,7 +115,7 @@ impl TryFrom<JsonValue> for RoleFilter {
 
 // --- Defaults for testing ---
 #[cfg(test)]
-impl Default for RoleCreate {
+impl Default for RoleForCreate {
     fn default() -> Self {
         Self {
             namespace_id: Uuid::new_v4(),
@@ -127,7 +130,7 @@ impl Default for RoleCreate {
 }
 
 #[cfg(test)]
-impl Default for RoleUpdate {
+impl Default for RoleForUpdate {
     fn default() -> Self {
         Self {
             name: None,

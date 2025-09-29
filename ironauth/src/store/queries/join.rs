@@ -3,27 +3,34 @@ use sqlx::{postgres::PgRow, FromRow};
 
 use crate::store::{
     ctx::StoreCtx,
+    dbx::Dbx,
     error::{Result, StoreError},
-    traits::join::JoinOneToManyStore,
+    schema::meta::GetJoinedQueryMeta,
+    traits::{
+        join::JoinOneToManyStore,
+        meta::{HasId, StoreId, StoreRow, TableIden},
+    },
 };
 
-pub async fn get_joined_opt<T, DB>(ctx: &StoreCtx, store: &DB, id: &DB::IdKind) -> Result<Option<T>>
-where
-    T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
-    DB: JoinOneToManyStore,
-{
+pub async fn get_joined_opt<T: StoreRow, I: TableIden>(
+    ctx: &StoreCtx,
+    dbx: &Dbx,
+    id: &impl StoreId,
+    meta: &GetJoinedQueryMeta<I>,
+) -> Result<Option<T>> {
     todo!()
 }
 
-pub async fn get_joined<T, DB>(ctx: &StoreCtx, store: &DB, id: &DB::IdKind) -> Result<T>
-where
-    T: for<'r> FromRow<'r, PgRow> + Send + Sync + Unpin,
-    DB: JoinOneToManyStore,
-{
-    match get_joined_opt(ctx, store, id).await? {
+pub async fn get_joined<T: StoreRow, I: TableIden>(
+    ctx: &StoreCtx,
+    dbx: &Dbx,
+    id: &impl StoreId,
+    meta: &GetJoinedQueryMeta<I>,
+) -> Result<T> {
+    match get_joined_opt(ctx, dbx, id, meta).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
-            entity: DB::TABLE_NAME.to_string(),
+            entity: meta.table.to_string(),
             id: id.to_string(),
         }),
     }

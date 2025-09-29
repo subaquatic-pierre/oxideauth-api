@@ -1,3 +1,5 @@
+use crate::store::traits::meta::HasId;
+use ironauth_macros::HasId;
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
 use sea_query::{Iden, Nullable, Value as SeaValue};
@@ -11,7 +13,7 @@ use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::AuditFields;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
-#[derive(Iden)]
+#[derive(Iden, Copy, Clone)]
 pub enum PermissionIden {
     #[iden = "permission"]
     Table, // TABLE_NAME
@@ -20,7 +22,7 @@ pub enum PermissionIden {
 
 // --- Row (DB-facing) ---
 /// Maps to the `permission` SQL table.
-#[derive(Debug, FromRow, Deserialize)]
+#[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct PermissionRow {
     pub id: Uuid,
     pub namespace_id: Uuid,
@@ -41,7 +43,7 @@ pub struct PermissionRow {
 // --- Create (store input) ---
 /// Input for creating a new `permission`.
 #[derive(Debug, Fields)]
-pub struct PermissionCreate {
+pub struct PermissionForCreate {
     pub namespace_id: Uuid,
     pub name: String,
     pub code: Option<String>,
@@ -53,7 +55,7 @@ pub struct PermissionCreate {
 // --- Update (store input) ---
 /// Input for updating an existing `permission`.
 #[derive(Debug, Fields, Clone)]
-pub struct PermissionUpdate {
+pub struct PermissionForUpdate {
     pub name: Option<String>,
     pub code: Option<String>,
     pub description: Option<String>,
@@ -116,7 +118,7 @@ impl TryFrom<JsonValue> for PermissionFilter {
 
 // --- Defaults for testing ---
 #[cfg(test)]
-impl Default for PermissionCreate {
+impl Default for PermissionForCreate {
     fn default() -> Self {
         Self {
             namespace_id: Uuid::new_v4(),
@@ -132,7 +134,7 @@ impl Default for PermissionCreate {
 }
 
 #[cfg(test)]
-impl Default for PermissionUpdate {
+impl Default for PermissionForUpdate {
     fn default() -> Self {
         Self {
             name: None,

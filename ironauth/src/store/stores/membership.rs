@@ -1,55 +1,79 @@
 use std::sync::Arc;
 
-use sea_query::{IntoIden, TableRef};
-use sqlx::prelude::FromRow;
-use uuid::Uuid;
-
 use crate::store::{
     dbx::Dbx,
-    schema::membership::{
-        MembershipCreate, MembershipFilter, MembershipIden, MembershipRow, MembershipUpdate,
+    schema::{
+        membership::{
+            MembershipFilter, MembershipForCreate, MembershipForUpdate, MembershipIden,
+            MembershipRow,
+        },
+        meta::{MutateQueryMeta, ReadQueryMeta},
     },
     traits::{
         crud::{
-            Creatable, DeletableMany, Deletable	, Readable, Listable, UpdatableMany,
-            Updatable,
+            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
+            Readable, Updatable, UpdatableMany,
         },
-        meta::Store,
+        meta::{MutableMeta, ReadableMeta, Store},
     },
 };
 
+/// The struct for our Membership store, holding the database connection wrapper.
 pub struct MembershipStore {
     db: Arc<Dbx>,
 }
 
 impl MembershipStore {
+    /// Creates a new `MembershipStore`.
     pub fn new(db: Arc<Dbx>) -> Self {
         Self { db }
     }
 }
 
+// region:    --- Base Trait Implementations
+// -----------------------------------------------------------------------------
+// These implementations provide the core metadata for the store.
+
 impl Store for MembershipStore {
-    type TableIden = MembershipIden;
-
-    /// Static table identifiers used in SQL queries.
-    const TABLE_NAME: Self::TableIden = MembershipIden::Table;
-    const TABLE_PK: Self::TableIden = MembershipIden::Id;
-
-    type IdKind = Uuid;
-
+    type Iden = MembershipIden;
     type Row = MembershipRow;
 
     fn db(&self) -> &Dbx {
         &self.db
     }
+}
 
-    fn has_audit_fields() -> bool {
-        true
+impl ReadableMeta for MembershipStore {
+    fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
+        ReadQueryMeta {
+            table: MembershipIden::Table,
+            pk: MembershipIden::Id,
+            has_audit: true,
+        }
     }
 }
 
+impl MutableMeta for MembershipStore {
+    fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
+        MutateQueryMeta {
+            table: MembershipIden::Table,
+            pk: MembershipIden::Id,
+            has_audit: true,
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// endregion: --- Base Trait Implementations
+
+// region:    --- Functional Trait Implementations
+// -----------------------------------------------------------------------------
+// With the metadata defined above, these implementations are now very concise.
+// We only need to specify the associated types for params (Create, Update, Filter).
+// The actual method logic is handled by the default implementations in your traits.
+
 impl Creatable for MembershipStore {
-    type CreateStoreParams = MembershipCreate;
+    type CreateStoreParams = MembershipForCreate;
 }
 
 impl Readable for MembershipStore {}
@@ -59,13 +83,22 @@ impl Listable for MembershipStore {
 }
 
 impl Updatable for MembershipStore {
-    type UpdateStoreParams = MembershipUpdate;
+    type UpdateStoreParams = MembershipForUpdate;
+}
+
+impl Deletable for MembershipStore {}
+
+impl CreatableMany for MembershipStore {}
+
+impl UpdatableMany for MembershipStore {
+    type UpdateStoreParams = MembershipForUpdate;
 }
 
 impl DeletableMany for MembershipStore {}
 
-impl UpdatableMany for MembershipStore {
-    type UpdateStoreParams = MembershipUpdate;
-}
+impl Firstable for MembershipStore {}
 
-impl Deletable	 for MembershipStore {}
+impl Countable for MembershipStore {}
+
+// -----------------------------------------------------------------------------
+// endregion: --- Functional Trait Implementations

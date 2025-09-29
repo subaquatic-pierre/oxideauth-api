@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::store::utils::time_to_sea_value;
 
-#[derive(Iden)]
+#[derive(Iden, Copy, Clone)]
 pub enum AuditIden {
     CreatedBy,
     CreatedAt,
