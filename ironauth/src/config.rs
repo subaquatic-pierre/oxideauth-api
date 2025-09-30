@@ -1,4 +1,3 @@
-use dotenv::dotenv;
 use std::{env::var, sync::Arc};
 
 #[derive(Debug)]
@@ -31,8 +30,6 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Self {
-        dotenv().ok();
-
         let database_url = var("DATABASE_URL").expect("DATABASE_URL must be set");
         let host = var("HOST").unwrap_or("http://localhost".to_string());
         let port = var("PORT")

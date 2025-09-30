@@ -23,7 +23,24 @@ use crate::routes::accounts::register_accounts_collection;
 
 // Main guard to ensure APP_ENV is set,
 // will ensure correct configs and not reset database
-const APP_ENV: &'static str = env!("APP_ENV");
+// const APP_ENV: &'static str = env!("APP_ENV");
+
+pub enum AppEnv {
+    Development,
+    Production,
+}
+
+impl AppEnv {
+    pub fn from_env() -> Self {
+        let app_env = env::var("APP_ENV").expect("APP_ENV must be set in your .env file");
+
+        match app_env.as_str() {
+            "dev" => AppEnv::Development,
+            "prod" => AppEnv::Production,
+            _ => panic!("incorrect environment value set for APP_ENV, must be 'prod' or 'dev"),
+        }
+    }
+}
 
 pub struct AppData {
     pub config: Config,
@@ -33,8 +50,9 @@ pub struct AppData {
 }
 
 pub async fn new_app_data() -> AppData {
-    let app = match APP_ENV {
-        "dev" => {
+    let app_env = AppEnv::from_env();
+    let app = match app_env {
+        AppEnv::Development => {
             debug!(
                 "{:<12} - new_app_data()",
                 "Application started in DEVELOPMENT mode"
@@ -44,16 +62,13 @@ pub async fn new_app_data() -> AppData {
             init_dev(&app.db).await;
             app
         }
-        "prod" => {
+        AppEnv::Production => {
             debug!(
                 "{:<12} - new_app_data()",
                 "Application started in PRODUCTION mode"
             );
             let app = new_prod_app_data().await;
             app
-        }
-        _ => {
-            panic!("Incorrect APP_ENV, {APP_ENV}")
         }
     };
 
