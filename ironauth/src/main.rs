@@ -39,10 +39,8 @@ async fn main() -> io::Result<()> {
 
     let app_data = Data::new(app);
 
-    info!(
-        "Server listening at {:}:{:}...",
-        app_data.config.host, app_data.config.port
-    );
+    let bind_addr = format!("{}:{}", app_data.config.host, app_data.config.port);
+    info!("Server listening at {bind_addr} ... ",);
 
     let server = HttpServer::new(move || {
         let cors = Cors::default()
@@ -61,7 +59,7 @@ async fn main() -> io::Result<()> {
             .wrap(Logger::default())
             .wrap(cors)
     })
-    .bind("0.0.0.0:8080")?
+    .bind(bind_addr)?
     .run();
 
     server.await
