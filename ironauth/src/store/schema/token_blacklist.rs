@@ -9,6 +9,7 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::store::schema::id::DbId;
 use crate::store::traits::meta::HasId;
 use ironauth_macros::HasId;
 
@@ -28,7 +29,7 @@ pub enum TokenBlacklistIden {
 /// Maps to the `token_blacklist` SQL table.
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct TokenBlacklistRow {
-    pub id: Uuid,
+    pub id: DbId,
     pub token_hash: Sha256Hash,
     pub account_id: Option<Uuid>,
     pub namespace_id: Option<Uuid>,

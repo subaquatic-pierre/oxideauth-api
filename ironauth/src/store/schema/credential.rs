@@ -31,23 +31,18 @@ pub enum CredentialIden {
 pub struct CredentialRow {
     pub id: DbId,
 
-    pub account_id: Uuid,
-    pub namespace_id: Uuid,
-    #[sqlx(transparent)]
+    pub account_id: DbId,
+    pub namespace_id: DbId,
     pub kind: CredentialKind,
-    #[sqlx(transparent)]
     pub provider: CredentialProvider,
-    #[sqlx(transparent)]
     pub status: CredentialStatus,
     pub provider_id: Option<String>,
     pub email: Option<String>,
     pub secret: Option<String>,
     pub last_used_at: Option<OffsetDateTime>,
     pub tags: Vec<String>,
-
     #[sqlx(json)]
     pub meta: CredentialMeta,
-
     #[sqlx(flatten)]
     pub audit: AuditFields,
 }

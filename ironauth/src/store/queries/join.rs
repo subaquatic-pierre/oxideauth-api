@@ -1,6 +1,6 @@
 use sea_query::{
     Alias, Asterisk, Expr, Func, Iden, JoinType, PostgresQueryBuilder, Query, SelectStatement,
-    SimpleExpr,
+    SimpleExpr, Value,
 };
 use sea_query_binder::SqlxBinder;
 use serde_json::json;
@@ -18,7 +18,7 @@ use crate::store::{
         join::JoinOneToManyStore,
         meta::{HasId, StoreId, StoreRow, TableIden},
     },
-    utils::LIST_LIMIT_MAX,
+    utils::{pg_type_of, LIST_LIMIT_MAX},
 };
 
 pub async fn get_joined_opt<T: StoreRow, I: TableIden>(
@@ -40,44 +40,45 @@ pub async fn get_joined_opt<T: StoreRow, I: TableIden>(
         });
     }
 
-    // Step 1: Define the aggregate function call itself.
-    let agg_function = Func::cust(Alias::new("jsonb_agg"))
-        .arg(Func::cust(Alias::new("to_jsonb")).arg(Expr::col(meta.many_table)));
+    let id_val: Value = id.to_owned().into();
+    let id_type = pg_type_of(&id_val);
 
-    // Step 2: Define the expression for the FILTER's WHERE clause.
-    let filter_condition = Expr::col((meta.many_table, meta.many_pk)).is_not_null();
-
-    let filtered_expression = Expr::cust_with_exprs(
-        "? FILTER (WHERE ?)",
-        [
-            // The first `?` is the aggregate function call.
-            SimpleExpr::FunctionCall(agg_function),
-            // The second `?` is the condition for the filter.
-            filter_condition.into(),
-        ],
+    let raw_sql = format!(
+        r#"
+    WITH
+      many_cte AS (
+        SELECT
+          *
+        FROM
+          "{many_table}"
+      )
+    SELECT
+      "{single_table}".*,
+      COALESCE(
+        jsonb_agg(many_cte) FILTER (WHERE many_cte.id IS NOT NULL),
+        '[]'::jsonb
+      ) AS "{many_alias}"
+    FROM
+      "{single_table}"
+      LEFT JOIN many_cte ON "{single_table}"."id" = many_cte."{many_fk}"
+    WHERE
+      "{single_table}"."{single_pk}" = $1::{id_type}
+    GROUP BY
+      "{single_table}"."id"
+    "#,
+        single_table = meta.single_table.to_string(),
+        many_table = meta.many_table.to_string(),
+        many_fk = meta.many_fk.to_string(),
+        single_pk = meta.single_pk.to_string(),
+        many_alias = meta.agg_alias.to_string(),
+        id_type = id_type
     );
 
-    let final_agg_expr = Func::coalesce([
-        filtered_expression.into(),      // The expression to check.
-        Expr::val("'[]'::jsonb").into(), // The default value if the first is NULL.
-    ]);
+    // join query and expression
+    print!("SQL RAW DEBUG");
+    print!("{raw_sql}");
 
-    // --- PART C: Construct the final SELECT query ---
-    let mut query = Query::select();
-
-    query
-        .column((meta.single_table, Asterisk))
-        .expr_as(final_agg_expr, meta.agg_alias) // Use the final coalesce function
-        .from(meta.single_table)
-        .left_join(
-            meta.many_table,
-            Expr::col((meta.single_table, meta.single_pk)).equals((meta.many_table, meta.many_fk)),
-        )
-        .and_where(Expr::col((meta.single_table, meta.single_pk)).eq(id.clone()))
-        .group_by_col((meta.single_table, meta.single_pk));
-
-    let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
-    let sqlx_query = sqlx::query_as_with::<_, T, _>(&sql, values);
+    let sqlx_query = sqlx::query_as::<_, T>(&raw_sql).bind(id.to_string());
 
     let result = dbx.fetch_optional(sqlx_query).await?;
     Ok(result)
@@ -157,9 +158,9 @@ mod tests {
 
         let res: AccountWithCredentials = get_joined(&ctx, &dbx, &ctx.user_id(), &meta).await?;
 
-        let creds = res.credentials;
+        // let creds = res.credentials;
 
-        println!("{creds:?}");
+        println!("{res:?}");
 
         Ok(())
     }

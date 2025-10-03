@@ -6,6 +6,7 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::store::schema::id::DbId;
 use crate::store::utils::time_to_sea_value;
 
 #[derive(Iden, Copy, Clone)]
@@ -18,12 +19,15 @@ pub enum AuditIden {
 
 #[derive(Debug, FromRow, Deserialize)]
 pub struct AuditFields {
-    pub created_by: Uuid,
+    pub created_by: DbId,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
-    pub updated_by: Option<Uuid>,
+    pub updated_by: Option<DbId>,
+    #[serde(with = "time::serde::rfc3339::option")]
     pub updated_at: Option<OffsetDateTime>,
 
-    #[sqlx(json, rename = "audit")]
+    #[serde(rename = "audit")]
+    #[sqlx(json)]
     pub meta: AuditMeta,
 }
 

@@ -1,3 +1,4 @@
+use crate::store::schema::id::DbId;
 use crate::store::traits::meta::HasId;
 use ironauth_macros::HasId;
 use modql::field::Fields;
@@ -24,7 +25,7 @@ pub enum PermissionIden {
 /// Maps to the `permission` SQL table.
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct PermissionRow {
-    pub id: Uuid,
+    pub id: DbId,
     pub namespace_id: Uuid,
 
     // Permission identity

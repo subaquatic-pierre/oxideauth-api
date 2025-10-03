@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Attribute, Data, DeriveInput, Fields, Lit, Meta, Variant};
+use syn::{parse_macro_input, Data, DeriveInput, Fields, Lit, Meta, Variant};
 
 #[proc_macro_derive(HasId)]
 pub fn has_id_derive(input: TokenStream) -> TokenStream {

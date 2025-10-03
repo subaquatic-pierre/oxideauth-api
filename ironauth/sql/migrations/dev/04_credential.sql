@@ -50,27 +50,24 @@ CREATE TABLE IF NOT EXISTS
 -- =========================
 -- Password lookup:
 -- Enforce uniqueness of one active password credential per namespace/email.
-CREATE INDEX IF NOT EXISTS cred_password_lookup_idx ON credential (namespace_id, lower(email))
-WHERE
-  kind = 'password'
-  AND status = 'active'
-  AND email IS NOT NULL;
-
-CREATE UNIQUE INDEX cred_pw_unique_ns_email ON credential (namespace_id, lower(email))
-WHERE
-  kind = 'password'
-  AND status = 'active'
-  AND email IS NOT NULL;
-
+-- CREATE INDEX IF NOT EXISTS cred_password_lookup_idx ON credential (namespace_id, lower(email))
+-- WHERE
+--   kind = 'password'
+--   AND status = 'active'
+--   AND email IS NOT NULL;
+-- CREATE UNIQUE INDEX cred_pw_unique_ns_email ON credential (namespace_id, lower(email))
+-- WHERE
+--   kind = 'password'
+--   AND status = 'active'
+--   AND email IS NOT NULL;
 -- OAuth/SSO lookup:
 -- Uniqueness enforced by provider + provider_id per namespace.
-CREATE INDEX IF NOT EXISTS cred_oauth_lookup_idx ON credential (namespace_id, provider, provider_id)
-WHERE
-  kind IN ('oauth', 'sso')
-  AND status = 'active'
-  AND provider_id IS NOT NULL;
-
-CREATE UNIQUE INDEX cred_oauth_unique_ns ON credential (namespace_id, provider, provider_id)
-WHERE
-  kind IN ('oauth', 'sso')
-  AND provider_id IS NOT NULL;
+-- CREATE UNIQUE INDEX IF NOT EXISTS cred_oauth_lookup_idx ON credential (namespace_id, provider, provider_id)
+-- WHERE
+--   kind IN ('oauth', 'sso')
+--   AND status = 'active'
+--   AND provider_id IS NOT NULL;
+-- CREATE UNIQUE INDEX cred_oauth_unique_ns ON credential (namespace_id, provider, provider_id)
+-- WHERE
+--   kind IN ('oauth', 'sso')
+--   AND provider_id IS NOT NULL;

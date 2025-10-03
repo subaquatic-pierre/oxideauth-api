@@ -7,6 +7,7 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::store::schema::id::DbId;
 use crate::store::traits::meta::HasId;
 use ironauth_macros::HasId;
 
@@ -25,7 +26,7 @@ pub enum RoleIden {
 /// Maps to the `role` SQL table.
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct RoleRow {
-    pub id: Uuid,
+    pub id: DbId,
     pub namespace_id: Uuid,
 
     // Role identity

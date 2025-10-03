@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::{AuditFields, AuditMeta};
+use crate::store::schema::id::DbId;
 use crate::store::traits::meta::HasId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
@@ -24,7 +25,7 @@ pub enum NamespaceIden {
 /// Maps to the `namespace` SQL table.
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct NamespaceRow {
-    pub id: Uuid,
+    pub id: DbId,
 
     // Identity
     pub name: String,

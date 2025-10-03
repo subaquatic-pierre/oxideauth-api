@@ -7,6 +7,7 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::store::schema::id::DbId;
 use crate::store::traits::meta::HasId;
 use ironauth_macros::HasId;
 
@@ -25,7 +26,7 @@ pub enum ProjectIden {
 /// Maps to the `project` SQL table.
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct ProjectRow {
-    pub id: Uuid,
+    pub id: DbId,
     pub namespace_id: Uuid,
 
     // Project identity

@@ -12,11 +12,35 @@ use uuid::Uuid;
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::AuditFields;
 
-use crate::store::schema::credential::CredentialRow;
+use crate::store::schema::credential::{
+    CredentialKind, CredentialProvider, CredentialRow, CredentialStatus,
+};
 use crate::store::schema::id::DbId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 use crate::store::traits::meta::HasId;
+
+#[derive(FromRow, Debug, Deserialize, HasId)]
+pub struct CRow {
+    pub id: DbId,
+
+    pub account_id: DbId,
+    pub namespace_id: DbId,
+    pub kind: CredentialKind,
+    pub provider: CredentialProvider,
+    pub status: CredentialStatus,
+    pub provider_id: Option<String>,
+    pub email: Option<String>,
+    pub secret: Option<String>,
+    pub last_used_at: Option<OffsetDateTime>,
+    pub tags: Vec<String>,
+    pub created_by: DbId,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    pub updated_by: Option<DbId>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub updated_at: Option<OffsetDateTime>,
+}
 
 // The struct to hold the combined result
 #[derive(FromRow, Debug, Deserialize, HasId)]
@@ -24,9 +48,8 @@ pub struct AccountWithCredentials {
     pub id: DbId,
     #[sqlx(flatten)]
     pub account: AccountRow,
-
     #[sqlx(json)]
-    pub credentials: Vec<CredentialRow>,
+    pub credentials: Vec<CRow>,
 }
 
 #[derive(Iden, Copy, Clone)]
