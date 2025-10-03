@@ -5,7 +5,7 @@ use crate::store::{
     ctx::StoreCtx,
     dbx::Dbx,
     error::{Result, StoreError},
-    schema::meta::GetJoinedQueryMeta,
+    queries::meta::GetJoinedQueryMeta,
     traits::{
         join::JoinOneToManyStore,
         meta::{HasId, StoreId, StoreRow, TableIden},

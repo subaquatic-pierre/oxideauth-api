@@ -4,7 +4,6 @@ pub mod credential;
 pub mod hash;
 pub mod id;
 pub mod membership;
-pub mod meta;
 pub mod namespace;
 pub mod permission;
 pub mod project;
