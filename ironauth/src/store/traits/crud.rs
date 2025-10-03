@@ -12,13 +12,13 @@ use uuid::Uuid;
 
 use crate::store::{
     error::Result,
+    queries::meta::{ListQueryMeta, MutateQueryMeta, ReadQueryMeta},
     queries::{
         batch::{create_many, delete_many, update_many},
         count::count,
         crud::{delete, delete_opt, get_opt, list, update, update_opt},
         first::{self, first, first_opt},
     },
-    schema::meta::{ListQueryMeta, MutateQueryMeta, ReadQueryMeta},
     traits::meta::{MutableMeta, ReadableMeta, Store, StoreRow},
 };
 use async_trait::async_trait;

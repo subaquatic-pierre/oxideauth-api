@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::store::dbx::Dbx;
 use crate::store::error::{Result, StoreError};
-use crate::store::schema::meta::{ListQueryMeta, MutateQueryMeta, ReadQueryMeta};
+use crate::store::queries::meta::{ListQueryMeta, MutateQueryMeta, ReadQueryMeta};
 use crate::store::traits::meta::{Store, StoreId, StoreRow, TableIden};
 use crate::store::utils::prepare_audit_fields;
 use crate::store::utils::ListOptionsValidator;

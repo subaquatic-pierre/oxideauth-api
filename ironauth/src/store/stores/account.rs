@@ -8,10 +8,8 @@ use uuid::Uuid;
 
 use crate::store::{
     dbx::Dbx,
-    schema::{
-        account::{AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountRow},
-        meta::{MutateQueryMeta, ReadQueryMeta},
-    },
+    queries::meta::{MutateQueryMeta, ReadQueryMeta},
+    schema::account::{AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountRow},
     traits::{
         crud::{
             Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,

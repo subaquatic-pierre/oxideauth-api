@@ -2,12 +2,9 @@ use std::sync::Arc;
 
 use crate::store::{
     dbx::Dbx,
-    schema::{
-        credential::{
-            CredentialFilter, CredentialForCreate, CredentialForUpdate, CredentialIden,
-            CredentialRow,
-        },
-        meta::{MutateQueryMeta, ReadQueryMeta},
+    queries::meta::{MutateQueryMeta, ReadQueryMeta},
+    schema::credential::{
+        CredentialFilter, CredentialForCreate, CredentialForUpdate, CredentialIden, CredentialRow,
     },
     traits::{
         crud::{

@@ -2,11 +2,9 @@ use std::sync::Arc;
 
 use crate::store::{
     dbx::Dbx,
-    schema::{
-        meta::{MutateQueryMeta, ReadQueryMeta},
-        token_blacklist::{
-            TokenBlacklistFilter, TokenBlacklistForCreate, TokenBlacklistIden, TokenBlacklistRow,
-        },
+    queries::meta::{MutateQueryMeta, ReadQueryMeta},
+    schema::token_blacklist::{
+        TokenBlacklistFilter, TokenBlacklistForCreate, TokenBlacklistIden, TokenBlacklistRow,
     },
     traits::{
         crud::{

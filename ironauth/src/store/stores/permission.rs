@@ -2,12 +2,9 @@ use std::sync::Arc;
 
 use crate::store::{
     dbx::Dbx,
-    schema::{
-        meta::{MutateQueryMeta, ReadQueryMeta},
-        permission::{
-            PermissionFilter, PermissionForCreate, PermissionForUpdate, PermissionIden,
-            PermissionRow,
-        },
+    queries::meta::{MutateQueryMeta, ReadQueryMeta},
+    schema::permission::{
+        PermissionFilter, PermissionForCreate, PermissionForUpdate, PermissionIden, PermissionRow,
     },
     traits::{
         crud::{

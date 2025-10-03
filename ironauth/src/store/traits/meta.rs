@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::store::{
     error::Result,
-    schema::meta::{MutateQueryMeta, ReadQueryMeta},
+    queries::meta::{MutateQueryMeta, ReadQueryMeta},
     traits::crud::Creatable,
 };
 use async_trait::async_trait;

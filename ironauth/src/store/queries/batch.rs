@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::store::dbx::Dbx;
 use crate::store::error::{Result, StoreError};
-use crate::store::schema::meta::MutateQueryMeta;
+use crate::store::queries::meta::MutateQueryMeta;
 use crate::store::traits::meta::{Store, StoreId, StoreRow, TableIden};
 use crate::store::utils::ListOptionsValidator;
 use crate::store::utils::{pg_type_of, prepare_audit_fields, push_sq_value};
@@ -158,13 +158,15 @@ mod tests {
         dev::init::init_test,
         store::{
             error::Result,
-            queries::crud::{create, list},
+            queries::{
+                crud::{create, list},
+                meta::{MutateQueryMeta, ReadQueryMeta},
+            },
             schema::{
                 account::{
                     AccountFilter, AccountForCreate, AccountForUpdate, AccountMeta, AccountRow,
                 },
                 id::DbId,
-                meta::{MutateQueryMeta, ReadQueryMeta},
             },
             stores::account::AccountStore,
             traits::{

@@ -8,7 +8,7 @@ use sqlx::{query_as_with, query_scalar_with, query_with, Value};
 
 use crate::store::dbx::Dbx;
 use crate::store::error::{Result, StoreError};
-use crate::store::schema::meta::ReadQueryMeta;
+use crate::store::queries::meta::ReadQueryMeta;
 use crate::store::traits::meta::TableIden;
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 use crate::store::{traits::meta::Store, utils::ListOptionsValidator};
