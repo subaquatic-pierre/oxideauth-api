@@ -12,27 +12,31 @@ use uuid::Uuid;
 use crate::store::error::{Result, StoreError};
 use crate::store::schema::audit::AuditFields;
 
+use crate::store::schema::credential::CredentialRow;
 use crate::store::schema::id::DbId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 use crate::store::traits::meta::HasId;
 
 // The struct to hold the combined result
-// #[derive(FromRow, Debug)]
-// pub struct AccountWithCredentials {
-//     #[sqlx(flatten)]
-//     pub account: AccountRow,
+#[derive(FromRow, Debug, Deserialize, HasId)]
+pub struct AccountWithCredentials {
+    pub id: DbId,
+    #[sqlx(flatten)]
+    pub account: AccountRow,
 
-//     #[sqlx(json)]
-//     // This field name MUST match MANY_ALIAS below
-//     pub credentials: Vec<CredentialRow>,
-// }
+    #[sqlx(json)]
+    pub credentials: Vec<CredentialRow>,
+}
 
 #[derive(Iden, Copy, Clone)]
 pub enum AccountIden {
     #[iden = "account"]
     Table, // TABLE_NAME
     Id, // TABLE_PK
+    AccountId,
+    Credential,
+    Credentials,
 }
 
 // --- Row (DB-facing) ---

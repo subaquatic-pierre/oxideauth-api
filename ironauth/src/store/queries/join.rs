@@ -1,15 +1,24 @@
-use sea_query::Iden;
+use sea_query::{
+    Alias, Asterisk, Expr, Func, Iden, JoinType, PostgresQueryBuilder, Query, SelectStatement,
+    SimpleExpr,
+};
+use sea_query_binder::SqlxBinder;
+use serde_json::json;
 use sqlx::{postgres::PgRow, FromRow};
 
 use crate::store::{
     ctx::StoreCtx,
     dbx::Dbx,
     error::{Result, StoreError},
-    queries::meta::GetJoinedQueryMeta,
+    queries::{
+        count::{count, count_many},
+        meta::{CountManyQueryMeta, GetJoinedQueryMeta, ReadQueryMeta},
+    },
     traits::{
         join::JoinOneToManyStore,
         meta::{HasId, StoreId, StoreRow, TableIden},
     },
+    utils::LIST_LIMIT_MAX,
 };
 
 pub async fn get_joined_opt<T: StoreRow, I: TableIden>(
@@ -18,7 +27,60 @@ pub async fn get_joined_opt<T: StoreRow, I: TableIden>(
     id: &impl StoreId,
     meta: &GetJoinedQueryMeta<I>,
 ) -> Result<Option<T>> {
-    todo!()
+    // 1) Guard: count rows on the many side via its FK -> single PK
+    let count_meta = CountManyQueryMeta {
+        table: meta.many_table,
+        fk: meta.many_fk, // FIX: use many_fk (foreign key on the many table)
+    };
+    let count = count_many(ctx, dbx, id, &count_meta).await?;
+    if count > LIST_LIMIT_MAX {
+        return Err(StoreError::ListLimitExceeded {
+            max: LIST_LIMIT_MAX,
+            actual: count,
+        });
+    }
+
+    // Step 1: Define the aggregate function call itself.
+    let agg_function = Func::cust(Alias::new("jsonb_agg"))
+        .arg(Func::cust(Alias::new("to_jsonb")).arg(Expr::col(meta.many_table)));
+
+    // Step 2: Define the expression for the FILTER's WHERE clause.
+    let filter_condition = Expr::col((meta.many_table, meta.many_pk)).is_not_null();
+
+    let filtered_expression = Expr::cust_with_exprs(
+        "? FILTER (WHERE ?)",
+        [
+            // The first `?` is the aggregate function call.
+            SimpleExpr::FunctionCall(agg_function),
+            // The second `?` is the condition for the filter.
+            filter_condition.into(),
+        ],
+    );
+
+    let final_agg_expr = Func::coalesce([
+        filtered_expression.into(),      // The expression to check.
+        Expr::val("'[]'::jsonb").into(), // The default value if the first is NULL.
+    ]);
+
+    // --- PART C: Construct the final SELECT query ---
+    let mut query = Query::select();
+
+    query
+        .column((meta.single_table, Asterisk))
+        .expr_as(final_agg_expr, meta.agg_alias) // Use the final coalesce function
+        .from(meta.single_table)
+        .left_join(
+            meta.many_table,
+            Expr::col((meta.single_table, meta.single_pk)).equals((meta.many_table, meta.many_fk)),
+        )
+        .and_where(Expr::col((meta.single_table, meta.single_pk)).eq(id.clone()))
+        .group_by_col((meta.single_table, meta.single_pk));
+
+    let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
+    let sqlx_query = sqlx::query_as_with::<_, T, _>(&sql, values);
+
+    let result = dbx.fetch_optional(sqlx_query).await?;
+    Ok(result)
 }
 
 pub async fn get_joined<T: StoreRow, I: TableIden>(
@@ -30,93 +92,75 @@ pub async fn get_joined<T: StoreRow, I: TableIden>(
     match get_joined_opt(ctx, dbx, id, meta).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
-            entity: meta.table.to_string(),
+            entity: meta.single_table.to_string(),
             id: id.to_string(),
         }),
     }
 }
 
-//     /// Generic method to build the JSON_AGG query.
-// fn get_joined(&self, id: Self::IdKind) -> SelectStatement {
-// let meta = CountQueryMeta {
-//     table: meta.many_table
-// }
-// --- STEP 1: Perform the count check first ---
-// let mut count_query = Query::select();
-// count_query
-//     .expr(Expr::col(Asterisk).count())
-//     .from(Self::MANY_TABLE)
-//     .and_where(Expr::col(Self::MANY_FK_COL).eq(id.clone())); // clone might be needed
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use serde_json::{from_value, json};
+    use serial_test::serial;
 
-// let (sql, values) = count_query.build_sqlx(PostgresQueryBuilder);
-// let count: (i64,) = sqlx::query_as_with(&sql, values)
-//     .fetch_one(self.db().pool())
-//     .await?;
-// let count = count.0;
+    use crate::{
+        dev::init::init_test,
+        store::{
+            ctx::StoreCtx,
+            queries::crud::create,
+            schema::{
+                account::{
+                    AccountFilter, AccountForCreate, AccountIden, AccountRow,
+                    AccountWithCredentials,
+                },
+                credential::{CredentialForCreate, CredentialIden},
+            },
+            stores::{account::AccountStore, credential::CredentialStore},
+            traits::{
+                crud::{Creatable, Readable},
+                meta::ReadableMeta,
+            },
+        },
+    };
 
-// // --- STEP 2: Check against the limit ---
-// if count > Self::JOIN_LIMIT {
-//     return Err(StoreError::LimitExceeded {
-//         entity: std::any::type_name::<Self::ManyRow>(),
-//         count,
-//         limit: Self::JOIN_LIMIT,
-//     });
-// }
-//     // Custom Iden for the JSON_AGG function
-//     #[derive(Iden)]
-//     struct JsonAgg;
+    use super::*;
 
-//     // The two arguments for COALESCE
-//     let json_agg_expr = Expr::expr(
-//         Func::cust(JsonAgg).arg(Expr::col((Self::MANY_TABLE, Asterisk)))
-//     )
-//     .filter(Expr::col((Self::MANY_TABLE, Self::MANY_FK_COL)).is_not_null());
+    #[tokio::test]
+    #[serial]
+    async fn test_get_joined() -> Result<()> {
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let store = CredentialStore::new(dbx.clone());
+        let ctx = StoreCtx::new_root();
 
-//     let default_value = Expr::val("[]"); // The literal '[]'
+        let c = |i| {
+            let mut cred = CredentialForCreate::default();
+            cred.account_id = ctx.user_id();
+            cred.namespace_id = ctx.namespace_id();
+            cred
+        };
 
-//     let mut query = Query::select();
-//     query
-//         .from(Self::TABLE_NAME)
-//         .expr(Expr::col((Self::TABLE_NAME, Asterisk)))
-//         // Use expr_as to create `COALESCE(...) AS alias_name`
-//         .expr_as(
-//             Expr::func(Func::coalesce([json_agg_expr, default_value])),
-//             Alias::new(Self::ALIAS_NAME),
-//         )
-//         .left_join(
-//             Self::MANY_TABLE,
-//             Expr::col((Self::TABLE_NAME, Self::TABLE_PK)).equals(
-//                 Self::MANY_TABLE,
-//                 Self::MANY_FK_COL,
-//             ),
-//         )
-//         .and_where(Expr::col((Self::TABLE_NAME, Self::TABLE_PK)).eq(id))
-//         .group_by_col((Self::TABLE_NAME, Self::TABLE_PK));
+        for i in 0..5 {
+            let cred = c(i);
+            store.create(&ctx, cred).await?;
+        }
 
-// let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
-//         let sqlx_query = sqlx::query_as_with::<_, Self::Joined, _>(&sql, values);
+        let meta = GetJoinedQueryMeta {
+            single_table: AccountIden::Table,
+            many_table: AccountIden::Credential,
+            single_pk: AccountIden::Id,
+            many_pk: AccountIden::Id,
+            many_fk: AccountIden::AccountId,
+            agg_alias: AccountIden::Credentials,
+        };
 
-//         let result = self.db().fetch_one(sqlx_query).await?;
-//         Ok(result)
-// }
+        let res: AccountWithCredentials = get_joined(&ctx, &dbx, &ctx.user_id(), &meta).await?;
 
-// Counts the number of related items for a given parent ID.
-// async fn count_many(&self, _ctx: &StoreCtx, id: Self::IdKind) -> Result<i64> {
-//     let mut query = Query::select();
+        let creds = res.credentials;
 
-//     // SELECT COUNT(*) FROM {many_table}
-//     query
-//         .expr(Func::count(Expr::col(Asterisk)))
-//         .from(Self::MANY_TABLE)
-//         .and_where(Expr::col(Self::MANY_FK_COL).eq(id)); // WHERE foreign_key = ?
+        println!("{creds:?}");
 
-//     let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
-
-//     // Here we can't use `try_get("count")` as easily without an alias,
-//     // so we fetch into a tuple, which is very efficient.
-//     let count: (i64,) = sqlx::query_as_with(&sql, values)
-//         .fetch_one(self.db().pool())
-//         .await?;
-
-//     Ok(count.0)
-// }
+        Ok(())
+    }
+}

@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, Fields};
+use syn::{parse_macro_input, Attribute, Data, DeriveInput, Fields, Lit, Meta, Variant};
 
 #[proc_macro_derive(HasId)]
 pub fn has_id_derive(input: TokenStream) -> TokenStream {
@@ -33,6 +33,113 @@ pub fn has_id_derive(input: TokenStream) -> TokenStream {
     let gen = quote! {
         impl HasId for #name {
             type Id = #id_type;
+        }
+    };
+
+    // Return the generated code as a TokenStream
+    gen.into()
+}
+
+#[proc_macro_derive(EnumTextType)]
+pub fn enum_text_type_derive(input: TokenStream) -> TokenStream {
+    // Parse the input tokens into a syntax tree
+    let ast = parse_macro_input!(input as DeriveInput);
+    // Get the name of the struct we're deriving for (e.g., "AccountRow")
+    let name = &ast.ident;
+
+    // Extract the enum variants from the AST
+    let variants = if let syn::Data::Enum(data) = ast.data {
+        data.variants
+    } else {
+        // This macro only works on enums, so we'll panic if it's not an enum.
+        unimplemented!("EnumTextType can only be used on enums");
+    };
+
+    // --- Logic to generate match arms for Display and FromStr ---
+
+    // A helper function to find the `#[serde(rename = "...")]` string
+    fn get_string_repr(variant: &Variant) -> String {
+        for attr in &variant.attrs {
+            if attr.path().is_ident("serde") {
+                if let Meta::List(meta_list) = &attr.meta {
+                    if let Ok(expr) = meta_list.parse_args::<syn::MetaNameValue>() {
+                        if expr.path.is_ident("rename") {
+                            if let syn::Expr::Lit(expr_lit) = expr.value {
+                                if let Lit::Str(lit_str) = expr_lit.lit {
+                                    return lit_str.value();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Default to the lowercase version of the variant name
+        variant.ident.to_string().to_lowercase()
+    }
+
+    // Create the match arms for the `Display` implementation
+    let display_arms = variants.iter().map(|variant| {
+        let variant_ident = &variant.ident;
+        let string_repr = get_string_repr(variant);
+        quote! { Self::#variant_ident => write!(f, #string_repr) }
+    });
+
+    // Create the match arms for the `FromStr` implementation
+    let from_str_arms = variants.iter().map(|variant| {
+        let variant_ident = &variant.ident;
+        let string_repr = get_string_repr(variant);
+        quote! { #string_repr => Ok(Self::#variant_ident) }
+    });
+
+    // Generate the implementation of the HasId trait
+    let gen = quote! {
+      // --- Display Implementation ---
+        impl std::fmt::Display for #name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    #(#display_arms),*
+                }
+            }
+        }
+
+        // This now adds the necessary trailing comma
+        impl std::str::FromStr for #name {
+            // Use a generic boxed error to avoid defining a new struct.
+            type Err = Box<dyn std::error::Error + Send + Sync + 'static>;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+               match s {
+                    #(#from_str_arms,)*
+
+                    // For the wildcard case, create the error from a formatted string.
+                    // The `.into()` at the end converts the String into the Box<dyn Error>.
+                    _ => Err(format!("Invalid variant `{}` for enum `{}`", s, stringify!(#name)).into()),
+                }
+            }
+        }
+
+            // --- DECODE (From database TEXT to Rust Enum) ---
+        impl<'r> sqlx::decode::Decode<'r, sqlx::Postgres> for #name {
+            fn decode(value: sqlx::postgres::PgValueRef<'r>) -> Result<Self, sqlx::error::BoxDynError> {
+                let value_str = <&str as sqlx::decode::Decode<sqlx::Postgres>>::decode(value)?;
+                Ok(#name::from_str(value_str)?)
+            }
+        }
+
+        // --- ENCODE (From Rust Enum to database TEXT) ---
+        impl<'q> sqlx::encode::Encode<'q, sqlx::Postgres> for #name {
+            fn encode_by_ref(&self, buf: &mut sqlx::postgres::PgArgumentBuffer) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+                let s = self.to_string();
+                <&str as sqlx::encode::Encode<sqlx::Postgres>>::encode(&s, buf)
+            }
+        }
+
+        impl sqlx::Type<sqlx::Postgres> for #name {
+            fn type_info() -> sqlx::postgres::PgTypeInfo {
+                // This tells sqlx that our `$ty` enum corresponds to the `TEXT` type in PostgreSQL.
+                sqlx::postgres::PgTypeInfo::with_name("TEXT")
+            }
         }
     };
 

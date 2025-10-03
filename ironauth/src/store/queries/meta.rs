@@ -23,12 +23,20 @@ pub struct ListQueryMeta<I: TableIden> {
 }
 
 pub struct GetJoinedQueryMeta<I: TableIden> {
-    pub table: I,
-    pub pk: I,
-    pub has_audit: bool,
+    pub single_table: I,
+    pub many_table: I,
+    pub single_pk: I,
+    pub many_pk: I,
+    pub many_fk: I,
+    pub agg_alias: I,
 }
 
 pub struct FirstQueryMeta<I: TableIden> {
     pub table: I,
     pub has_audit: bool,
+}
+
+pub struct CountManyQueryMeta<I: TableIden> {
+    pub table: I,
+    pub fk: I,
 }

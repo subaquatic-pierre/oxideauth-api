@@ -14,7 +14,7 @@ pub enum StoreError {
         entity: String,
         id: String,
     },
-    InvalidListOptions {
+    ListLimitExceeded {
         max: i64,
         actual: i64,
     },

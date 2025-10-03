@@ -404,7 +404,7 @@ mod tests {
         let err = list::<AccountRow, _, _>(&ctx, &dbx, filter, opts, &read_meta).await;
 
         // Assert
-        matches!(err, Err(StoreError::InvalidListOptions { .. }));
+        matches!(err, Err(StoreError::ListLimitExceeded { .. }));
 
         Ok(())
     }

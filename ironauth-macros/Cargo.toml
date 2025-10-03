@@ -9,3 +9,14 @@ proc-macro = true
 [dependencies]
 syn = { version = "2.0", features = ["full"] }
 quote = "1.0"
+
+sqlx = { version = "0.8.6", features = [
+    "runtime-tokio-rustls", # Tokio + rustls TLS
+    "postgres",             # Postgres driver
+    "uuid",                 # UUID (for id columns)
+    # "chrono",               # Date/Time support
+    "migrate",               # Enable sqlx::migrate!(),
+    "macros", 
+    "json",
+    "rust_decimal"
+] }

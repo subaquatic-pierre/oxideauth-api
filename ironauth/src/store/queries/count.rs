@@ -8,8 +8,8 @@ use sqlx::{query_as_with, query_scalar_with, query_with, Value};
 
 use crate::store::dbx::Dbx;
 use crate::store::error::{Result, StoreError};
-use crate::store::queries::meta::ReadQueryMeta;
-use crate::store::traits::meta::TableIden;
+use crate::store::queries::meta::{CountManyQueryMeta, ReadQueryMeta};
+use crate::store::traits::meta::{StoreId, TableIden};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 use crate::store::{traits::meta::Store, utils::ListOptionsValidator};
 
@@ -42,6 +42,32 @@ pub async fn count<F: Into<FilterGroups>, I: TableIden>(
     // Extract COUNT(*) as i64
     let cnt: i64 = row.try_get("count")?;
     Ok(cnt)
+}
+
+/// Counts the number of related items for a given parent ID.
+pub async fn count_many<I: TableIden>(
+    ctx: &StoreCtx,
+    dbx: &Dbx,
+    id: &impl StoreId,
+    meta: &CountManyQueryMeta<I>,
+) -> Result<i64> {
+    let mut query = Query::select();
+
+    // SELECT COUNT(*) FROM {many_table}
+    query
+        .expr(Func::count(Expr::col(Asterisk)))
+        .from(meta.table)
+        .and_where(Expr::col(meta.fk).eq(id.clone())); // WHERE foreign_key = ?
+
+    let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
+
+    // Here we can't use `try_get("count")` as easily without an alias,
+    // so we fetch into a tuple, which is very efficient.
+    let count: (i64,) = sqlx::query_as_with(&sql, values)
+        .fetch_one(dbx.db())
+        .await?;
+
+    Ok(count.0)
 }
 
 #[cfg(test)]

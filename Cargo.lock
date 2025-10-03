@@ -2915,6 +2915,7 @@ name = "ironauth-macros"
 version = "0.1.0"
 dependencies = [
  "quote",
+ "sqlx",
  "syn 2.0.106",
 ]
 

@@ -1,16 +1,18 @@
-use ironauth_macros::HasId;
+use std::str::FromStr;
+
+use ironauth_macros::{EnumTextType, HasId};
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
 use sea_query::{Iden, Nullable, Value as SeaValue};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as JsonValue};
 use sqlx::prelude::FromRow;
-use sqlx::Type;
+
 use strum_macros::{Display, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::store::error::{Result, StoreError};
+use crate::store::error::{Result as StoreResult, StoreError};
 use crate::store::schema::audit::{AuditFields, AuditMeta};
 use crate::store::schema::id::DbId;
 use crate::store::traits::meta::HasId;
@@ -31,11 +33,11 @@ pub struct CredentialRow {
 
     pub account_id: Uuid,
     pub namespace_id: Uuid,
-    #[sqlx(string)]
+    #[sqlx(transparent)]
     pub kind: CredentialKind,
-    #[sqlx(string)]
+    #[sqlx(transparent)]
     pub provider: CredentialProvider,
-    #[sqlx(string)]
+    #[sqlx(transparent)]
     pub status: CredentialStatus,
     pub provider_id: Option<String>,
     pub email: Option<String>,
@@ -50,9 +52,9 @@ pub struct CredentialRow {
     pub audit: AuditFields,
 }
 
-#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
+#[derive(Debug, Serialize, Deserialize, Clone, EnumTextType)]
 #[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
+// #[strum(serialize_all = "lowercase")]
 pub enum CredentialStatus {
     Active,
     Revoked,
@@ -72,9 +74,8 @@ impl Nullable for CredentialStatus {
     }
 }
 
-#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
+#[derive(Debug, Serialize, Deserialize, Clone, EnumTextType)]
 #[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
 pub enum CredentialProvider {
     Local,
     Google,
@@ -94,7 +95,7 @@ impl Nullable for CredentialProvider {
     }
 }
 
-#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
+#[derive(Debug, Serialize, Deserialize, Clone, EnumTextType)]
 pub enum CredentialKind {
     #[serde(rename = "password")]
     Password,
@@ -204,7 +205,7 @@ pub struct CredentialFilter {
 impl TryFrom<JsonValue> for CredentialFilter {
     type Error = StoreError;
 
-    fn try_from(value: JsonValue) -> Result<Self> {
+    fn try_from(value: JsonValue) -> StoreResult<Self> {
         let res = serde_json::from_value(value)?;
         Ok(res)
     }
