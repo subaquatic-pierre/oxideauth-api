@@ -1,6 +1,7 @@
+use modql::filter::{FilterGroups, ListOptions};
 use sea_query::{
-    Alias, Asterisk, CommonTableExpression, Expr, Func, Iden, JoinType, PostgresQueryBuilder,
-    Query, SelectStatement, SimpleExpr, Value,
+    Alias, Asterisk, CommonTableExpression, Condition, Expr, Func, Iden, JoinType,
+    PostgresQueryBuilder, Query, SelectStatement, SimpleExpr, Value,
 };
 use sea_query_binder::SqlxBinder;
 use serde_json::json;
@@ -12,13 +13,13 @@ use crate::store::{
     error::{Result, StoreError},
     queries::{
         count::{count, count_many},
-        meta::{CountManyQueryMeta, GetJoinedQueryMeta, ReadQueryMeta},
+        meta::{CountManyQueryMeta, GetJoinedQueryMeta, ListJoinedMeta, ReadQueryMeta},
     },
     traits::{
         join::JoinOneToManyStore,
         meta::{HasId, StoreId, StoreRow, TableIden},
     },
-    utils::{pg_type_of, LIST_LIMIT_MAX},
+    utils::{pg_type_of, ListOptionsValidator, LIST_LIMIT_MAX},
 };
 
 #[derive(Iden)]
@@ -104,12 +105,12 @@ pub async fn get_joined<T: StoreRow, I: TableIden>(
     }
 }
 
-pub async fn list_joined<T: StoreRow, I: TableIden>(
+pub async fn list_joined<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &Dbx,
-    meta: &GetJoinedQueryMeta<I>,
-    // filter: &AccountFilter,
-    // pagination: &Pagination,
+    filter: Option<F>,
+    opts: Option<ListOptions>,
+    meta: &ListJoinedMeta<I>,
 ) -> Result<Vec<T>> {
     // Define the query for the Common Table Expression (CTE)
     let cte_query = Query::select()
@@ -141,22 +142,22 @@ pub async fn list_joined<T: StoreRow, I: TableIden>(
             Expr::col((meta.single_table, meta.single_pk)).equals((ManyCte, meta.many_fk)),
         )
         .group_by_col((meta.single_table, meta.single_pk));
-    // You can add .order_by(), .limit(), .offset() here for pagination
 
-    // --- Dynamically add filtering and pagination ---
+    // TODO: ensure joined list row count does not exceed list limits
+    // apply filter to query
 
-    // Example: Add a dynamic WHERE clause
-    // if let Some(email_filter) = &filter.email {
-    //     query.and_where(Expr::col(AccountIden::Email).like(format!("%{}%", email_filter)));
-    // }
+    if let Some(filter) = filter {
+        let filters: FilterGroups = filter.into();
+        let cond: Condition = filters.try_into()?;
+        main_query.cond_where(cond);
+    }
 
-    // Example: Add pagination
-    // query.limit(pagination.limit).offset(pagination.offset);
+    // validate list options
+    let list_options = ListOptionsValidator::validate_list_opts(opts, meta.has_audit)?;
+    // add list options to query, there will always at least be maximum limit
+    list_options.apply_to_sea_query(&mut main_query);
 
-    // Example: Add ordering
-    // query.order_by((meta.single_table, AuditIden::CreatedAt), sea_query::Order::Desc);
-
-    // 5. Attach the WithClause to the main query
+    // Attach the WithClause to the main query
     let final_query = main_query.with(common_table_expr.into());
 
     let (sql, vals) = final_query.build_sqlx(PostgresQueryBuilder);
@@ -251,36 +252,63 @@ mod tests {
         let app = init_test().await;
         let dbx = app.sm.db().clone();
         let store = CredentialStore::new(dbx.clone());
+        let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
         let c = |i| {
+            let mut acc = AccountForCreate::default();
+            acc.email = format!("test{i}{i}@LIST_JOIN");
+            acc.description = Some("TEST DESCRIPTION".to_string());
+            acc
+        };
+
+        let mut acc = vec![];
+
+        let acc_count = 2;
+
+        for i in 0..acc_count {
+            let n = c(i);
+
+            acc.push(acc_store.create(&ctx, n).await?);
+        }
+
+        let c = |acc_id| {
             let mut cred = CredentialForCreate::default();
-            cred.account_id = ctx.user_id();
+            cred.account_id = acc_id;
             cred.namespace_id = ctx.namespace_id();
             cred
         };
 
-        for i in 0..5 {
-            let cred = c(i);
-            store.create(&ctx, cred).await?;
+        let cred_count = 3;
+
+        for ac in acc {
+            for i in 0..cred_count {
+                let cred = c(ac.id.into());
+                store.create(&ctx, cred).await?;
+            }
         }
 
-        let meta = GetJoinedQueryMeta {
+        let meta = ListJoinedMeta {
             single_table: AccountIden::Table,
             many_table: AccountIden::Credential,
             single_pk: AccountIden::Id,
             many_pk: AccountIden::Id,
             many_fk: AccountIden::AccountId,
             agg_alias: AccountIden::Credentials,
+            has_audit: true,
         };
 
-        let res: Vec<AccountWithCredentials> = list_joined(&ctx, &dbx, &meta).await?;
+        // let filter: AccountFilter = json!({"description":"TEST DESCRIPTION"}).try_into()?;
+        let filter: AccountFilter = json!({"email": { "$contains" : "LIST_JOIN"}}).try_into()?;
 
-        // let all_cred = res.cre
+        let res: Vec<AccountWithCredentials> =
+            list_joined::<_, AccountFilter, _>(&ctx, &dbx, Some(filter), None, &meta).await?;
 
-        // for acc in res {
-        //     println!("{:#?}", acc.credentials);
-        // }
+        let mut total_count = 0;
+        res.iter()
+            .for_each(|el| total_count += el.credentials.len());
+
+        assert_eq!(total_count, acc_count * cred_count);
 
         Ok(())
     }

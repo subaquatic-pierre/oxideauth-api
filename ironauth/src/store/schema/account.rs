@@ -138,6 +138,8 @@ impl From<AccountMeta> for SeaValue {
 pub struct AccountFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<String>,
+    // TODO: server limitation on derive(FilterNodes), if filter is used on any join queries need to define base table_name here on the rel attribute. if base table is not defined then could cause ambiguous WHERE query on JOIN statement.
+    #[modql(rel = "account")]
     pub email: Option<OpValsString>,
     pub name: Option<OpValsString>,
     pub description: Option<OpValsString>,

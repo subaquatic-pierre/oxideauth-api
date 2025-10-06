@@ -31,6 +31,16 @@ pub struct GetJoinedQueryMeta<I: TableIden> {
     pub agg_alias: I,
 }
 
+pub struct ListJoinedMeta<I: TableIden> {
+    pub single_table: I,
+    pub many_table: I,
+    pub single_pk: I,
+    pub many_pk: I,
+    pub many_fk: I,
+    pub agg_alias: I,
+    pub has_audit: bool,
+}
+
 pub struct FirstQueryMeta<I: TableIden> {
     pub table: I,
     pub has_audit: bool,

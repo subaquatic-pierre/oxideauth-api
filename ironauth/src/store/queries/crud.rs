@@ -109,8 +109,6 @@ pub async fn list<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     // build sql
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
 
-    println!("LIST SQL: {sql}, VALS: {vals:?}");
-
     // build sqlx query
     let sqlx = query_as_with::<_, T, _>(&sql, vals);
 
