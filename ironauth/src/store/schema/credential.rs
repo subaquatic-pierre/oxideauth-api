@@ -169,16 +169,16 @@ impl From<CredentialMeta> for SeaValue {
 #[derive(FilterNodes, Deserialize, Default, Debug)]
 pub struct CredentialFilter {
     #[modql(cast_as = "uuid")]
-    pub id: Option<String>,
+    pub id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
-    pub account_id: Option<String>,
+    pub account_id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<String>,
-    pub kind: Option<String>,
-    pub provider: Option<String>,
+    pub namespace_id: Option<OpValsString>,
+    pub kind: Option<OpValsString>,
+    pub provider: Option<OpValsString>,
     pub provider_id: Option<OpValsString>,
     pub email: Option<OpValsString>,
-    pub status: Option<String>,
+    pub status: Option<OpValsString>,
 
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub last_used_at: Option<OpValsValue>,
@@ -188,11 +188,11 @@ pub struct CredentialFilter {
 
     // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]
-    pub created_by: Option<String>,
+    pub created_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub created_at: Option<OpValsValue>,
     #[modql(cast_as = "uuid")]
-    pub updated_by: Option<String>,
+    pub updated_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
 }

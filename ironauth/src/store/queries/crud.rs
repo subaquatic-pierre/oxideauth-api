@@ -92,7 +92,7 @@ pub async fn list<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     let mut query = Query::select();
 
     // FROM {DB::TABLE_NAME} SELECT *
-    query.from(meta.table).column(Asterisk);
+    query.column(Asterisk).from(meta.table);
 
     // apply filter to query
     if let Some(filter) = filter {
@@ -108,6 +108,8 @@ pub async fn list<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
 
     // build sql
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
+
+    println!("LIST SQL: {sql}, VALS: {vals:?}");
 
     // build sqlx query
     let sqlx = query_as_with::<_, T, _>(&sql, vals);
