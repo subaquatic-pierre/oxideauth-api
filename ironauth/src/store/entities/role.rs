@@ -20,6 +20,7 @@ pub enum RoleIden {
     #[iden = "role"]
     Table, // TABLE_NAME
     Id, // TABLE_PK
+    Permissions,
 }
 
 // --- Row (DB-facing) ---
@@ -39,6 +40,35 @@ pub struct RoleRow {
 
     #[sqlx(flatten)]
     pub audit: AuditFields,
+}
+
+// The struct to hold the combined result
+#[derive(FromRow, Debug, Deserialize, HasId)]
+pub struct RoleWithPermissions {
+    pub id: DbId,
+    #[sqlx(flatten)]
+    pub role: RoleRow,
+    #[sqlx(json)]
+    pub permissions: Vec<JoinedPermissionOnRole>,
+}
+
+#[derive(FromRow, Debug, Deserialize, HasId)]
+pub struct JoinedPermissionOnRole {
+    pub id: DbId,
+    pub namespace_id: Uuid,
+
+    // Permission identity
+    pub name: String,
+    pub code: Option<String>,
+    pub description: Option<String>,
+
+    pub tags: Vec<String>,
+    pub created_by: DbId,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    pub updated_by: Option<DbId>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub updated_at: Option<OffsetDateTime>,
 }
 
 // --- Create (store input) ---
@@ -81,12 +111,13 @@ impl From<RoleMeta> for SeaValue {
 }
 
 /// Filtering options for `role` queries.
-#[derive(FilterNodes, Deserialize, Default, Debug)]
+#[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
 pub struct RoleFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<String>,
     #[modql(cast_as = "uuid")]
     pub namespace_id: Option<String>,
+    #[modql(rel = "role")]
     pub name: Option<OpValsString>,
     pub description: Option<OpValsString>,
 

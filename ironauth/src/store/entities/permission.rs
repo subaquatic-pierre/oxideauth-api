@@ -83,12 +83,13 @@ impl From<PermissionMeta> for SeaValue {
 }
 
 /// Filtering options for `permission` queries.
-#[derive(FilterNodes, Deserialize, Default, Debug)]
+#[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
 pub struct PermissionFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<String>,
     #[modql(cast_as = "uuid")]
     pub namespace_id: Option<String>,
+    #[modql(rel = "permission")]
     pub name: Option<OpValsString>,
     pub code: Option<OpValsString>,
     pub description: Option<OpValsString>,

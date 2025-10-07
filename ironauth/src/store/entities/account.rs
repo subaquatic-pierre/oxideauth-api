@@ -20,38 +20,6 @@ use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 use crate::store::traits::meta::HasId;
 
-#[derive(FromRow, Debug, Deserialize, HasId)]
-pub struct CRow {
-    pub id: DbId,
-
-    pub account_id: DbId,
-    pub namespace_id: DbId,
-    pub kind: CredentialKind,
-    pub provider: CredentialProvider,
-    pub status: CredentialStatus,
-    pub provider_id: Option<String>,
-    pub email: Option<String>,
-    pub secret: Option<String>,
-    pub last_used_at: Option<OffsetDateTime>,
-    pub tags: Vec<String>,
-    pub created_by: DbId,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_at: OffsetDateTime,
-    pub updated_by: Option<DbId>,
-    #[serde(with = "time::serde::rfc3339::option")]
-    pub updated_at: Option<OffsetDateTime>,
-}
-
-// The struct to hold the combined result
-#[derive(FromRow, Debug, Deserialize, HasId)]
-pub struct AccountWithCredentials {
-    pub id: DbId,
-    #[sqlx(flatten)]
-    pub account: AccountRow,
-    #[sqlx(json)]
-    pub credentials: Vec<CRow>,
-}
-
 #[derive(Iden, Copy, Clone)]
 pub enum AccountIden {
     #[iden = "account"]
@@ -83,6 +51,38 @@ pub struct AccountRow {
 
     #[sqlx(flatten)]
     pub audit: AuditFields,
+}
+
+// The struct to hold the combined result
+#[derive(FromRow, Debug, Deserialize, HasId)]
+pub struct AccountWithCredentials {
+    pub id: DbId,
+    #[sqlx(flatten)]
+    pub account: AccountRow,
+    #[sqlx(json)]
+    pub credentials: Vec<JoinedCredentialOnAccount>,
+}
+
+#[derive(FromRow, Debug, Deserialize, HasId)]
+pub struct JoinedCredentialOnAccount {
+    pub id: DbId,
+
+    pub account_id: DbId,
+    pub namespace_id: DbId,
+    pub kind: CredentialKind,
+    pub provider: CredentialProvider,
+    pub status: CredentialStatus,
+    pub provider_id: Option<String>,
+    pub email: Option<String>,
+    pub secret: Option<String>,
+    pub last_used_at: Option<OffsetDateTime>,
+    pub tags: Vec<String>,
+    pub created_by: DbId,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    pub updated_by: Option<DbId>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub updated_at: Option<OffsetDateTime>,
 }
 
 // --- Create (store input) ---
