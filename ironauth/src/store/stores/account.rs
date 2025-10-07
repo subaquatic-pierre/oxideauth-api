@@ -12,10 +12,10 @@ use crate::store::{
     schema::account::{AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountRow},
     traits::{
         crud::{
-            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
-            Readable, Updatable, UpdatableMany,
+            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
+            UpdateMany,
         },
-        meta::{MutableMeta, ReadableMeta, Store},
+        meta::{MutateStoreMeta, ReadStoreMeta, Store},
     },
 };
 /// The struct for our Account store, holding the database connection wrapper.
@@ -43,7 +43,7 @@ impl Store for AccountStore {
     }
 }
 
-impl ReadableMeta for AccountStore {
+impl ReadStoreMeta for AccountStore {
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: AccountIden::Table,
@@ -53,7 +53,7 @@ impl ReadableMeta for AccountStore {
     }
 }
 
-impl MutableMeta for AccountStore {
+impl MutateStoreMeta for AccountStore {
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: AccountIden::Table,
@@ -72,33 +72,33 @@ impl MutableMeta for AccountStore {
 // We only need to specify the associated types for params (Create, Update, Filter).
 // The actual method logic is handled by the default implementations in your traits.
 
-impl Creatable for AccountStore {
+impl Create for AccountStore {
     type CreateStoreParams = AccountForCreate;
 }
 
-impl Readable for AccountStore {}
+impl Get for AccountStore {}
 
-impl Listable for AccountStore {
+impl List for AccountStore {
     type FilterStoreParams = AccountFilter;
 }
 
-impl Updatable for AccountStore {
+impl Update for AccountStore {
     type UpdateStoreParams = AccountForUpdate;
 }
 
-impl Deletable for AccountStore {}
+impl Delete for AccountStore {}
 
-impl CreatableMany for AccountStore {}
+impl CreateMany for AccountStore {}
 
-impl UpdatableMany for AccountStore {
+impl UpdateMany for AccountStore {
     type UpdateStoreParams = AccountForUpdate;
 }
 
-impl DeletableMany for AccountStore {}
+impl DeleteMany for AccountStore {}
 
-impl Firstable for AccountStore {}
+impl GetFirst for AccountStore {}
 
-impl Countable for AccountStore {}
+impl GetCount for AccountStore {}
 
 // -----------------------------------------------------------------------------
 // endregion: --- Functional Trait Implementations

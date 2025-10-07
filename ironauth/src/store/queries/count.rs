@@ -84,8 +84,8 @@ mod tests {
             schema::account::{AccountFilter, AccountForCreate, AccountRow},
             stores::account::AccountStore,
             traits::{
-                crud::{Creatable, Readable},
-                meta::ReadableMeta,
+                crud::{Create, Get},
+                meta::ReadStoreMeta,
             },
         },
     };

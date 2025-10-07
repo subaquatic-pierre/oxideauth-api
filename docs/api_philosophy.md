@@ -74,7 +74,7 @@ Additional traits grant specific abilities (CRUD, Joins, etc.) to a store.
 
 ```rust
 // Example: grants the `.create()` method
-pub trait Creatable where Self: Store {
+pub trait Create where Self: Store {
     type CreateStoreParams: HasSeaFields + Send;
     async fn create(&self, ctx: &StoreCtx, data: Self::CreateStoreParams) -> Result<Self::Row>;
 }

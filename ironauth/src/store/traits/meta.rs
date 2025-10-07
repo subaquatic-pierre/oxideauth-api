@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::store::{
     error::Result,
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::crud::Creatable,
+    traits::crud::Create,
 };
 use async_trait::async_trait;
 
@@ -52,11 +52,11 @@ pub trait Store: Sized + Send + Sync {
 }
 
 /// Trait for stores that support read operations.
-pub trait ReadableMeta: Store {
+pub trait ReadStoreMeta: Store {
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden>;
 }
 
 /// Trait for stores that support mutating operations.
-pub trait MutableMeta: Store {
+pub trait MutateStoreMeta: Store {
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden>;
 }

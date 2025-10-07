@@ -13,28 +13,28 @@ use crate::store::{
     error::{Result, StoreError},
     queries::{
         count::{count, count_many},
-        meta::{CountManyQueryMeta, GetJoinedQueryMeta, ListJoinedMeta, ReadQueryMeta},
+        meta::{
+            CountManyQueryMeta, ManyToManyMutateQueryMeta, ManyToManyReadQueryMeta,
+            OneToManyQueryMeta, ReadQueryMeta,
+        },
     },
-    traits::{
-        join::JoinOneToManyStore,
-        meta::{HasId, StoreId, StoreRow, TableIden},
-    },
+    traits::meta::{HasId, StoreId, StoreRow, TableIden},
     utils::{pg_type_of, ListOptionsValidator, LIST_LIMIT_MAX},
 };
 
 #[derive(Iden)]
 pub struct ManyCte;
 
-pub async fn get_joined_opt<T: StoreRow, I: TableIden>(
+pub async fn get_one_to_many_opt<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &Dbx,
     id: &impl StoreId,
-    meta: &GetJoinedQueryMeta<I>,
+    meta: &OneToManyQueryMeta<I>,
 ) -> Result<Option<T>> {
-    // 1) Guard: count rows on the many side via its FK -> single PK
+    // Guard: count rows on the many side via its FK -> single PK
     let count_meta = CountManyQueryMeta {
         table: meta.many_table,
-        fk: meta.many_fk, // FIX: use many_fk (foreign key on the many table)
+        fk: meta.many_fk,
     };
     let count = count_many(ctx, dbx, id, &count_meta).await?;
     if count > LIST_LIMIT_MAX {
@@ -58,8 +58,9 @@ pub async fn get_joined_opt<T: StoreRow, I: TableIden>(
 
     // Create custom aggregate and coalesce expression
     let cust = format!(
-        r#"COALESCE(jsonb_agg("{many_cte}") FILTER (WHERE "{many_cte}".id IS NOT NULL), '[]'::jsonb)"#,
-        many_cte = ManyCte.to_string()
+        r#"COALESCE(jsonb_agg("{many_cte}") FILTER (WHERE "{many_cte}"."{many_pk}" IS NOT NULL), '[]'::jsonb)"#,
+        many_cte = ManyCte.to_string(),
+        many_pk = meta.many_pk.to_string()
     );
     let join_agg = Expr::cust(cust);
 
@@ -90,13 +91,13 @@ pub async fn get_joined_opt<T: StoreRow, I: TableIden>(
     Ok(res)
 }
 
-pub async fn get_joined<T: StoreRow, I: TableIden>(
+pub async fn get_one_to_many<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &Dbx,
     id: &impl StoreId,
-    meta: &GetJoinedQueryMeta<I>,
+    meta: &OneToManyQueryMeta<I>,
 ) -> Result<T> {
-    match get_joined_opt(ctx, dbx, id, meta).await? {
+    match get_one_to_many_opt(ctx, dbx, id, meta).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
             entity: meta.single_table.to_string(),
@@ -105,13 +106,27 @@ pub async fn get_joined<T: StoreRow, I: TableIden>(
     }
 }
 
-pub async fn list_joined<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
+pub async fn list_one_to_many<T: StoreRow, F: Into<FilterGroups> + Clone, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &Dbx,
     filter: Option<F>,
     opts: Option<ListOptions>,
-    meta: &ListJoinedMeta<I>,
+    meta: &OneToManyQueryMeta<I>,
 ) -> Result<Vec<T>> {
+    // Guard: count rows on the many side via its FK -> single PK
+    let count_meta = ReadQueryMeta {
+        table: meta.single_table,
+        pk: meta.single_pk,
+        has_audit: meta.has_audit,
+    };
+    let count = count(ctx, dbx, filter.clone(), &count_meta).await?;
+    if count > LIST_LIMIT_MAX {
+        return Err(StoreError::ListLimitExceeded {
+            max: LIST_LIMIT_MAX,
+            actual: count,
+        });
+    }
+
     // Define the query for the Common Table Expression (CTE)
     let cte_query = Query::select()
         .from(meta.many_table)
@@ -125,8 +140,9 @@ pub async fn list_joined<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
         .to_owned();
 
     let cust = format!(
-        r#"COALESCE(jsonb_agg("{many_cte}") FILTER (WHERE "{many_cte}".id IS NOT NULL), '[]'::jsonb)"#,
-        many_cte = ManyCte.to_string()
+        r#"COALESCE(jsonb_agg("{many_cte}") FILTER (WHERE "{many_cte}"."{many_pk}" IS NOT NULL), '[]'::jsonb)"#,
+        many_cte = ManyCte.to_string(),
+        many_pk = meta.many_pk.to_string()
     );
     let join_agg = Expr::cust(cust);
 
@@ -169,6 +185,118 @@ pub async fn list_joined<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     Ok(res)
 }
 
+// CURRENTLY WORKING ON
+pub async fn get_many_to_many_opt<T: StoreRow, I: TableIden>(
+    ctx: &StoreCtx,
+    dbx: &Dbx,
+    id: &impl StoreId,
+    meta: &ManyToManyReadQueryMeta<I>,
+) -> Result<Option<T>> {
+    // Guard: count rows on the many side via its FK -> single PK
+    let count_meta = CountManyQueryMeta {
+        table: meta.join_table,
+        fk: meta.join_fk,
+    };
+    let count = count_many(ctx, dbx, id, &count_meta).await?;
+    if count > LIST_LIMIT_MAX {
+        return Err(StoreError::ListLimitExceeded {
+            max: LIST_LIMIT_MAX,
+            actual: count,
+        });
+    }
+
+    // Define the query for the Common Table Expression (CTE)
+    let cte_query = Query::select()
+        .from(meta.many_table)
+        .column(Asterisk)
+        .to_owned();
+
+    // Create the CTE object
+    let common_table_expr = CommonTableExpression::new()
+        .table_name(ManyCte) // Name our CTE `CredentialCte`
+        .query(cte_query) // Use the query defined above
+        .to_owned();
+
+    // Create custom aggregate and coalesce expression
+    let cust = format!(
+        r#"COALESCE(jsonb_agg("{many_cte}") FILTER (WHERE "{many_cte}"."{many_pk}" IS NOT NULL), '[]'::jsonb)"#,
+        many_cte = ManyCte.to_string(),
+        many_pk = meta.many_pk.to_string()
+    );
+    let join_agg = Expr::cust(cust);
+
+    // Build the main query
+    let mut main_query = Query::select();
+    main_query
+        .from(meta.single_table)
+        .column((meta.single_table, Asterisk))
+        // we need to use meta.agg_alias in order to deserialize to the correct field on the type T which is `single_table_row.collection`, ie. account.credentials
+        .expr_as(join_agg, meta.agg_alias)
+        .join(
+            JoinType::LeftJoin,
+            meta.join_table,
+            // meta.many_pk: correlates to single table "primary key", ie. role_permission.role_id
+            Expr::col((meta.join_table, meta.many_pk)).equals((meta.single_table, meta.single_pk)),
+        )
+        .join(
+            JoinType::LeftJoin,
+            ManyCte, // Join to the CTE, not the original table to avoid column collisions
+            // meta.join_fk: correlates to CTE "primary_key", ie. role_permission.permission_id
+            Expr::col((meta.join_table, meta.join_fk)).equals((ManyCte, meta.many_pk)),
+        )
+        .and_where(Expr::col((meta.single_table, meta.single_pk)).eq(id.clone()))
+        .group_by_col((meta.single_table, meta.single_pk));
+
+    // Attach the WithClause to the main query
+    let final_query = main_query.with(common_table_expr.into());
+
+    let (sql, vals) = final_query.build_sqlx(PostgresQueryBuilder);
+
+    let query = sqlx::query_as_with::<_, T, _>(&sql, vals);
+
+    let res: Option<T> = dbx.fetch_optional(query).await?;
+
+    Ok(res)
+}
+
+pub async fn set_many_to_many_links<I: TableIden, ID: StoreId>(
+    ctx: &StoreCtx, // Ctx might be used for auditing in the future
+    dbx: &Dbx,
+    self_id: &ID,
+    other_ids: Vec<ID>,
+    meta: &ManyToManyMutateQueryMeta<I>,
+) -> Result<()> {
+    // let mut tx = dbx.begin().await?;
+
+    // // Delete all existing associations for self_id
+    // let (sql, vals) = Query::delete()
+    //     .from_table(meta.join_table.as_iden())
+    //     .and_where(Expr::col(meta.self_fk_col.as_iden()).eq(self_id.clone()))
+    //     .build_sqlx(PostgresQueryBuilder);
+
+    // sqlx::query_with(&sql, vals).execute(&mut *tx).await?;
+
+    // // 2. If there are new IDs to link, insert them
+    // if !other_ids.is_empty() {
+    //     let mut query = Query::insert();
+    //     query
+    //         .into_table(meta.join_table.as_iden())
+    //         .columns([meta.self_fk_col.as_iden(), meta.other_fk_col.as_iden()]);
+
+    //     // Add a row for each new association
+    //     for other_id in other_ids {
+    //         query.values_panic(vec![self_id.clone().into(), other_id.into()]);
+    //     }
+
+    //     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
+    //     sqlx::query_with(&sql, vals).execute(&mut *tx).await?;
+    // }
+
+    // tx.commit().await?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
@@ -192,8 +320,8 @@ mod tests {
             },
             stores::{account::AccountStore, credential::CredentialStore},
             traits::{
-                crud::{Creatable, Listable, Readable},
-                meta::ReadableMeta,
+                crud::{Create, Get, List},
+                meta::ReadStoreMeta,
             },
         },
     };
@@ -228,16 +356,18 @@ mod tests {
             store.create(&ctx, cred).await?;
         }
 
-        let meta = GetJoinedQueryMeta {
+        let meta = OneToManyQueryMeta {
             single_table: AccountIden::Table,
             many_table: AccountIden::Credential,
             single_pk: AccountIden::Id,
             many_pk: AccountIden::Id,
             many_fk: AccountIden::AccountId,
             agg_alias: AccountIden::Credentials,
+            has_audit: true,
         };
 
-        let res: AccountWithCredentials = get_joined(&ctx, &dbx, &ctx.user_id(), &meta).await?;
+        let res: AccountWithCredentials =
+            get_one_to_many(&ctx, &dbx, &ctx.user_id(), &meta).await?;
 
         let all_cred = res.credentials;
 
@@ -288,7 +418,7 @@ mod tests {
             }
         }
 
-        let meta = ListJoinedMeta {
+        let meta = OneToManyQueryMeta {
             single_table: AccountIden::Table,
             many_table: AccountIden::Credential,
             single_pk: AccountIden::Id,
@@ -302,7 +432,7 @@ mod tests {
         let filter: AccountFilter = json!({"email": { "$contains" : "LIST_JOIN"}}).try_into()?;
 
         let res: Vec<AccountWithCredentials> =
-            list_joined::<_, AccountFilter, _>(&ctx, &dbx, Some(filter), None, &meta).await?;
+            list_one_to_many::<_, AccountFilter, _>(&ctx, &dbx, Some(filter), None, &meta).await?;
 
         let mut total_count = 0;
         res.iter()

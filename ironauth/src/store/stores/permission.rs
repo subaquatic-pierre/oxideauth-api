@@ -8,10 +8,10 @@ use crate::store::{
     },
     traits::{
         crud::{
-            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
-            Readable, Updatable, UpdatableMany,
+            GetCount, Create, CreateMany, Delete, DeleteMany, GetFirst, Get, List, Update,
+            UpdateMany,
         },
-        meta::{MutableMeta, ReadableMeta, Store},
+        meta::{MutateStoreMeta, ReadStoreMeta, Store},
     },
 };
 
@@ -40,7 +40,7 @@ impl Store for PermissionStore {
     }
 }
 
-impl ReadableMeta for PermissionStore {
+impl ReadStoreMeta for PermissionStore {
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: PermissionIden::Table,
@@ -50,7 +50,7 @@ impl ReadableMeta for PermissionStore {
     }
 }
 
-impl MutableMeta for PermissionStore {
+impl MutateStoreMeta for PermissionStore {
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: PermissionIden::Table,
@@ -69,33 +69,33 @@ impl MutableMeta for PermissionStore {
 // We only need to specify the associated types for params (Create, Update, Filter).
 // The actual method logic is handled by the default implementations in your traits.
 
-impl Creatable for PermissionStore {
+impl Create for PermissionStore {
     type CreateStoreParams = PermissionForCreate;
 }
 
-impl Readable for PermissionStore {}
+impl Get for PermissionStore {}
 
-impl Listable for PermissionStore {
+impl List for PermissionStore {
     type FilterStoreParams = PermissionFilter;
 }
 
-impl Updatable for PermissionStore {
+impl Update for PermissionStore {
     type UpdateStoreParams = PermissionForUpdate;
 }
 
-impl Deletable for PermissionStore {}
+impl Delete for PermissionStore {}
 
-impl CreatableMany for PermissionStore {}
+impl CreateMany for PermissionStore {}
 
-impl UpdatableMany for PermissionStore {
+impl UpdateMany for PermissionStore {
     type UpdateStoreParams = PermissionForUpdate;
 }
 
-impl DeletableMany for PermissionStore {}
+impl DeleteMany for PermissionStore {}
 
-impl Firstable for PermissionStore {}
+impl GetFirst for PermissionStore {}
 
-impl Countable for PermissionStore {}
+impl GetCount for PermissionStore {}
 
 // -----------------------------------------------------------------------------
 // endregion: --- Functional Trait Implementations

@@ -6,10 +6,10 @@ use crate::store::{
     schema::project::{ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow},
     traits::{
         crud::{
-            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
-            Readable, Updatable, UpdatableMany,
+            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
+            UpdateMany,
         },
-        meta::{MutableMeta, ReadableMeta, Store},
+        meta::{MutateStoreMeta, ReadStoreMeta, Store},
     },
 };
 
@@ -38,7 +38,7 @@ impl Store for ProjectStore {
     }
 }
 
-impl ReadableMeta for ProjectStore {
+impl ReadStoreMeta for ProjectStore {
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: ProjectIden::Table,
@@ -48,7 +48,7 @@ impl ReadableMeta for ProjectStore {
     }
 }
 
-impl MutableMeta for ProjectStore {
+impl MutateStoreMeta for ProjectStore {
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: ProjectIden::Table,
@@ -67,33 +67,33 @@ impl MutableMeta for ProjectStore {
 // We only need to specify the associated types for params (Create, Update, Filter).
 // The actual method logic is handled by the default implementations in your traits.
 
-impl Creatable for ProjectStore {
+impl Create for ProjectStore {
     type CreateStoreParams = ProjectForCreate;
 }
 
-impl Readable for ProjectStore {}
+impl Get for ProjectStore {}
 
-impl Listable for ProjectStore {
+impl List for ProjectStore {
     type FilterStoreParams = ProjectFilter;
 }
 
-impl Updatable for ProjectStore {
+impl Update for ProjectStore {
     type UpdateStoreParams = ProjectForUpdate;
 }
 
-impl Deletable for ProjectStore {}
+impl Delete for ProjectStore {}
 
-impl CreatableMany for ProjectStore {}
+impl CreateMany for ProjectStore {}
 
-impl UpdatableMany for ProjectStore {
+impl UpdateMany for ProjectStore {
     type UpdateStoreParams = ProjectForUpdate;
 }
 
-impl DeletableMany for ProjectStore {}
+impl DeleteMany for ProjectStore {}
 
-impl Firstable for ProjectStore {}
+impl GetFirst for ProjectStore {}
 
-impl Countable for ProjectStore {}
+impl GetCount for ProjectStore {}
 
 // -----------------------------------------------------------------------------
 // endregion: --- Functional Trait Implementations

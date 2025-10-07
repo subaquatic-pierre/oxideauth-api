@@ -6,10 +6,10 @@ use crate::store::{
     schema::role::{RoleFilter, RoleForCreate, RoleForUpdate, RoleIden, RoleRow},
     traits::{
         crud::{
-            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
-            Readable, Updatable, UpdatableMany,
+            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
+            UpdateMany,
         },
-        meta::{MutableMeta, ReadableMeta, Store},
+        meta::{MutateStoreMeta, ReadStoreMeta, Store},
     },
 };
 
@@ -38,7 +38,7 @@ impl Store for RoleStore {
     }
 }
 
-impl ReadableMeta for RoleStore {
+impl ReadStoreMeta for RoleStore {
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: RoleIden::Table,
@@ -48,7 +48,7 @@ impl ReadableMeta for RoleStore {
     }
 }
 
-impl MutableMeta for RoleStore {
+impl MutateStoreMeta for RoleStore {
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: RoleIden::Table,
@@ -67,33 +67,33 @@ impl MutableMeta for RoleStore {
 // We only need to specify the associated types for params (Create, Update, Filter).
 // The actual method logic is handled by the default implementations in your traits.
 
-impl Creatable for RoleStore {
+impl Create for RoleStore {
     type CreateStoreParams = RoleForCreate;
 }
 
-impl Readable for RoleStore {}
+impl Get for RoleStore {}
 
-impl Listable for RoleStore {
+impl List for RoleStore {
     type FilterStoreParams = RoleFilter;
 }
 
-impl Updatable for RoleStore {
+impl Update for RoleStore {
     type UpdateStoreParams = RoleForUpdate;
 }
 
-impl Deletable for RoleStore {}
+impl Delete for RoleStore {}
 
-impl CreatableMany for RoleStore {}
+impl CreateMany for RoleStore {}
 
-impl UpdatableMany for RoleStore {
+impl UpdateMany for RoleStore {
     type UpdateStoreParams = RoleForUpdate;
 }
 
-impl DeletableMany for RoleStore {}
+impl DeleteMany for RoleStore {}
 
-impl Firstable for RoleStore {}
+impl GetFirst for RoleStore {}
 
-impl Countable for RoleStore {}
+impl GetCount for RoleStore {}
 
 // -----------------------------------------------------------------------------
 // endregion: --- Functional Trait Implementations

@@ -8,10 +8,10 @@ use crate::store::{
     },
     traits::{
         crud::{
-            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
-            Readable, Updatable, UpdatableMany,
+            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
+            UpdateMany,
         },
-        meta::{MutableMeta, ReadableMeta, Store},
+        meta::{MutateStoreMeta, ReadStoreMeta, Store},
     },
 };
 
@@ -40,7 +40,7 @@ impl Store for MembershipStore {
     }
 }
 
-impl ReadableMeta for MembershipStore {
+impl ReadStoreMeta for MembershipStore {
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: MembershipIden::Table,
@@ -50,7 +50,7 @@ impl ReadableMeta for MembershipStore {
     }
 }
 
-impl MutableMeta for MembershipStore {
+impl MutateStoreMeta for MembershipStore {
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: MembershipIden::Table,
@@ -69,33 +69,33 @@ impl MutableMeta for MembershipStore {
 // We only need to specify the associated types for params (Create, Update, Filter).
 // The actual method logic is handled by the default implementations in your traits.
 
-impl Creatable for MembershipStore {
+impl Create for MembershipStore {
     type CreateStoreParams = MembershipForCreate;
 }
 
-impl Readable for MembershipStore {}
+impl Get for MembershipStore {}
 
-impl Listable for MembershipStore {
+impl List for MembershipStore {
     type FilterStoreParams = MembershipFilter;
 }
 
-impl Updatable for MembershipStore {
+impl Update for MembershipStore {
     type UpdateStoreParams = MembershipForUpdate;
 }
 
-impl Deletable for MembershipStore {}
+impl Delete for MembershipStore {}
 
-impl CreatableMany for MembershipStore {}
+impl CreateMany for MembershipStore {}
 
-impl UpdatableMany for MembershipStore {
+impl UpdateMany for MembershipStore {
     type UpdateStoreParams = MembershipForUpdate;
 }
 
-impl DeletableMany for MembershipStore {}
+impl DeleteMany for MembershipStore {}
 
-impl Firstable for MembershipStore {}
+impl GetFirst for MembershipStore {}
 
-impl Countable for MembershipStore {}
+impl GetCount for MembershipStore {}
 
 // -----------------------------------------------------------------------------
 // endregion: --- Functional Trait Implementations

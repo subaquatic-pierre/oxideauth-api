@@ -170,8 +170,8 @@ mod tests {
             },
             stores::account::AccountStore,
             traits::{
-                crud::Readable,
-                meta::{MutableMeta, ReadableMeta, TableIden},
+                crud::Get,
+                meta::{MutateStoreMeta, ReadStoreMeta, TableIden},
             },
         },
     };

@@ -134,7 +134,7 @@ impl From<AccountMeta> for SeaValue {
 }
 
 /// Filtering options for queries
-#[derive(FilterNodes, Deserialize, Default, Debug)]
+#[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
 pub struct AccountFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<String>,

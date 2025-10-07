@@ -7,11 +7,8 @@ use crate::store::{
         TokenBlacklistFilter, TokenBlacklistForCreate, TokenBlacklistIden, TokenBlacklistRow,
     },
     traits::{
-        crud::{
-            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
-            Readable,
-        },
-        meta::{MutableMeta, ReadableMeta, Store},
+        crud::{GetCount, Create, CreateMany, Delete, DeleteMany, GetFirst, Get, List},
+        meta::{MutateStoreMeta, ReadStoreMeta, Store},
     },
 };
 
@@ -40,7 +37,7 @@ impl Store for TokenBlacklistStore {
     }
 }
 
-impl ReadableMeta for TokenBlacklistStore {
+impl ReadStoreMeta for TokenBlacklistStore {
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: TokenBlacklistIden::Table,
@@ -50,7 +47,7 @@ impl ReadableMeta for TokenBlacklistStore {
     }
 }
 
-impl MutableMeta for TokenBlacklistStore {
+impl MutateStoreMeta for TokenBlacklistStore {
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: TokenBlacklistIden::Table,
@@ -69,25 +66,25 @@ impl MutableMeta for TokenBlacklistStore {
 // We only need to specify the associated types for params (Create, Update, Filter).
 // The actual method logic is handled by the default implementations in your traits.
 
-impl Creatable for TokenBlacklistStore {
+impl Create for TokenBlacklistStore {
     type CreateStoreParams = TokenBlacklistForCreate;
 }
 
-impl Readable for TokenBlacklistStore {}
+impl Get for TokenBlacklistStore {}
 
-impl Listable for TokenBlacklistStore {
+impl List for TokenBlacklistStore {
     type FilterStoreParams = TokenBlacklistFilter;
 }
 
-impl Deletable for TokenBlacklistStore {}
+impl Delete for TokenBlacklistStore {}
 
-impl CreatableMany for TokenBlacklistStore {}
+impl CreateMany for TokenBlacklistStore {}
 
-impl DeletableMany for TokenBlacklistStore {}
+impl DeleteMany for TokenBlacklistStore {}
 
-impl Firstable for TokenBlacklistStore {}
+impl GetFirst for TokenBlacklistStore {}
 
-impl Countable for TokenBlacklistStore {}
+impl GetCount for TokenBlacklistStore {}
 
 // -----------------------------------------------------------------------------
 // endregion: --- Functional Trait Implementations

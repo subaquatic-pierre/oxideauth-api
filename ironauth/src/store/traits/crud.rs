@@ -19,7 +19,7 @@ use crate::store::{
         crud::{delete, delete_opt, get_opt, list, update, update_opt},
         first::{self, first, first_opt},
     },
-    traits::meta::{MutableMeta, ReadableMeta, Store, StoreRow},
+    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store, StoreRow},
 };
 use async_trait::async_trait;
 
@@ -35,9 +35,9 @@ use crate::store::traits::meta::HasId;
 
 /// Trait for "create" capability of a store.
 #[async_trait]
-pub trait Creatable
+pub trait Create
 where
-    Self: MutableMeta,
+    Self: MutateStoreMeta,
 {
     /// Parameters used to insert a new row.
     type CreateStoreParams: HasSeaFields + Send;
@@ -56,9 +56,9 @@ where
 
 /// Trait for "get by id" capability of a store.
 #[async_trait]
-pub trait Readable
+pub trait Get
 where
-    Self: ReadableMeta,
+    Self: ReadStoreMeta,
 {
     fn get_meta(&self) -> ReadQueryMeta<Self::Iden> {
         self.read_meta()
@@ -85,9 +85,9 @@ where
 
 /// Trait for "list/filter" capability of a store.
 #[async_trait]
-pub trait Listable
+pub trait List
 where
-    Self: ReadableMeta,
+    Self: ReadStoreMeta,
 {
     /// Parameters used to filter queries.
     type FilterStoreParams: Into<FilterGroups> + Send;
@@ -111,9 +111,9 @@ where
 
 /// Trait for "update" capability of a store.
 #[async_trait]
-pub trait Updatable
+pub trait Update
 where
-    Self: MutableMeta,
+    Self: MutateStoreMeta,
 {
     /// Parameters used when updating a row.
     type UpdateStoreParams: HasSeaFields + Send;
@@ -149,9 +149,9 @@ where
 
 /// Trait for "delete" capability of a store.
 #[async_trait]
-pub trait Deletable
+pub trait Delete
 where
-    Self: MutableMeta,
+    Self: MutateStoreMeta,
 {
     fn delete_meta(&self) -> MutateQueryMeta<Self::Iden> {
         self.mutate_meta()
@@ -179,9 +179,9 @@ where
 }
 
 #[async_trait]
-pub trait CreatableMany
+pub trait CreateMany
 where
-    Self: Creatable,
+    Self: Create,
 {
     fn create_many_meta(&self) -> MutateQueryMeta<Self::Iden> {
         self.mutate_meta()
@@ -199,9 +199,9 @@ where
 }
 
 #[async_trait]
-pub trait UpdatableMany
+pub trait UpdateMany
 where
-    Self: MutableMeta,
+    Self: MutateStoreMeta,
 {
     type UpdateStoreParams: HasSeaFields + Clone + Send + Sync + Sized;
 
@@ -221,9 +221,9 @@ where
 }
 
 #[async_trait]
-pub trait DeletableMany
+pub trait DeleteMany
 where
-    Self: Deletable,
+    Self: Delete,
 {
     fn delete_many_meta(&self) -> MutateQueryMeta<Self::Iden> {
         self.mutate_meta()
@@ -241,9 +241,9 @@ where
 }
 
 #[async_trait]
-pub trait Firstable
+pub trait GetFirst
 where
-    Self: Listable,
+    Self: List,
 {
     fn first_meta(&self) -> ReadQueryMeta<Self::Iden> {
         self.read_meta()
@@ -273,9 +273,9 @@ where
 }
 
 #[async_trait]
-pub trait Countable
+pub trait GetCount
 where
-    Self: Listable,
+    Self: List,
 {
     fn count_meta(&self) -> ReadQueryMeta<Self::Iden> {
         self.read_meta()

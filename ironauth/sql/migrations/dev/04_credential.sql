@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS
     -- (meta also constrained if needed in a follow-up migration)
   );
 
+-- TODO: Make sure to re-enable namespace-user-credential unique constraints
 -- =========================
 -- Indexes
 -- =========================

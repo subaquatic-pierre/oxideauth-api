@@ -8,10 +8,10 @@ use crate::store::{
     },
     traits::{
         crud::{
-            Countable, Creatable, CreatableMany, Deletable, DeletableMany, Firstable, Listable,
-            Readable, Updatable, UpdatableMany,
+            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
+            UpdateMany,
         },
-        meta::{MutableMeta, ReadableMeta, Store},
+        meta::{MutateStoreMeta, ReadStoreMeta, Store},
     },
 };
 
@@ -40,7 +40,7 @@ impl Store for CredentialStore {
     }
 }
 
-impl ReadableMeta for CredentialStore {
+impl ReadStoreMeta for CredentialStore {
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: CredentialIden::Table,
@@ -50,7 +50,7 @@ impl ReadableMeta for CredentialStore {
     }
 }
 
-impl MutableMeta for CredentialStore {
+impl MutateStoreMeta for CredentialStore {
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: CredentialIden::Table,
@@ -69,33 +69,33 @@ impl MutableMeta for CredentialStore {
 // We only need to specify the associated types for params (Create, Update, Filter).
 // The actual method logic is handled by the default implementations in your traits.
 
-impl Creatable for CredentialStore {
+impl Create for CredentialStore {
     type CreateStoreParams = CredentialForCreate;
 }
 
-impl Readable for CredentialStore {}
+impl Get for CredentialStore {}
 
-impl Listable for CredentialStore {
+impl List for CredentialStore {
     type FilterStoreParams = CredentialFilter;
 }
 
-impl Updatable for CredentialStore {
+impl Update for CredentialStore {
     type UpdateStoreParams = CredentialForUpdate;
 }
 
-impl Deletable for CredentialStore {}
+impl Delete for CredentialStore {}
 
-impl CreatableMany for CredentialStore {}
+impl CreateMany for CredentialStore {}
 
-impl UpdatableMany for CredentialStore {
+impl UpdateMany for CredentialStore {
     type UpdateStoreParams = CredentialForUpdate;
 }
 
-impl DeletableMany for CredentialStore {}
+impl DeleteMany for CredentialStore {}
 
-impl Firstable for CredentialStore {}
+impl GetFirst for CredentialStore {}
 
-impl Countable for CredentialStore {}
+impl GetCount for CredentialStore {}
 
 // -----------------------------------------------------------------------------
 // endregion: --- Functional Trait Implementations
