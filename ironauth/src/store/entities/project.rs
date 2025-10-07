@@ -7,12 +7,12 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::store::schema::id::DbId;
+use crate::store::entities::id::DbId;
 use crate::store::traits::meta::HasId;
 use ironauth_macros::HasId;
 
+use crate::store::entities::audit::AuditFields;
 use crate::store::error::{Result, StoreError};
-use crate::store::schema::audit::AuditFields;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 #[derive(Iden, Copy, Clone)]

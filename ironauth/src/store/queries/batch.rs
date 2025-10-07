@@ -157,16 +157,16 @@ mod tests {
     use crate::{
         dev::init::init_test,
         store::{
-            error::Result,
-            queries::{
-                crud::{create, list},
-                meta::{MutateQueryMeta, ReadQueryMeta},
-            },
-            schema::{
+            entities::{
                 account::{
                     AccountFilter, AccountForCreate, AccountForUpdate, AccountMeta, AccountRow,
                 },
                 id::DbId,
+            },
+            error::Result,
+            queries::{
+                crud::{create, list},
+                meta::{MutateQueryMeta, ReadQueryMeta},
             },
             stores::account::AccountStore,
             traits::{

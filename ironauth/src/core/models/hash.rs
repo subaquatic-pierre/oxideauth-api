@@ -2,7 +2,7 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 
 use crate::core::error::{Error, Result};
-use crate::store::schema::hash::Sha256Hash;
+use crate::store::entities::hash::Sha256Hash;
 
 pub trait Hashable {
     fn hash_sha256(&self) -> Result<Sha256Hash>;

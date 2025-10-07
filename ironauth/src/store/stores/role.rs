@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use crate::store::{
     dbx::Dbx,
+    entities::role::{RoleFilter, RoleForCreate, RoleForUpdate, RoleIden, RoleRow},
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    schema::role::{RoleFilter, RoleForCreate, RoleForUpdate, RoleIden, RoleRow},
     traits::{
         crud::{
             Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,

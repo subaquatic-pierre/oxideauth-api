@@ -1,120 +1,99 @@
+use crate::store::entities::id::DbId;
+use crate::store::traits::meta::HasId;
 use ironauth_macros::HasId;
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
-use sea_query::{sea_value_to_json_value, Iden, Nullable, Value as SeaValue};
+use sea_query::{Iden, Nullable, Value as SeaValue};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as JsonValue};
 use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::store::entities::audit::AuditFields;
 use crate::store::error::{Result, StoreError};
-use crate::store::schema::audit::{AuditFields, AuditMeta};
-use crate::store::schema::id::DbId;
-use crate::store::traits::meta::HasId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 #[derive(Iden, Copy, Clone)]
-pub enum NamespaceIden {
-    #[iden = "namespace"]
+pub enum PermissionIden {
+    #[iden = "permission"]
     Table, // TABLE_NAME
     Id, // TABLE_PK
 }
 
 // --- Row (DB-facing) ---
-/// Maps to the `namespace` SQL table.
+/// Maps to the `permission` SQL table.
 #[derive(Debug, FromRow, Deserialize, HasId)]
-pub struct NamespaceRow {
+pub struct PermissionRow {
     pub id: DbId,
+    pub namespace_id: Uuid,
 
-    // Identity
+    // Permission identity
     pub name: String,
-    pub slug: String,
+    pub code: Option<String>,
     pub description: Option<String>,
-
-    // Config
-    #[sqlx(json)]
-    pub config: NamespaceConfig,
 
     pub tags: Vec<String>,
     #[sqlx(json)]
-    pub meta: NamespaceMeta,
+    pub meta: PermissionMeta,
 
     #[sqlx(flatten)]
     pub audit: AuditFields,
 }
 
 // --- Create (store input) ---
-/// Input for creating a new `namespace`.
+/// Input for creating a new `permission`.
 #[derive(Debug, Fields)]
-pub struct NamespaceForCreate {
+pub struct PermissionForCreate {
+    pub namespace_id: Uuid,
     pub name: String,
-    pub slug: String,
+    pub code: Option<String>,
     pub description: Option<String>,
-    pub config: NamespaceConfig,
     pub tags: Vec<String>,
-    pub meta: NamespaceMeta,
+    pub meta: PermissionMeta,
 }
 
 // --- Update (store input) ---
-/// Input for updating an existing `namespace`.
+/// Input for updating an existing `permission`.
 #[derive(Debug, Fields, Clone)]
-pub struct NamespaceForUpdate {
+pub struct PermissionForUpdate {
     pub name: Option<String>,
-    pub slug: Option<String>,
+    pub code: Option<String>,
     pub description: Option<String>,
-    pub config: Option<NamespaceConfig>,
     pub tags: Option<Vec<String>>,
-    pub meta: Option<NamespaceMeta>,
+    pub meta: Option<PermissionMeta>,
 }
 
 #[derive(Debug, Default, Fields, Serialize, Deserialize, Clone)]
 #[serde(default)]
-pub struct NamespaceConfig {
+pub struct PermissionMeta {
     pub schema_version: String,
 }
 
-impl Nullable for NamespaceConfig {
+impl Nullable for PermissionMeta {
     fn null() -> SeaValue {
         SeaValue::Json(None)
     }
 }
 
-impl From<NamespaceConfig> for SeaValue {
-    fn from(value: NamespaceConfig) -> Self {
+impl From<PermissionMeta> for SeaValue {
+    fn from(value: PermissionMeta) -> Self {
         json_to_sea_value(serde_json::to_value(value).unwrap()).unwrap()
     }
 }
 
-#[derive(Debug, Default, Fields, Serialize, Deserialize, Clone)]
-#[serde(default)]
-pub struct NamespaceMeta {
-    pub schema_version: String,
-}
-
-impl Nullable for NamespaceMeta {
-    fn null() -> SeaValue {
-        SeaValue::Json(None)
-    }
-}
-
-impl From<NamespaceMeta> for SeaValue {
-    fn from(value: NamespaceMeta) -> Self {
-        json_to_sea_value(serde_json::to_value(value).unwrap()).unwrap()
-    }
-}
-
-/// Filtering options for `namespace` queries.
+/// Filtering options for `permission` queries.
 #[derive(FilterNodes, Deserialize, Default, Debug)]
-pub struct NamespaceFilter {
+pub struct PermissionFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<String>,
+    #[modql(cast_as = "uuid")]
+    pub namespace_id: Option<String>,
     pub name: Option<OpValsString>,
-    pub slug: Option<OpValsString>,
+    pub code: Option<OpValsString>,
     pub description: Option<OpValsString>,
 
-    // NOTE: Filtering on JSONB fields like `config` and `meta` would require custom modql logic.
-    // pub config: Option<OpValsValue>,
+    // NOTE: Filtering on JSONB and TEXT[] fields would require custom modql logic.
     // pub tags: Option<OpValsValue>,
     // pub meta: Option<OpValsValue>,
 
@@ -129,7 +108,7 @@ pub struct NamespaceFilter {
     pub updated_at: Option<OpValsValue>,
 }
 
-impl TryFrom<JsonValue> for NamespaceFilter {
+impl TryFrom<JsonValue> for PermissionFilter {
     type Error = StoreError;
 
     fn try_from(value: JsonValue) -> Result<Self> {
@@ -140,31 +119,28 @@ impl TryFrom<JsonValue> for NamespaceFilter {
 
 // --- Defaults for testing ---
 #[cfg(test)]
-impl Default for NamespaceForCreate {
+impl Default for PermissionForCreate {
     fn default() -> Self {
         Self {
-            name: "Default Namespace".into(),
-            slug: "default-namespace".into(),
-            description: Some("A default namespace for testing.".into()),
-            config: NamespaceConfig {
-                schema_version: "1".into(),
-            },
+            namespace_id: Uuid::new_v4(),
+            name: "default.permission".to_string(),
+            code: Some("default-perm".to_string()),
+            description: Some("A default permission for testing.".to_string()),
             tags: vec![],
-            meta: NamespaceMeta {
-                schema_version: "1".into(),
+            meta: PermissionMeta {
+                schema_version: "1".to_string(),
             },
         }
     }
 }
 
 #[cfg(test)]
-impl Default for NamespaceForUpdate {
+impl Default for PermissionForUpdate {
     fn default() -> Self {
         Self {
             name: None,
-            slug: None,
+            code: None,
             description: None,
-            config: None,
             tags: None,
             meta: None,
         }

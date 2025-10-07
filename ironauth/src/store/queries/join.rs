@@ -308,8 +308,7 @@ mod tests {
         dev::init::init_test,
         store::{
             ctx::StoreCtx,
-            queries::crud::create,
-            schema::{
+            entities::{
                 account::{
                     AccountFilter, AccountForCreate, AccountIden, AccountRow,
                     AccountWithCredentials,
@@ -318,6 +317,7 @@ mod tests {
                     CredentialFilter, CredentialForCreate, CredentialIden, CredentialKind,
                 },
             },
+            queries::crud::create,
             stores::{account::AccountStore, credential::CredentialStore},
             traits::{
                 crud::{Create, Get, List},

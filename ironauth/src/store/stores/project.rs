@@ -2,8 +2,10 @@ use std::sync::Arc;
 
 use crate::store::{
     dbx::Dbx,
+    entities::project::{
+        ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow,
+    },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    schema::project::{ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow},
     traits::{
         crud::{
             Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,

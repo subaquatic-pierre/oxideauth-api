@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use crate::store::{
     dbx::Dbx,
-    queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    schema::membership::{
+    entities::membership::{
         MembershipFilter, MembershipForCreate, MembershipForUpdate, MembershipIden, MembershipRow,
     },
+    queries::meta::{MutateQueryMeta, ReadQueryMeta},
     traits::{
         crud::{
             Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,

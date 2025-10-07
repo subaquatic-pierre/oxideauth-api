@@ -217,15 +217,15 @@ mod tests {
     use crate::{
         dev::init::init_test,
         store::{
-            error::StoreError,
-            queries::batch::create_many,
-            schema::account::{
+            entities::account::{
                 AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountMeta,
                 AccountRow,
             },
+            error::StoreError,
+            queries::batch::create_many,
             stores::account::AccountStore,
             traits::{
-                crud::{Create, CreateMany, Delete, List, Get, Update},
+                crud::{Create, CreateMany, Delete, Get, List, Update},
                 meta::{MutateStoreMeta, ReadStoreMeta},
             },
             utils::time_to_string,

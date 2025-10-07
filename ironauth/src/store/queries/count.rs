@@ -80,8 +80,8 @@ mod tests {
         dev::init::init_test,
         store::{
             ctx::StoreCtx,
+            entities::account::{AccountFilter, AccountForCreate, AccountRow},
             queries::crud::create,
-            schema::account::{AccountFilter, AccountForCreate, AccountRow},
             stores::account::AccountStore,
             traits::{
                 crud::{Create, Get},

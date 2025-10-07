@@ -9,13 +9,13 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::store::schema::id::DbId;
+use crate::store::entities::id::DbId;
 use crate::store::traits::meta::HasId;
 use ironauth_macros::HasId;
 
+use crate::store::entities::audit::{AuditFields, AuditMeta};
+use crate::store::entities::hash::Sha256Hash;
 use crate::store::error::{Result, StoreError};
-use crate::store::schema::audit::{AuditFields, AuditMeta};
-use crate::store::schema::hash::Sha256Hash;
 use crate::store::utils::{bytes_to_sea_value, json_to_sea_value, time_to_sea_value};
 
 #[derive(Iden, Copy, Clone)]

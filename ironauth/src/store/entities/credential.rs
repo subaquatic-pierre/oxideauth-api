@@ -12,9 +12,9 @@ use strum_macros::{Display, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::store::entities::audit::{AuditFields, AuditMeta};
+use crate::store::entities::id::DbId;
 use crate::store::error::{Result as StoreResult, StoreError};
-use crate::store::schema::audit::{AuditFields, AuditMeta};
-use crate::store::schema::id::DbId;
 use crate::store::traits::meta::HasId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 

@@ -2,8 +2,8 @@ use modql::filter::ListOptions;
 use sea_query::Iden;
 use serde::Deserialize;
 
+use crate::store::entities::audit::AuditIden;
 use crate::store::error::{Result, StoreError};
-use crate::store::schema::audit::AuditIden;
 use crate::store::traits::meta::Store;
 
 /// Default number of rows to return in a list query.

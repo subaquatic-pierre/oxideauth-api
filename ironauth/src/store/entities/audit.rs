@@ -6,7 +6,7 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::store::schema::id::DbId;
+use crate::store::entities::id::DbId;
 use crate::store::utils::time_to_sea_value;
 
 #[derive(Iden, Copy, Clone)]
