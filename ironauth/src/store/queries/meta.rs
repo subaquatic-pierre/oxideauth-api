@@ -1,4 +1,5 @@
 use sea_query::{Iden, IntoIden, IntoTableRef, TableRef};
+use serde_json::Value;
 
 use crate::store::traits::meta::TableIden;
 
@@ -62,4 +63,14 @@ pub struct FirstQueryMeta<I: TableIden> {
 pub struct CountManyQueryMeta<I: TableIden> {
     pub table: I,
     pub fk: I,
+}
+
+pub enum FilterByValueContains {
+    Array(Vec<String>),
+    Json(Value),
+}
+
+pub struct ValueContainsQueryMeta<I: TableIden> {
+    pub table: I,
+    pub col: I,
 }

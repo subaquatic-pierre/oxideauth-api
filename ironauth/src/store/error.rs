@@ -18,6 +18,7 @@ pub enum StoreError {
         max: i64,
         actual: i64,
     },
+    DataError(String),
 
     // --- StoreManager
     CantCreateDataStore(String),

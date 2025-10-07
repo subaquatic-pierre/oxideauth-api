@@ -19,6 +19,8 @@ pub enum PermissionIden {
     #[iden = "permission"]
     Table, // TABLE_NAME
     Id, // TABLE_PK
+    Meta,
+    Tags,
 }
 
 // --- Row (DB-facing) ---
