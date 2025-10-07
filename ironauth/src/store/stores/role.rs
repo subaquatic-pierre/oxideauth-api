@@ -4,7 +4,7 @@ use crate::store::{
     dbx::Dbx,
     entities::role::{RoleFilter, RoleForCreate, RoleForUpdate, RoleIden, RoleRow},
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
+    traits::meta::{MutateStore, ReadStore, Store},
 };
 
 /// The struct for our Role store, holding the database connection wrapper.
@@ -33,7 +33,7 @@ impl Store for RoleStore {
     }
 }
 
-impl ReadStoreMeta for RoleStore {
+impl ReadStore for RoleStore {
     type FilterStoreParams = RoleFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -45,7 +45,7 @@ impl ReadStoreMeta for RoleStore {
     }
 }
 
-impl MutateStoreMeta for RoleStore {
+impl MutateStore for RoleStore {
     type CreateStoreParams = RoleForCreate;
     type UpdateStoreParams = RoleForUpdate;
 

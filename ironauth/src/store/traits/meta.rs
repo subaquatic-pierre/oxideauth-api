@@ -1,87 +1,143 @@
-use modql::{
-    field::{HasSeaFields, SeaField, SeaFields},
-    filter::{FilterGroups, ListOptions},
-    SIden,
-};
-use sea_query::{Iden, IntoIden, IntoTableRef, TableRef};
-use serde::Deserialize;
+//! # Store Trait Architecture
+//!
+//! This module defines the core traits for building a capabilities-based data access layer.
+//! The design separates metadata-providing traits from functional traits that provide behavior.
+//!
+//! ## Core Design Pattern
+//!
+//! 1.  **Meta Traits (e.g., `ReadStore`, `MutateStore`):** These traits are the contracts that a specific store (like `AccountStore`) must implement. They don't contain behavior but require the store to provide essential metadata, such as table/column identifiers and associated types for creating or filtering data.
+//!
+//! 2.  **Functional Traits (e.g., `Get`, `List`, `Create`):** These traits define the actual data access methods (`.get()`, `.list()`, etc.). They are implemented generically for any type that fulfills the corresponding meta trait contract.
+//!
+//! 3.  **Blanket Implementations:** By implementing a meta trait like `ReadStore`, a store struct **automatically** gains the capabilities of `Get`, `List`, `GetFirst`, and `GetCount` without any additional boilerplate. This file centralizes these blanket `impls` directly under the meta traits they depend on.
+
+use async_trait::async_trait;
+use modql::field::HasSeaFields;
+use modql::filter::{FilterGroups, ListOptions};
+use sea_query::Iden;
 use sqlx::{postgres::PgRow, FromRow};
-use std::sync::Arc;
-use uuid::Uuid;
 
 use crate::store::{
+    ctx::StoreCtx,
+    dbx::Dbx,
     error::Result,
     queries::meta::{
         ContainsFilterQueryMeta, ManyToManyQueryMeta, MutateQueryMeta, OneToManyQueryMeta,
         ReadQueryMeta,
     },
-    traits::crud::Create,
+    traits::{
+        contains::FilterByContains,
+        crud::{
+            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
+            UpdateMany,
+        },
+        join::{GetManyToMany, GetOneToMany, LinkManyToMany, ListManyToMany, ListOneToMany},
+    },
 };
-use async_trait::async_trait;
 
-use crate::store::{
-    ctx::StoreCtx,
-    dbx::Dbx,
-    init::DbPool,
-    queries::crud::{create, get},
-    utils::prepare_audit_fields,
-};
+// region:    --- Core ID and Row Abstractions
+
+/// A marker trait for table identifier enums (e.g., `AccountIden`).
 pub trait TableIden: 'static + Copy + Iden + Send + Sync {}
 
+/// A trait for types that can be used as primary keys in the store.
 pub trait StoreId: ToString + Into<sea_query::Value> + Send + Sync + Clone + Copy {}
+
+/// A trait for structs that represent a database row and have an identifiable primary key.
 pub trait HasId {
+    /// The type of the primary key (e.g., `Uuid`).
     type Id: StoreId;
 }
+
+/// A trait that combines `HasId` and `sqlx::FromRow` for any struct that can be mapped from a `PgRow`.
 pub trait StoreRow: HasId + for<'r> FromRow<'r, PgRow> + Unpin + Send + Sync {}
 
+// Blanket implementations for the core abstractions.
 impl<T> StoreRow for T where T: HasId + for<'r> FromRow<'r, PgRow> + Unpin + Send + Sync {}
 impl<T> StoreId for T where T: ToString + Into<sea_query::Value> + Send + Sync + Clone + Copy {}
 impl<T: 'static + Copy + Iden + Send + Sync> TableIden for T {}
 
-/// Base trait describing static metadata every store must provide.
-///
-/// This trait connects a store type to its underlying SQL table,
-/// defines the types used in CRUD operations, and exposes the `Dbx`
-/// accessor for database access.
+// endregion: --- Core ID and Row Abstractions
+
+// region:    --- Store Meta Traits & Blanket Impls
+
+/// The base trait for all stores, providing access to the database connection.
 #[async_trait]
 pub trait Store: Sized + Send + Sync {
+    /// The identifier enum for the store's table and columns.
     type Iden: TableIden;
-    /// Row type returned from queries.
-    /// Must be able to map from a Postgres row
+    /// The struct type that this store primarily returns from queries.
     type Row: StoreRow;
 
-    /// Access to the underlying connection wrapper.
+    /// Access the underlying database connection wrapper (`Dbx`).
     fn db(&self) -> &Dbx;
 }
 
-/// Trait for stores that support read operations.
-pub trait ReadStoreMeta: Store {
-    /// Parameters used to filter queries.
+/// Requires a store to provide metadata for read operations (get, list, etc.).
+pub trait ReadStore: Store {
+    /// The struct used to specify filter parameters for list queries.
     type FilterStoreParams: Into<FilterGroups> + Send;
+    /// Returns the metadata required to build read queries.
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden>;
 }
+// By implementing `ReadStore`, a type automatically gains the following capabilities:
+impl<T: ReadStore> Get for T {}
+impl<T: ReadStore> List for T {}
+impl<T: ReadStore> GetFirst for T {}
+impl<T: ReadStore> GetCount for T {}
 
-/// Trait for stores that support mutating operations.
-pub trait MutateStoreMeta: Store {
-    /// Parameters used to insert a new row.
+/// Requires a store to provide metadata for write operations (create, update, delete).
+pub trait MutateStore: Store {
+    /// The struct used to provide data for creating a new row.
     type CreateStoreParams: HasSeaFields + Send;
-    /// Parameters used when updating a row.
+    /// The struct used to provide data for updating an existing row.
     type UpdateStoreParams: HasSeaFields + Clone + Send + Sync + Sized;
+    /// Returns the metadata required to build write queries.
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden>;
 }
+// By implementing `MutateStore`, a type automatically gains the following capabilities:
+impl<T: MutateStore> Create for T {}
+impl<T: MutateStore> Update for T {}
+impl<T: MutateStore> Delete for T {}
+impl<T: MutateStore> CreateMany for T {}
+impl<T: MutateStore> UpdateMany for T {}
+impl<T: MutateStore> DeleteMany for T {}
 
-/// Trait for stores that support one to many operations.
-pub trait OneToManyStoreMeta: Store {
+/// Requires a store to provide metadata for one-to-many relationship queries.
+pub trait OneToManyStore: Store {
+    /// The struct representing the "one" side with the "many" side aggregated into it.
+    type OneToManyRow: StoreRow;
+    /// The struct used to filter list queries on the "one" side's table.
+    type FilterStoreParams: Into<FilterGroups> + Send + Clone;
+    /// Returns the metadata defining the one-to-many relationship.
     fn one_to_many_meta(&self) -> OneToManyQueryMeta<Self::Iden>;
 }
+// By implementing `OneToManyStore`, a type automatically gains the following capabilities:
+impl<T: OneToManyStore> GetOneToMany for T {}
+impl<T: OneToManyStore + ReadStore> ListOneToMany for T {} // Note: `List` requires `ReadStore`
 
-/// Trait for stores that support many to many operations.
-pub trait ManyToManyStoreMeta: Store {
-    fn one_to_many_meta(&self) -> ManyToManyQueryMeta<Self::Iden>;
+/// Requires a store to provide metadata for many-to-many relationship queries.
+pub trait ManyToManyStore: Store {
+    /// The struct representing one entity with its related entities aggregated into it.
+    type ManyToManyRow: StoreRow;
+    /// The struct used to filter list queries on the base table.
+    type FilterStoreParams: Into<FilterGroups> + Send + Clone;
+    /// Returns the metadata defining the many-to-many relationship.
+    fn many_to_many_meta(&self) -> ManyToManyQueryMeta<Self::Iden>;
 }
+// By implementing `ManyToManyStore`, a type automatically gains the following capabilities:
+impl<T: ManyToManyStore> GetManyToMany for T {}
+impl<T: ManyToManyStore + ReadStore> ListManyToMany for T {} // Note: `List` requires `ReadStore`
+impl<T: ManyToManyStore> LinkManyToMany for T {}
 
-/// Trait for stores that support filtering on 'tags' and 'meta' columns.
+/// Requires a store to provide metadata for filtering on JSONB columns.
 pub trait ContainsFilterStoreMeta: Store {
+    /// Returns metadata for querying a JSONB array column (e.g., `tags`).
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden>;
+    /// Returns metadata for querying a JSONB object column (e.g., `meta`).
     fn contains_json_meta(&self) -> ContainsFilterQueryMeta<Self::Iden>;
 }
+// By implementing `ContainsFilterStoreMeta`, a type automatically gains the following capabilities:
+impl<T: ContainsFilterStoreMeta> FilterByContains for T {}
+
+// endregion: --- Store Meta Traits & Blanket Impls

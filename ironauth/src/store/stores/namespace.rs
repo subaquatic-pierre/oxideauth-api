@@ -6,7 +6,7 @@ use crate::store::{
         NamespaceFilter, NamespaceForCreate, NamespaceForUpdate, NamespaceIden, NamespaceRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
+    traits::meta::{MutateStore, ReadStore, Store},
 };
 
 /// The struct for our Namespace store, holding the database connection wrapper.
@@ -35,7 +35,7 @@ impl Store for NamespaceStore {
     }
 }
 
-impl ReadStoreMeta for NamespaceStore {
+impl ReadStore for NamespaceStore {
     type FilterStoreParams = NamespaceFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -47,7 +47,7 @@ impl ReadStoreMeta for NamespaceStore {
     }
 }
 
-impl MutateStoreMeta for NamespaceStore {
+impl MutateStore for NamespaceStore {
     type CreateStoreParams = NamespaceForCreate;
     type UpdateStoreParams = NamespaceForUpdate;
 

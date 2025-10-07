@@ -86,7 +86,7 @@ mod tests {
             stores::account::AccountStore,
             traits::{
                 crud::{Create, Get},
-                meta::ReadStoreMeta,
+                meta::ReadStore,
             },
         },
     };

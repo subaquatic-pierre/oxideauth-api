@@ -6,7 +6,7 @@ use crate::store::{
         MembershipFilter, MembershipForCreate, MembershipForUpdate, MembershipIden, MembershipRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
+    traits::meta::{MutateStore, ReadStore, Store},
 };
 
 /// The struct for our Membership store, holding the database connection wrapper.
@@ -35,7 +35,7 @@ impl Store for MembershipStore {
     }
 }
 
-impl ReadStoreMeta for MembershipStore {
+impl ReadStore for MembershipStore {
     type FilterStoreParams = MembershipFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -47,7 +47,7 @@ impl ReadStoreMeta for MembershipStore {
     }
 }
 
-impl MutateStoreMeta for MembershipStore {
+impl MutateStore for MembershipStore {
     type CreateStoreParams = MembershipForCreate;
     type UpdateStoreParams = MembershipForUpdate;
 

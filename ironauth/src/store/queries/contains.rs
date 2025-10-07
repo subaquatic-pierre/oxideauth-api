@@ -60,7 +60,7 @@ mod tests {
             stores::permission::PermissionStore,
             traits::{
                 crud::{Create, Get, List},
-                meta::ReadStoreMeta,
+                meta::ReadStore,
             },
         },
     };

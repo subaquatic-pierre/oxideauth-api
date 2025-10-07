@@ -6,7 +6,7 @@ use crate::store::{
         PermissionFilter, PermissionForCreate, PermissionForUpdate, PermissionIden, PermissionRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
+    traits::meta::{MutateStore, ReadStore, Store},
 };
 
 /// The struct for our Permission store, holding the database connection wrapper.
@@ -35,7 +35,7 @@ impl Store for PermissionStore {
     }
 }
 
-impl ReadStoreMeta for PermissionStore {
+impl ReadStore for PermissionStore {
     type FilterStoreParams = PermissionFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -47,7 +47,7 @@ impl ReadStoreMeta for PermissionStore {
     }
 }
 
-impl MutateStoreMeta for PermissionStore {
+impl MutateStore for PermissionStore {
     type CreateStoreParams = PermissionForCreate;
     type UpdateStoreParams = PermissionForUpdate;
 

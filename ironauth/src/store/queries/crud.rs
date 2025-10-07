@@ -226,7 +226,7 @@ mod tests {
             stores::account::AccountStore,
             traits::{
                 crud::{Create, CreateMany, Delete, Get, List, Update},
-                meta::{MutateStoreMeta, ReadStoreMeta},
+                meta::{MutateStore, ReadStore},
             },
             utils::time_to_string,
         },

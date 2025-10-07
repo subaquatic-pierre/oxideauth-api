@@ -6,7 +6,7 @@ use crate::store::{
         CredentialFilter, CredentialForCreate, CredentialForUpdate, CredentialIden, CredentialRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
+    traits::meta::{MutateStore, ReadStore, Store},
 };
 
 /// The struct for our Credential store, holding the database connection wrapper.
@@ -35,7 +35,7 @@ impl Store for CredentialStore {
     }
 }
 
-impl ReadStoreMeta for CredentialStore {
+impl ReadStore for CredentialStore {
     type FilterStoreParams = CredentialFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -47,7 +47,7 @@ impl ReadStoreMeta for CredentialStore {
     }
 }
 
-impl MutateStoreMeta for CredentialStore {
+impl MutateStore for CredentialStore {
     type CreateStoreParams = CredentialForCreate;
     type UpdateStoreParams = CredentialForUpdate;
 

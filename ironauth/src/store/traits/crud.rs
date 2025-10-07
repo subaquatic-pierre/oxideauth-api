@@ -22,7 +22,7 @@ use crate::store::{
         first::{first, first_opt},
         meta::{MutateQueryMeta, ReadQueryMeta},
     },
-    traits::meta::{HasId, MutateStoreMeta, ReadStoreMeta, Store, StoreRow},
+    traits::meta::{HasId, MutateStore, ReadStore, Store, StoreRow},
     utils::prepare_audit_fields,
 };
 use async_trait::async_trait;
@@ -34,7 +34,7 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait Create
 where
-    Self: MutateStoreMeta,
+    Self: MutateStore,
 {
     /// Inserts a new row and returns the created record.
     async fn create(&self, ctx: &StoreCtx, data: Self::CreateStoreParams) -> Result<Self::Row> {
@@ -43,13 +43,12 @@ where
         create(&ctx, &db, data, &meta).await
     }
 }
-impl<T: MutateStoreMeta> Create for T {}
 
 /// Trait for the "get by id" capability of a store.
 #[async_trait]
 pub trait Get
 where
-    Self: ReadStoreMeta,
+    Self: ReadStore,
 {
     /// Fetches a single row by its primary key.
     /// Returns an error if the row is not found.
@@ -71,13 +70,12 @@ where
         get_opt(&ctx, &db, id, &meta).await
     }
 }
-impl<T: ReadStoreMeta> Get for T {}
 
 /// Trait for the "list/filter" capability of a store.
 #[async_trait]
 pub trait List
 where
-    Self: ReadStoreMeta,
+    Self: ReadStore,
 {
     /// Returns all rows matching the filter and list options.
     async fn list(
@@ -91,13 +89,12 @@ where
         list(ctx, &db, filter, opts, &meta).await
     }
 }
-impl<T: ReadStoreMeta> List for T {}
 
 /// Trait for the "update" capability of a store.
 #[async_trait]
 pub trait Update
 where
-    Self: MutateStoreMeta,
+    Self: MutateStore,
 {
     /// Updates a row by its ID and returns the updated record.
     /// Returns an error if the row is not found.
@@ -125,13 +122,12 @@ where
         update_opt(ctx, &db, id, data, &meta).await
     }
 }
-impl<T: MutateStoreMeta> Update for T {}
 
 /// Trait for the "delete" capability of a store.
 #[async_trait]
 pub trait Delete
 where
-    Self: MutateStoreMeta,
+    Self: MutateStore,
 {
     /// Deletes a row by its primary key and returns the deleted record.
     /// Returns an error if the row is not found.
@@ -153,7 +149,6 @@ where
         delete_opt(ctx, &db, id, &meta).await
     }
 }
-impl<T: MutateStoreMeta> Delete for T {}
 
 // endregion: --- CRUD Traits
 
@@ -164,7 +159,7 @@ impl<T: MutateStoreMeta> Delete for T {}
 #[async_trait]
 pub trait CreateMany
 where
-    Self: MutateStoreMeta,
+    Self: MutateStore,
 {
     /// Inserts multiple new rows and returns the created records.
     async fn create_many(
@@ -177,13 +172,12 @@ where
         create_many(ctx, &db, data, &meta).await
     }
 }
-impl<T: MutateStoreMeta> CreateMany for T {}
 
 /// Trait for the bulk "update" capability of a store.
 #[async_trait]
 pub trait UpdateMany
 where
-    Self: MutateStoreMeta,
+    Self: MutateStore,
 {
     /// Updates multiple rows from a vector of (ID, data) tuples
     /// and returns the updated records.
@@ -197,13 +191,12 @@ where
         update_many(ctx, &db, data, &meta).await
     }
 }
-impl<T: MutateStoreMeta> UpdateMany for T {}
 
 /// Trait for the bulk "delete" capability of a store.
 #[async_trait]
 pub trait DeleteMany
 where
-    Self: MutateStoreMeta,
+    Self: MutateStore,
 {
     /// Deletes multiple rows by their primary keys and returns the deleted records.
     async fn delete_many(
@@ -216,7 +209,6 @@ where
         delete_many(ctx, &db, ids, &meta).await
     }
 }
-impl<T: MutateStoreMeta> DeleteMany for T {}
 
 // endregion: --- Batch Traits
 
@@ -227,7 +219,7 @@ impl<T: MutateStoreMeta> DeleteMany for T {}
 #[async_trait]
 pub trait GetFirst
 where
-    Self: ReadStoreMeta,
+    Self: ReadStore,
 {
     /// Fetches the first row matching the filter and list options.
     /// Returns an error if no matching row is found.
@@ -255,13 +247,12 @@ where
         first_opt(ctx, &db, filter, opts, &meta).await
     }
 }
-impl<T: ReadStoreMeta> GetFirst for T {}
 
 /// Trait for counting records matching a filter.
 #[async_trait]
 pub trait GetCount
 where
-    Self: ReadStoreMeta,
+    Self: ReadStore,
 {
     /// Returns a count of all rows matching the given filter.
     async fn count(&self, ctx: &StoreCtx, filter: Option<Self::FilterStoreParams>) -> Result<i64> {
@@ -270,6 +261,5 @@ where
         count(ctx, &db, filter, &meta).await
     }
 }
-impl<T: ReadStoreMeta> GetCount for T {}
 
 // endregion: --- Query Traits

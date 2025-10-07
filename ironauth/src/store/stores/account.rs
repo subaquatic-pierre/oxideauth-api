@@ -4,9 +4,10 @@ use crate::store::{
     dbx::Dbx,
     entities::account::{
         AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountRow,
+        AccountWithCredentials,
     },
-    queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
+    queries::meta::{MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
+    traits::meta::{MutateStore, OneToManyStore, ReadStore, Store},
 };
 
 /// The struct for our Account store, holding the database connection wrapper.
@@ -35,7 +36,7 @@ impl Store for AccountStore {
     }
 }
 
-impl ReadStoreMeta for AccountStore {
+impl ReadStore for AccountStore {
     type FilterStoreParams = AccountFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -47,7 +48,7 @@ impl ReadStoreMeta for AccountStore {
     }
 }
 
-impl MutateStoreMeta for AccountStore {
+impl MutateStore for AccountStore {
     type CreateStoreParams = AccountForCreate;
     type UpdateStoreParams = AccountForUpdate;
 
@@ -55,6 +56,24 @@ impl MutateStoreMeta for AccountStore {
         MutateQueryMeta {
             table: AccountIden::Table,
             pk: AccountIden::Id,
+            has_audit: true,
+        }
+    }
+}
+
+impl OneToManyStore for AccountStore {
+    type OneToManyRow = AccountWithCredentials;
+
+    type FilterStoreParams = AccountFilter;
+
+    fn one_to_many_meta(&self) -> OneToManyQueryMeta<Self::Iden> {
+        OneToManyQueryMeta {
+            single_table: AccountIden::Table,
+            many_table: AccountIden::Credential,
+            single_pk: AccountIden::Id,
+            many_pk: AccountIden::Id,
+            many_fk: AccountIden::AccountId,
+            agg_alias: AccountIden::Credentials,
             has_audit: true,
         }
     }

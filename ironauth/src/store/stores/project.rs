@@ -6,7 +6,7 @@ use crate::store::{
         ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
+    traits::meta::{MutateStore, ReadStore, Store},
 };
 
 /// The struct for our Project store, holding the database connection wrapper.
@@ -35,7 +35,7 @@ impl Store for ProjectStore {
     }
 }
 
-impl ReadStoreMeta for ProjectStore {
+impl ReadStore for ProjectStore {
     type FilterStoreParams = ProjectFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -47,7 +47,7 @@ impl ReadStoreMeta for ProjectStore {
     }
 }
 
-impl MutateStoreMeta for ProjectStore {
+impl MutateStore for ProjectStore {
     type CreateStoreParams = ProjectForCreate;
     type UpdateStoreParams = ProjectForUpdate;
 

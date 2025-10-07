@@ -7,7 +7,7 @@ use crate::store::{
         TokenBlacklistRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
+    traits::meta::{MutateStore, ReadStore, Store},
 };
 use modql::field::HasSeaFields;
 
@@ -36,7 +36,7 @@ impl Store for TokenBlacklistStore {
     }
 }
 
-impl ReadStoreMeta for TokenBlacklistStore {
+impl ReadStore for TokenBlacklistStore {
     type FilterStoreParams = TokenBlacklistFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -48,7 +48,7 @@ impl ReadStoreMeta for TokenBlacklistStore {
     }
 }
 
-impl MutateStoreMeta for TokenBlacklistStore {
+impl MutateStore for TokenBlacklistStore {
     type CreateStoreParams = TokenBlacklistForCreate;
     type UpdateStoreParams = TokenBlacklistForUpdate;
 

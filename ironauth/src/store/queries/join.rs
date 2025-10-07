@@ -475,7 +475,7 @@ mod tests {
             },
             traits::{
                 crud::{Create, Get, List},
-                meta::ReadStoreMeta,
+                meta::ReadStore,
             },
         },
     };

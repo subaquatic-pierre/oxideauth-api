@@ -171,7 +171,7 @@ mod tests {
             stores::account::AccountStore,
             traits::{
                 crud::Get,
-                meta::{MutateStoreMeta, ReadStoreMeta, TableIden},
+                meta::{MutateStore, ReadStore, TableIden},
             },
         },
     };
