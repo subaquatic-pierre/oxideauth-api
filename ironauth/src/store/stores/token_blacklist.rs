@@ -3,16 +3,14 @@ use std::sync::Arc;
 use crate::store::{
     dbx::Dbx,
     entities::token_blacklist::{
-        TokenBlacklistFilter, TokenBlacklistForCreate, TokenBlacklistIden, TokenBlacklistRow,
+        TokenBlacklistFilter, TokenBlacklistForCreate, TokenBlacklistForUpdate, TokenBlacklistIden,
+        TokenBlacklistRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::{
-        crud::{Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List},
-        meta::{MutateStoreMeta, ReadStoreMeta, Store},
-    },
+    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
 };
+use modql::field::HasSeaFields;
 
-/// The struct for our TokenBlacklist store, holding the database connection wrapper.
 pub struct TokenBlacklistStore {
     db: Arc<Dbx>,
 }
@@ -26,7 +24,8 @@ impl TokenBlacklistStore {
 
 // region:    --- Base Trait Implementations
 // -----------------------------------------------------------------------------
-// These implementations provide the core metadata for the store.
+// By implementing these meta traits, TokenBlacklistStore implicitly gains
+// its capabilities from the blanket implementations.
 
 impl Store for TokenBlacklistStore {
     type Iden = TokenBlacklistIden;
@@ -38,6 +37,8 @@ impl Store for TokenBlacklistStore {
 }
 
 impl ReadStoreMeta for TokenBlacklistStore {
+    type FilterStoreParams = TokenBlacklistFilter;
+
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: TokenBlacklistIden::Table,
@@ -48,6 +49,9 @@ impl ReadStoreMeta for TokenBlacklistStore {
 }
 
 impl MutateStoreMeta for TokenBlacklistStore {
+    type CreateStoreParams = TokenBlacklistForCreate;
+    type UpdateStoreParams = TokenBlacklistForUpdate;
+
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: TokenBlacklistIden::Table,
@@ -59,32 +63,3 @@ impl MutateStoreMeta for TokenBlacklistStore {
 
 // -----------------------------------------------------------------------------
 // endregion: --- Base Trait Implementations
-
-// region:    --- Functional Trait Implementations
-// -----------------------------------------------------------------------------
-// With the metadata defined above, these implementations are now very concise.
-// We only need to specify the associated types for params (Create, Update, Filter).
-// The actual method logic is handled by the default implementations in your traits.
-
-impl Create for TokenBlacklistStore {
-    type CreateStoreParams = TokenBlacklistForCreate;
-}
-
-impl Get for TokenBlacklistStore {}
-
-impl List for TokenBlacklistStore {
-    type FilterStoreParams = TokenBlacklistFilter;
-}
-
-impl Delete for TokenBlacklistStore {}
-
-impl CreateMany for TokenBlacklistStore {}
-
-impl DeleteMany for TokenBlacklistStore {}
-
-impl GetFirst for TokenBlacklistStore {}
-
-impl GetCount for TokenBlacklistStore {}
-
-// -----------------------------------------------------------------------------
-// endregion: --- Functional Trait Implementations

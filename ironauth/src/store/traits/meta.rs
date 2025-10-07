@@ -11,7 +11,10 @@ use uuid::Uuid;
 
 use crate::store::{
     error::Result,
-    queries::meta::{MutateQueryMeta, ReadQueryMeta},
+    queries::meta::{
+        ContainsFilterQueryMeta, ManyToManyQueryMeta, MutateQueryMeta, OneToManyQueryMeta,
+        ReadQueryMeta,
+    },
     traits::crud::Create,
 };
 use async_trait::async_trait;
@@ -53,10 +56,32 @@ pub trait Store: Sized + Send + Sync {
 
 /// Trait for stores that support read operations.
 pub trait ReadStoreMeta: Store {
+    /// Parameters used to filter queries.
+    type FilterStoreParams: Into<FilterGroups> + Send;
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden>;
 }
 
 /// Trait for stores that support mutating operations.
 pub trait MutateStoreMeta: Store {
+    /// Parameters used to insert a new row.
+    type CreateStoreParams: HasSeaFields + Send;
+    /// Parameters used when updating a row.
+    type UpdateStoreParams: HasSeaFields + Clone + Send + Sync + Sized;
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden>;
+}
+
+/// Trait for stores that support one to many operations.
+pub trait OneToManyStoreMeta: Store {
+    fn one_to_many_meta(&self) -> OneToManyQueryMeta<Self::Iden>;
+}
+
+/// Trait for stores that support many to many operations.
+pub trait ManyToManyStoreMeta: Store {
+    fn one_to_many_meta(&self) -> ManyToManyQueryMeta<Self::Iden>;
+}
+
+/// Trait for stores that support filtering on 'tags' and 'meta' columns.
+pub trait ContainsFilterStoreMeta: Store {
+    fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden>;
+    fn contains_json_meta(&self) -> ContainsFilterQueryMeta<Self::Iden>;
 }

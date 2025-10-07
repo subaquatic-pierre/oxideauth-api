@@ -1,25 +1,14 @@
 use std::sync::Arc;
 
-use modql::SIden;
-use sea_query::Iden;
-use sea_query::{IntoIden, TableRef};
-use sqlx::prelude::FromRow;
-use uuid::Uuid;
-
 use crate::store::{
     dbx::Dbx,
     entities::account::{
         AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::{
-        crud::{
-            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
-            UpdateMany,
-        },
-        meta::{MutateStoreMeta, ReadStoreMeta, Store},
-    },
+    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
 };
+
 /// The struct for our Account store, holding the database connection wrapper.
 pub struct AccountStore {
     db: Arc<Dbx>,
@@ -34,7 +23,8 @@ impl AccountStore {
 
 // region:    --- Base Trait Implementations
 // -----------------------------------------------------------------------------
-// These implementations provide the core metadata for the store.
+// By implementing these meta traits, AccountStore implicitly gains all of the
+// CRUD, Batch, and Query capabilities from the blanket implementations.
 
 impl Store for AccountStore {
     type Iden = AccountIden;
@@ -46,6 +36,8 @@ impl Store for AccountStore {
 }
 
 impl ReadStoreMeta for AccountStore {
+    type FilterStoreParams = AccountFilter;
+
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: AccountIden::Table,
@@ -56,6 +48,9 @@ impl ReadStoreMeta for AccountStore {
 }
 
 impl MutateStoreMeta for AccountStore {
+    type CreateStoreParams = AccountForCreate;
+    type UpdateStoreParams = AccountForUpdate;
+
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: AccountIden::Table,
@@ -67,40 +62,3 @@ impl MutateStoreMeta for AccountStore {
 
 // -----------------------------------------------------------------------------
 // endregion: --- Base Trait Implementations
-
-// region:    --- Functional Trait Implementations
-// -----------------------------------------------------------------------------
-// With the metadata defined above, these implementations are now very concise.
-// We only need to specify the associated types for params (Create, Update, Filter).
-// The actual method logic is handled by the default implementations in your traits.
-
-impl Create for AccountStore {
-    type CreateStoreParams = AccountForCreate;
-}
-
-impl Get for AccountStore {}
-
-impl List for AccountStore {
-    type FilterStoreParams = AccountFilter;
-}
-
-impl Update for AccountStore {
-    type UpdateStoreParams = AccountForUpdate;
-}
-
-impl Delete for AccountStore {}
-
-impl CreateMany for AccountStore {}
-
-impl UpdateMany for AccountStore {
-    type UpdateStoreParams = AccountForUpdate;
-}
-
-impl DeleteMany for AccountStore {}
-
-impl GetFirst for AccountStore {}
-
-impl GetCount for AccountStore {}
-
-// -----------------------------------------------------------------------------
-// endregion: --- Functional Trait Implementations

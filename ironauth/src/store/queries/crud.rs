@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::store::dbx::Dbx;
 use crate::store::error::{Result, StoreError};
-use crate::store::queries::meta::{ListQueryMeta, MutateQueryMeta, ReadQueryMeta};
+use crate::store::queries::meta::{MutateQueryMeta, ReadQueryMeta};
 use crate::store::traits::meta::{Store, StoreId, StoreRow, TableIden};
 use crate::store::utils::prepare_audit_fields;
 use crate::store::utils::ListOptionsValidator;
@@ -430,7 +430,7 @@ mod tests {
         u.name = Some("UPDATE_AFTER".into());
 
         // Act
-        let update_meta = acc_store.update_meta();
+        let update_meta = acc_store.mutate_meta();
         let updated: AccountRow = update(&ctx, &dbx, &created.id, u, &update_meta).await?;
 
         // Assert
@@ -455,7 +455,7 @@ mod tests {
         u.name = Some("WON'T_APPLY".into());
 
         // Act
-        let meta = acc_store.update_meta();
+        let meta = acc_store.mutate_meta();
         let err = update::<AccountRow, _, _>(&ctx, &dbx, &missing_id, u, &meta).await;
 
         // Assert
@@ -481,7 +481,7 @@ mod tests {
         let created: AccountRow = create(&ctx, &dbx, d, &mutate_meta).await?;
 
         // Act
-        let delete_meta = acc_store.delete_meta();
+        let delete_meta = acc_store.mutate_meta();
         let deleted: AccountRow = delete(&ctx, &dbx, &created.id, &delete_meta).await?;
 
         // Assert
@@ -503,7 +503,7 @@ mod tests {
         let missing_id = Uuid::new_v4();
 
         // Act
-        let meta = acc_store.delete_meta();
+        let meta = acc_store.mutate_meta();
         let err = delete::<AccountRow, _>(&ctx, &dbx, &missing_id, &meta).await;
 
         // Assert

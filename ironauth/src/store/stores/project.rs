@@ -6,13 +6,7 @@ use crate::store::{
         ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::{
-        crud::{
-            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
-            UpdateMany,
-        },
-        meta::{MutateStoreMeta, ReadStoreMeta, Store},
-    },
+    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
 };
 
 /// The struct for our Project store, holding the database connection wrapper.
@@ -29,7 +23,8 @@ impl ProjectStore {
 
 // region:    --- Base Trait Implementations
 // -----------------------------------------------------------------------------
-// These implementations provide the core metadata for the store.
+// By implementing these meta traits, ProjectStore implicitly gains all of the
+// CRUD, Batch, and Query capabilities from the blanket implementations.
 
 impl Store for ProjectStore {
     type Iden = ProjectIden;
@@ -41,6 +36,8 @@ impl Store for ProjectStore {
 }
 
 impl ReadStoreMeta for ProjectStore {
+    type FilterStoreParams = ProjectFilter;
+
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: ProjectIden::Table,
@@ -51,6 +48,9 @@ impl ReadStoreMeta for ProjectStore {
 }
 
 impl MutateStoreMeta for ProjectStore {
+    type CreateStoreParams = ProjectForCreate;
+    type UpdateStoreParams = ProjectForUpdate;
+
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: ProjectIden::Table,
@@ -62,40 +62,3 @@ impl MutateStoreMeta for ProjectStore {
 
 // -----------------------------------------------------------------------------
 // endregion: --- Base Trait Implementations
-
-// region:    --- Functional Trait Implementations
-// -----------------------------------------------------------------------------
-// With the metadata defined above, these implementations are now very concise.
-// We only need to specify the associated types for params (Create, Update, Filter).
-// The actual method logic is handled by the default implementations in your traits.
-
-impl Create for ProjectStore {
-    type CreateStoreParams = ProjectForCreate;
-}
-
-impl Get for ProjectStore {}
-
-impl List for ProjectStore {
-    type FilterStoreParams = ProjectFilter;
-}
-
-impl Update for ProjectStore {
-    type UpdateStoreParams = ProjectForUpdate;
-}
-
-impl Delete for ProjectStore {}
-
-impl CreateMany for ProjectStore {}
-
-impl UpdateMany for ProjectStore {
-    type UpdateStoreParams = ProjectForUpdate;
-}
-
-impl DeleteMany for ProjectStore {}
-
-impl GetFirst for ProjectStore {}
-
-impl GetCount for ProjectStore {}
-
-// -----------------------------------------------------------------------------
-// endregion: --- Functional Trait Implementations

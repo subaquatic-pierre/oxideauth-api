@@ -6,15 +6,15 @@ use crate::store::{
     ctx::StoreCtx,
     dbx::Dbx,
     error::{Result, StoreError},
-    queries::meta::{FilterByValueContains, ValueContainsQueryMeta},
+    queries::meta::{ContainsFilter, ContainsFilterQueryMeta},
     traits::meta::{StoreRow, TableIden},
 };
 
 pub async fn filter_by_value_contains<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &Dbx,
-    value: FilterByValueContains,
-    meta: &ValueContainsQueryMeta<I>,
+    value: ContainsFilter,
+    meta: &ContainsFilterQueryMeta<I>,
 ) -> Result<Vec<T>> {
     // count ensure list limit not exceeded
 
@@ -22,10 +22,10 @@ pub async fn filter_by_value_contains<T: StoreRow, I: TableIden>(
     query.from(meta.table).column((meta.table, Asterisk));
 
     let expr = match value {
-        FilterByValueContains::Array(tags) => {
+        ContainsFilter::Array(tags) => {
             Expr::cust_with_values(format!(r#""{}" @> $"#, meta.col.to_string()), [tags])
         }
-        FilterByValueContains::Json(json) => {
+        ContainsFilter::Json(json) => {
             Expr::cust_with_values(format!(r#""{}" @> $"#, meta.col.to_string()), [json])
         }
     };
@@ -100,7 +100,7 @@ mod tests {
             perms.push(store.create(&ctx, n).await?);
         }
 
-        let meta = ValueContainsQueryMeta {
+        let meta = ContainsFilterQueryMeta {
             table: PermissionIden::Table,
             col: PermissionIden::Meta,
         };
@@ -108,7 +108,7 @@ mod tests {
         let schema_1: Vec<PermissionRow> = filter_by_value_contains(
             &ctx,
             &dbx,
-            FilterByValueContains::Json(json!({"schema_version":"1"})),
+            ContainsFilter::Json(json!({"schema_version":"1"})),
             &meta,
         )
         .await?;
@@ -116,7 +116,7 @@ mod tests {
         let schema_2: Vec<PermissionRow> = filter_by_value_contains(
             &ctx,
             &dbx,
-            FilterByValueContains::Json(json!({"schema_version":"2"})),
+            ContainsFilter::Json(json!({"schema_version":"2"})),
             &meta,
         )
         .await?;
@@ -157,7 +157,7 @@ mod tests {
         }
 
         // -- Define query metadata for the 'tags' column
-        let meta = ValueContainsQueryMeta {
+        let meta = ContainsFilterQueryMeta {
             table: PermissionIden::Table,
             col: PermissionIden::Tags, // Assumes 'Tags' is a variant on your Iden
         };
@@ -167,7 +167,7 @@ mod tests {
         let system_perms: Vec<PermissionRow> = filter_by_value_contains(
             &ctx,
             &dbx,
-            FilterByValueContains::Array(vec!["system".to_string()]),
+            ContainsFilter::Array(vec!["system".to_string()]),
             &meta,
         )
         .await?;
@@ -181,7 +181,7 @@ mod tests {
         let user_perms: Vec<PermissionRow> = filter_by_value_contains(
             &ctx,
             &dbx,
-            FilterByValueContains::Array(vec!["user".to_string()]),
+            ContainsFilter::Array(vec!["user".to_string()]),
             &meta,
         )
         .await?;
@@ -195,7 +195,7 @@ mod tests {
         let critical_system_perms: Vec<PermissionRow> = filter_by_value_contains(
             &ctx,
             &dbx,
-            FilterByValueContains::Array(vec!["critical".to_string(), "system".to_string()]),
+            ContainsFilter::Array(vec!["critical".to_string(), "system".to_string()]),
             &meta,
         )
         .await?;
@@ -209,7 +209,7 @@ mod tests {
         let no_match_perms: Vec<PermissionRow> = filter_by_value_contains(
             &ctx,
             &dbx,
-            FilterByValueContains::Array(vec!["system".to_string(), "general".to_string()]),
+            ContainsFilter::Array(vec!["system".to_string(), "general".to_string()]),
             &meta,
         )
         .await?;

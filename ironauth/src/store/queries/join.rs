@@ -13,10 +13,7 @@ use crate::store::{
     error::{Result, StoreError},
     queries::{
         count::{count, count_many},
-        meta::{
-            CountManyQueryMeta, ManyToManyMutateQueryMeta, ManyToManyReadQueryMeta,
-            OneToManyQueryMeta, ReadQueryMeta,
-        },
+        meta::{CountManyQueryMeta, ManyToManyQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
     },
     traits::meta::{HasId, StoreId, StoreRow, TableIden},
     utils::{pg_type_of, ListOptionsValidator, LIST_LIMIT_MAX},
@@ -188,7 +185,7 @@ pub async fn get_many_to_many_opt<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &Dbx,
     id: &impl StoreId,
-    meta: &ManyToManyReadQueryMeta<I>,
+    meta: &ManyToManyQueryMeta<I>,
 ) -> Result<Option<T>> {
     // Guard: count rows on the many side via its FK -> single PK
     let count_meta = CountManyQueryMeta {
@@ -261,7 +258,7 @@ pub async fn get_many_to_many<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &Dbx,
     id: &impl StoreId,
-    meta: &ManyToManyReadQueryMeta<I>,
+    meta: &ManyToManyQueryMeta<I>,
 ) -> Result<T> {
     match get_many_to_many_opt(ctx, dbx, id, meta).await? {
         Some(t) => Ok(t),
@@ -277,7 +274,7 @@ pub async fn list_many_to_many<T: StoreRow, F: Into<FilterGroups> + Clone, I: Ta
     dbx: &Dbx,
     filter: Option<F>,
     opts: Option<ListOptions>,
-    meta: &ManyToManyReadQueryMeta<I>,
+    meta: &ManyToManyQueryMeta<I>,
 ) -> Result<Vec<T>> {
     let count_meta = ReadQueryMeta {
         table: meta.single_table,
@@ -361,7 +358,7 @@ pub async fn set_many_to_many_links<I: TableIden, ID: StoreId + Clone>(
     dbx: &Dbx,
     self_id: &ID,
     other_ids: Vec<ID>,
-    meta: &ManyToManyMutateQueryMeta<I>,
+    meta: &ManyToManyQueryMeta<I>,
 ) -> Result<()> {
     let mut tx = dbx.begin().await?;
 
@@ -404,7 +401,7 @@ pub async fn attach_link<I: TableIden, ID: StoreId>(
     dbx: &Dbx,
     self_id: &ID,
     other_id: &ID,
-    meta: &ManyToManyMutateQueryMeta<I>,
+    meta: &ManyToManyQueryMeta<I>,
 ) -> Result<()> {
     // Build an INSERT statement for a single row.
     let (sql, vals) = Query::insert()
@@ -433,7 +430,7 @@ pub async fn detach_link<I: TableIden, ID: StoreId>(
     dbx: &Dbx,
     self_id: &ID,
     other_id: &ID,
-    meta: &ManyToManyMutateQueryMeta<I>,
+    meta: &ManyToManyQueryMeta<I>,
 ) -> Result<()> {
     // Build a DELETE statement targeting the specific link.
     let (sql, vals) = Query::delete()
@@ -661,7 +658,7 @@ mod tests {
 
         // link all perms
 
-        let mutate_meta = ManyToManyMutateQueryMeta {
+        let mutate_meta = ManyToManyQueryMeta {
             single_table: RoleIden::Table,
             many_table: RoleIden::Permission,
             join_table: RoleIden::RolePermission,
@@ -669,6 +666,8 @@ mod tests {
             many_pk: RoleIden::PermissionPk,
             many_fk: RoleIden::PermissionId,
             join_fk: RoleIden::RoleId,
+            agg_alias: RoleIden::Permissions,
+            has_audit: true,
         };
 
         let perm_ids = filtered_perms.iter().map(|el| el.id.clone()).collect();
@@ -676,7 +675,7 @@ mod tests {
         let _ =
             set_many_to_many_links(&ctx, &dbx, &role.id.clone(), perm_ids, &mutate_meta).await?;
 
-        let meta = ManyToManyReadQueryMeta {
+        let meta = ManyToManyQueryMeta {
             single_table: RoleIden::Table,
             many_table: RoleIden::Permission,
             join_table: RoleIden::RolePermission,
@@ -736,7 +735,7 @@ mod tests {
             roles.push(role_store.create(&ctx, n).await?);
         }
 
-        let mutate_meta = ManyToManyMutateQueryMeta {
+        let mutate_meta = ManyToManyQueryMeta {
             single_table: RoleIden::Table,
             many_table: RoleIden::Permission,
             join_table: RoleIden::RolePermission,
@@ -744,6 +743,8 @@ mod tests {
             many_pk: RoleIden::PermissionPk,
             many_fk: RoleIden::PermissionId,
             join_fk: RoleIden::RoleId,
+            agg_alias: RoleIden::Permissions,
+            has_audit: true,
         };
 
         for role in roles {
@@ -763,7 +764,7 @@ mod tests {
                 .await?;
         }
 
-        let meta = ManyToManyReadQueryMeta {
+        let meta = ManyToManyQueryMeta {
             single_table: RoleIden::Table,
             many_table: RoleIden::Permission,
             join_table: RoleIden::RolePermission,
@@ -842,7 +843,7 @@ mod tests {
             .await?;
 
         // -- Define metadata for read and mutate operations
-        let mutate_meta = ManyToManyMutateQueryMeta {
+        let mutate_meta = ManyToManyQueryMeta {
             single_table: RoleIden::Table,
             many_table: RoleIden::Permission,
             join_table: RoleIden::RolePermission,
@@ -850,9 +851,11 @@ mod tests {
             many_pk: RoleIden::PermissionPk,
             many_fk: RoleIden::PermissionId,
             join_fk: RoleIden::RoleId,
+            agg_alias: RoleIden::Permissions,
+            has_audit: true,
         };
 
-        let read_meta = ManyToManyReadQueryMeta {
+        let read_meta = ManyToManyQueryMeta {
             single_table: RoleIden::Table,
             many_table: RoleIden::Permission,
             join_table: RoleIden::RolePermission,

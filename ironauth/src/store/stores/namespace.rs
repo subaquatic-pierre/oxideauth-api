@@ -2,26 +2,20 @@ use std::sync::Arc;
 
 use crate::store::{
     dbx::Dbx,
-    entities::membership::{
-        MembershipFilter, MembershipForCreate, MembershipForUpdate, MembershipIden, MembershipRow,
+    entities::namespace::{
+        NamespaceFilter, NamespaceForCreate, NamespaceForUpdate, NamespaceIden, NamespaceRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::{
-        crud::{
-            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
-            UpdateMany,
-        },
-        meta::{MutateStoreMeta, ReadStoreMeta, Store},
-    },
+    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
 };
 
-/// The struct for our Membership store, holding the database connection wrapper.
-pub struct MembershipStore {
+/// The struct for our Namespace store, holding the database connection wrapper.
+pub struct NamespaceStore {
     db: Arc<Dbx>,
 }
 
-impl MembershipStore {
-    /// Creates a new `MembershipStore`.
+impl NamespaceStore {
+    /// Creates a new `NamespaceStore`.
     pub fn new(db: Arc<Dbx>) -> Self {
         Self { db }
     }
@@ -29,32 +23,38 @@ impl MembershipStore {
 
 // region:    --- Base Trait Implementations
 // -----------------------------------------------------------------------------
-// These implementations provide the core metadata for the store.
+// By implementing these meta traits, NamespaceStore implicitly gains all of the
+// CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl Store for MembershipStore {
-    type Iden = MembershipIden;
-    type Row = MembershipRow;
+impl Store for NamespaceStore {
+    type Iden = NamespaceIden;
+    type Row = NamespaceRow;
 
     fn db(&self) -> &Dbx {
         &self.db
     }
 }
 
-impl ReadStoreMeta for MembershipStore {
+impl ReadStoreMeta for NamespaceStore {
+    type FilterStoreParams = NamespaceFilter;
+
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
-            table: MembershipIden::Table,
-            pk: MembershipIden::Id,
+            table: NamespaceIden::Table,
+            pk: NamespaceIden::Id,
             has_audit: true,
         }
     }
 }
 
-impl MutateStoreMeta for MembershipStore {
+impl MutateStoreMeta for NamespaceStore {
+    type CreateStoreParams = NamespaceForCreate;
+    type UpdateStoreParams = NamespaceForUpdate;
+
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
-            table: MembershipIden::Table,
-            pk: MembershipIden::Id,
+            table: NamespaceIden::Table,
+            pk: NamespaceIden::Id,
             has_audit: true,
         }
     }
@@ -62,40 +62,3 @@ impl MutateStoreMeta for MembershipStore {
 
 // -----------------------------------------------------------------------------
 // endregion: --- Base Trait Implementations
-
-// region:    --- Functional Trait Implementations
-// -----------------------------------------------------------------------------
-// With the metadata defined above, these implementations are now very concise.
-// We only need to specify the associated types for params (Create, Update, Filter).
-// The actual method logic is handled by the default implementations in your traits.
-
-impl Create for MembershipStore {
-    type CreateStoreParams = MembershipForCreate;
-}
-
-impl Get for MembershipStore {}
-
-impl List for MembershipStore {
-    type FilterStoreParams = MembershipFilter;
-}
-
-impl Update for MembershipStore {
-    type UpdateStoreParams = MembershipForUpdate;
-}
-
-impl Delete for MembershipStore {}
-
-impl CreateMany for MembershipStore {}
-
-impl UpdateMany for MembershipStore {
-    type UpdateStoreParams = MembershipForUpdate;
-}
-
-impl DeleteMany for MembershipStore {}
-
-impl GetFirst for MembershipStore {}
-
-impl GetCount for MembershipStore {}
-
-// -----------------------------------------------------------------------------
-// endregion: --- Functional Trait Implementations

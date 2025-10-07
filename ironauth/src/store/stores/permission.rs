@@ -6,13 +6,7 @@ use crate::store::{
         PermissionFilter, PermissionForCreate, PermissionForUpdate, PermissionIden, PermissionRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::{
-        crud::{
-            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
-            UpdateMany,
-        },
-        meta::{MutateStoreMeta, ReadStoreMeta, Store},
-    },
+    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
 };
 
 /// The struct for our Permission store, holding the database connection wrapper.
@@ -29,7 +23,8 @@ impl PermissionStore {
 
 // region:    --- Base Trait Implementations
 // -----------------------------------------------------------------------------
-// These implementations provide the core metadata for the store.
+// By implementing these meta traits, PermissionStore implicitly gains all of the
+// CRUD, Batch, and Query capabilities from the blanket implementations.
 
 impl Store for PermissionStore {
     type Iden = PermissionIden;
@@ -41,6 +36,8 @@ impl Store for PermissionStore {
 }
 
 impl ReadStoreMeta for PermissionStore {
+    type FilterStoreParams = PermissionFilter;
+
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: PermissionIden::Table,
@@ -51,6 +48,9 @@ impl ReadStoreMeta for PermissionStore {
 }
 
 impl MutateStoreMeta for PermissionStore {
+    type CreateStoreParams = PermissionForCreate;
+    type UpdateStoreParams = PermissionForUpdate;
+
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: PermissionIden::Table,
@@ -62,40 +62,3 @@ impl MutateStoreMeta for PermissionStore {
 
 // -----------------------------------------------------------------------------
 // endregion: --- Base Trait Implementations
-
-// region:    --- Functional Trait Implementations
-// -----------------------------------------------------------------------------
-// With the metadata defined above, these implementations are now very concise.
-// We only need to specify the associated types for params (Create, Update, Filter).
-// The actual method logic is handled by the default implementations in your traits.
-
-impl Create for PermissionStore {
-    type CreateStoreParams = PermissionForCreate;
-}
-
-impl Get for PermissionStore {}
-
-impl List for PermissionStore {
-    type FilterStoreParams = PermissionFilter;
-}
-
-impl Update for PermissionStore {
-    type UpdateStoreParams = PermissionForUpdate;
-}
-
-impl Delete for PermissionStore {}
-
-impl CreateMany for PermissionStore {}
-
-impl UpdateMany for PermissionStore {
-    type UpdateStoreParams = PermissionForUpdate;
-}
-
-impl DeleteMany for PermissionStore {}
-
-impl GetFirst for PermissionStore {}
-
-impl GetCount for PermissionStore {}
-
-// -----------------------------------------------------------------------------
-// endregion: --- Functional Trait Implementations

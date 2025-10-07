@@ -6,13 +6,7 @@ use crate::store::{
         CredentialFilter, CredentialForCreate, CredentialForUpdate, CredentialIden, CredentialRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::{
-        crud::{
-            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
-            UpdateMany,
-        },
-        meta::{MutateStoreMeta, ReadStoreMeta, Store},
-    },
+    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
 };
 
 /// The struct for our Credential store, holding the database connection wrapper.
@@ -29,7 +23,8 @@ impl CredentialStore {
 
 // region:    --- Base Trait Implementations
 // -----------------------------------------------------------------------------
-// These implementations provide the core metadata for the store.
+// By implementing these meta traits, CredentialStore implicitly gains all of the
+// CRUD, Batch, and Query capabilities from the blanket implementations.
 
 impl Store for CredentialStore {
     type Iden = CredentialIden;
@@ -41,6 +36,8 @@ impl Store for CredentialStore {
 }
 
 impl ReadStoreMeta for CredentialStore {
+    type FilterStoreParams = CredentialFilter;
+
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: CredentialIden::Table,
@@ -51,6 +48,9 @@ impl ReadStoreMeta for CredentialStore {
 }
 
 impl MutateStoreMeta for CredentialStore {
+    type CreateStoreParams = CredentialForCreate;
+    type UpdateStoreParams = CredentialForUpdate;
+
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: CredentialIden::Table,
@@ -62,40 +62,3 @@ impl MutateStoreMeta for CredentialStore {
 
 // -----------------------------------------------------------------------------
 // endregion: --- Base Trait Implementations
-
-// region:    --- Functional Trait Implementations
-// -----------------------------------------------------------------------------
-// With the metadata defined above, these implementations are now very concise.
-// We only need to specify the associated types for params (Create, Update, Filter).
-// The actual method logic is handled by the default implementations in your traits.
-
-impl Create for CredentialStore {
-    type CreateStoreParams = CredentialForCreate;
-}
-
-impl Get for CredentialStore {}
-
-impl List for CredentialStore {
-    type FilterStoreParams = CredentialFilter;
-}
-
-impl Update for CredentialStore {
-    type UpdateStoreParams = CredentialForUpdate;
-}
-
-impl Delete for CredentialStore {}
-
-impl CreateMany for CredentialStore {}
-
-impl UpdateMany for CredentialStore {
-    type UpdateStoreParams = CredentialForUpdate;
-}
-
-impl DeleteMany for CredentialStore {}
-
-impl GetFirst for CredentialStore {}
-
-impl GetCount for CredentialStore {}
-
-// -----------------------------------------------------------------------------
-// endregion: --- Functional Trait Implementations

@@ -4,13 +4,7 @@ use crate::store::{
     dbx::Dbx,
     entities::role::{RoleFilter, RoleForCreate, RoleForUpdate, RoleIden, RoleRow},
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::{
-        crud::{
-            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
-            UpdateMany,
-        },
-        meta::{MutateStoreMeta, ReadStoreMeta, Store},
-    },
+    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
 };
 
 /// The struct for our Role store, holding the database connection wrapper.
@@ -27,7 +21,8 @@ impl RoleStore {
 
 // region:    --- Base Trait Implementations
 // -----------------------------------------------------------------------------
-// These implementations provide the core metadata for the store.
+// By implementing these meta traits, RoleStore implicitly gains all of the
+// CRUD, Batch, and Query capabilities from the blanket implementations.
 
 impl Store for RoleStore {
     type Iden = RoleIden;
@@ -39,6 +34,8 @@ impl Store for RoleStore {
 }
 
 impl ReadStoreMeta for RoleStore {
+    type FilterStoreParams = RoleFilter;
+
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: RoleIden::Table,
@@ -49,6 +46,9 @@ impl ReadStoreMeta for RoleStore {
 }
 
 impl MutateStoreMeta for RoleStore {
+    type CreateStoreParams = RoleForCreate;
+    type UpdateStoreParams = RoleForUpdate;
+
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: RoleIden::Table,
@@ -60,40 +60,3 @@ impl MutateStoreMeta for RoleStore {
 
 // -----------------------------------------------------------------------------
 // endregion: --- Base Trait Implementations
-
-// region:    --- Functional Trait Implementations
-// -----------------------------------------------------------------------------
-// With the metadata defined above, these implementations are now very concise.
-// We only need to specify the associated types for params (Create, Update, Filter).
-// The actual method logic is handled by the default implementations in your traits.
-
-impl Create for RoleStore {
-    type CreateStoreParams = RoleForCreate;
-}
-
-impl Get for RoleStore {}
-
-impl List for RoleStore {
-    type FilterStoreParams = RoleFilter;
-}
-
-impl Update for RoleStore {
-    type UpdateStoreParams = RoleForUpdate;
-}
-
-impl Delete for RoleStore {}
-
-impl CreateMany for RoleStore {}
-
-impl UpdateMany for RoleStore {
-    type UpdateStoreParams = RoleForUpdate;
-}
-
-impl DeleteMany for RoleStore {}
-
-impl GetFirst for RoleStore {}
-
-impl GetCount for RoleStore {}
-
-// -----------------------------------------------------------------------------
-// endregion: --- Functional Trait Implementations

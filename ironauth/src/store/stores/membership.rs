@@ -6,13 +6,7 @@ use crate::store::{
         MembershipFilter, MembershipForCreate, MembershipForUpdate, MembershipIden, MembershipRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::{
-        crud::{
-            Create, CreateMany, Delete, DeleteMany, Get, GetCount, GetFirst, List, Update,
-            UpdateMany,
-        },
-        meta::{MutateStoreMeta, ReadStoreMeta, Store},
-    },
+    traits::meta::{MutateStoreMeta, ReadStoreMeta, Store},
 };
 
 /// The struct for our Membership store, holding the database connection wrapper.
@@ -29,7 +23,8 @@ impl MembershipStore {
 
 // region:    --- Base Trait Implementations
 // -----------------------------------------------------------------------------
-// These implementations provide the core metadata for the store.
+// By implementing these meta traits, MembershipStore implicitly gains all of the
+// CRUD, Batch, and Query capabilities from the blanket implementations.
 
 impl Store for MembershipStore {
     type Iden = MembershipIden;
@@ -41,6 +36,8 @@ impl Store for MembershipStore {
 }
 
 impl ReadStoreMeta for MembershipStore {
+    type FilterStoreParams = MembershipFilter;
+
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
             table: MembershipIden::Table,
@@ -51,6 +48,9 @@ impl ReadStoreMeta for MembershipStore {
 }
 
 impl MutateStoreMeta for MembershipStore {
+    type CreateStoreParams = MembershipForCreate;
+    type UpdateStoreParams = MembershipForUpdate;
+
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
             table: MembershipIden::Table,
@@ -62,40 +62,3 @@ impl MutateStoreMeta for MembershipStore {
 
 // -----------------------------------------------------------------------------
 // endregion: --- Base Trait Implementations
-
-// region:    --- Functional Trait Implementations
-// -----------------------------------------------------------------------------
-// With the metadata defined above, these implementations are now very concise.
-// We only need to specify the associated types for params (Create, Update, Filter).
-// The actual method logic is handled by the default implementations in your traits.
-
-impl Create for MembershipStore {
-    type CreateStoreParams = MembershipForCreate;
-}
-
-impl Get for MembershipStore {}
-
-impl List for MembershipStore {
-    type FilterStoreParams = MembershipFilter;
-}
-
-impl Update for MembershipStore {
-    type UpdateStoreParams = MembershipForUpdate;
-}
-
-impl Delete for MembershipStore {}
-
-impl CreateMany for MembershipStore {}
-
-impl UpdateMany for MembershipStore {
-    type UpdateStoreParams = MembershipForUpdate;
-}
-
-impl DeleteMany for MembershipStore {}
-
-impl GetFirst for MembershipStore {}
-
-impl GetCount for MembershipStore {}
-
-// -----------------------------------------------------------------------------
-// endregion: --- Functional Trait Implementations
