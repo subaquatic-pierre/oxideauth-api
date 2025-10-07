@@ -21,6 +21,12 @@ pub enum RoleIden {
     Table, // TABLE_NAME
     Id, // TABLE_PK
     Permissions,
+    RolePermission,
+    RoleId,
+    PermissionId,
+    #[iden = "id"]
+    PermissionPk,
+    Permission,
 }
 
 // --- Row (DB-facing) ---

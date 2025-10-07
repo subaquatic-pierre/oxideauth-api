@@ -35,6 +35,7 @@ pub async fn count<F: Into<FilterGroups>, I: TableIden>(
 
     // build SQL and values
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
+
     let q = query_with(&sql, vals);
 
     let row = q.fetch_one(dbx.db()).await?;

@@ -20,6 +20,22 @@ pub async fn init_dev(db_pool: &DbPool) {
     init_dev_db(db_pool).await;
 }
 
+use std::sync::Once;
+use tracing_subscriber::{fmt, EnvFilter};
+
+static INIT_TRACING: Once = Once::new();
+
+pub fn init_tracing_for_tests() {
+    INIT_TRACING.call_once(|| {
+        // Respect RUST_LOG if present, otherwise default to debug
+        let env_filter =
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug"));
+
+        // swallow error if already initialized (useful when running many tests)
+        let _ = fmt().with_env_filter(env_filter).try_init();
+    });
+}
+
 pub async fn init_test<'a>() -> &'a AppData {
     static INIT: OnceCell<AppData> = OnceCell::const_new();
 
@@ -29,6 +45,8 @@ pub async fn init_test<'a>() -> &'a AppData {
 
             let app = new_test_app_data().await;
             init_test_db(&app.db).await;
+
+            init_tracing_for_tests();
 
             app
         })

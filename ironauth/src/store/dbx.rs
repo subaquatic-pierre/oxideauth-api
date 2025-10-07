@@ -1,6 +1,6 @@
 use sqlx::{
     query::{Query, QueryAs},
-    FromRow, IntoArguments, Postgres, Transaction,
+    Execute, FromRow, IntoArguments, Postgres, Transaction,
 };
 use std::{
     ops::{Deref, DerefMut},
@@ -15,7 +15,7 @@ use tokio::{
     task::JoinHandle,
     time::{interval, sleep, MissedTickBehavior},
 };
-use tracing::error;
+use tracing::{debug, error};
 
 use crate::store::{
     error::{Result, StoreError},
@@ -82,6 +82,8 @@ impl Dbx {
         O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
         A: IntoArguments<'q, Postgres> + 'q,
     {
+        // No need to debug here, sqlx::query logs debug info
+        // debug!("--- QUERY --- : SQL: {}", query.sql());
         let data = query.fetch_all(self.db()).await?;
 
         Ok(data)

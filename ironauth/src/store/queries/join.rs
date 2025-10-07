@@ -272,17 +272,17 @@ pub async fn get_many_to_many<T: StoreRow, I: TableIden>(
     }
 }
 
-pub async fn list_many_to_many_opt<T: StoreRow, F: Into<FilterGroups> + Clone, I: TableIden>(
+pub async fn list_many_to_many<T: StoreRow, F: Into<FilterGroups> + Clone, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &Dbx,
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &ManyToManyReadQueryMeta<I>,
-) -> Result<Option<T>> {
+) -> Result<Vec<T>> {
     let count_meta = ReadQueryMeta {
-        table: meta.join_table,
+        table: meta.single_table,
         pk: meta.join_fk,
-        has_audit: meta.has_audit,
+        has_audit: false,
     };
     let count = count(ctx, dbx, filter.clone(), &count_meta).await?;
     if count > LIST_LIMIT_MAX {
@@ -351,7 +351,7 @@ pub async fn list_many_to_many_opt<T: StoreRow, F: Into<FilterGroups> + Clone, I
 
     let query = sqlx::query_as_with::<_, T, _>(&sql, vals);
 
-    let res: Option<T> = dbx.fetch_optional(query).await?;
+    let res: Vec<T> = dbx.fetch_all(query).await?;
 
     Ok(res)
 }
@@ -468,8 +468,8 @@ mod tests {
                 credential::{
                     CredentialFilter, CredentialForCreate, CredentialIden, CredentialKind,
                 },
-                permission::{PermissionFilter, PermissionForCreate},
-                role::{RoleFilter, RoleForCreate},
+                permission::{PermissionFilter, PermissionForCreate, PermissionIden},
+                role::{RoleFilter, RoleForCreate, RoleIden, RoleWithPermissions},
             },
             queries::crud::create,
             stores::{
@@ -653,21 +653,51 @@ mod tests {
         println!("{:#?}", filtered_perms);
         println!("{:#?}", filtered_roles);
 
-        // for role in roles {
-        // link roles to perms
-        // }
+        let role = filtered_roles
+            .into_iter()
+            .next()
+            .take()
+            .expect("should be at least on role returns in filter");
 
-        // let meta = ManyToManyReadQueryMeta {
-        //     single_table: todo!(),
-        //     many_table: todo!(),
-        //     join_table: todo!(),
-        //     single_pk: todo!(),
-        //     many_pk: todo!(),
-        //     many_fk: todo!(),
-        //     join_fk: todo!(),
-        //     agg_alias: todo!(),
-        //     has_audit: todo!(),
-        // };
+        // link all perms
+
+        let mutate_meta = ManyToManyMutateQueryMeta {
+            single_table: RoleIden::Table,
+            many_table: RoleIden::Permission,
+            join_table: RoleIden::RolePermission,
+            single_pk: RoleIden::Id,
+            many_pk: RoleIden::PermissionPk,
+            many_fk: RoleIden::PermissionId,
+            join_fk: RoleIden::RoleId,
+        };
+
+        let perm_ids = filtered_perms.iter().map(|el| el.id.clone()).collect();
+
+        let _ =
+            set_many_to_many_links(&ctx, &dbx, &role.id.clone(), perm_ids, &mutate_meta).await?;
+
+        let meta = ManyToManyReadQueryMeta {
+            single_table: RoleIden::Table,
+            many_table: RoleIden::Permission,
+            join_table: RoleIden::RolePermission,
+            single_pk: RoleIden::Id,
+            many_pk: RoleIden::PermissionPk,
+            many_fk: RoleIden::PermissionId,
+            join_fk: RoleIden::RoleId,
+            agg_alias: RoleIden::Permissions,
+            has_audit: true,
+        };
+
+        let joined_role: RoleWithPermissions =
+            get_many_to_many(&ctx, &dbx, &role.id.clone(), &meta).await?;
+
+        assert_eq!(perm_count, joined_role.permissions.len());
+
+        let _ = set_many_to_many_links(&ctx, &dbx, &role.id.clone(), vec![], &mutate_meta).await?;
+
+        let joined_role: RoleWithPermissions =
+            get_many_to_many(&ctx, &dbx, &role.id.clone(), &meta).await?;
+        assert!(joined_role.permissions.is_empty());
 
         Ok(())
     }
@@ -681,10 +711,10 @@ mod tests {
         let role_store = RoleStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
-        let c_perm = |i| {
+        let c_perm = |i, name: String| {
             let mut perm = PermissionForCreate::default();
             perm.namespace_id = ctx.namespace_id();
-            perm.name = format!("PERMISSION_GET_MANY_TEST_{i}");
+            perm.name = format!("PERMISSION_GET_MANY_TEST_{i}_{name}");
             perm
         };
 
@@ -696,7 +726,6 @@ mod tests {
         };
 
         let mut roles = vec![];
-        let mut perms = vec![];
 
         let role_count = 2;
         let perm_count = 2;
@@ -707,39 +736,210 @@ mod tests {
             roles.push(role_store.create(&ctx, n).await?);
         }
 
-        for i in 0..perm_count {
-            let n = c_perm(i);
+        let mutate_meta = ManyToManyMutateQueryMeta {
+            single_table: RoleIden::Table,
+            many_table: RoleIden::Permission,
+            join_table: RoleIden::RolePermission,
+            single_pk: RoleIden::Id,
+            many_pk: RoleIden::PermissionPk,
+            many_fk: RoleIden::PermissionId,
+            join_fk: RoleIden::RoleId,
+        };
 
-            perms.push(perm_store.create(&ctx, n).await?);
+        for role in roles {
+            let mut perms = vec![];
+
+            // create new permissions for each role
+            for i in 0..perm_count {
+                let n = c_perm(i, role.name.clone());
+
+                perms.push(perm_store.create(&ctx, n).await?);
+            }
+
+            // attach perms to role
+            let perm_ids = perms.iter().map(|el| el.id.clone()).collect();
+
+            let _ = set_many_to_many_links(&ctx, &dbx, &role.id.clone(), perm_ids, &mutate_meta)
+                .await?;
         }
 
-        let perm_filter: PermissionFilter = json!({"name":{"$contains":"MANY_TEST"}}).try_into()?;
+        let meta = ManyToManyReadQueryMeta {
+            single_table: RoleIden::Table,
+            many_table: RoleIden::Permission,
+            join_table: RoleIden::RolePermission,
+            single_pk: RoleIden::Id,
+            many_pk: RoleIden::PermissionPk,
+            many_fk: RoleIden::PermissionId,
+            join_fk: RoleIden::RoleId,
+            agg_alias: RoleIden::Permissions,
+            has_audit: true,
+        };
+
         let role_filter: RoleFilter = json!({"name":{"$contains":"MANY_TEST"}}).try_into()?;
 
-        let filtered_perms = perm_store.list(&ctx, Some(perm_filter), None).await?;
-        let filtered_roles = role_store.list(&ctx, Some(role_filter), None).await?;
+        let filtered_roles = list_many_to_many::<RoleWithPermissions, RoleFilter, _>(
+            &ctx,
+            &dbx,
+            Some(role_filter),
+            None,
+            &meta,
+        )
+        .await?;
 
-        assert_eq!(role_count, filtered_roles.len());
-        assert_eq!(perm_count, filtered_perms.len());
+        let mut total_perm_count = 0;
 
-        println!("{:#?}", filtered_perms);
-        println!("{:#?}", filtered_roles);
+        filtered_roles
+            .iter()
+            .for_each(|el| total_perm_count += el.permissions.len());
 
-        // for role in roles {
-        // link roles to perms
-        // }
+        assert_eq!(role_count * perm_count, total_perm_count);
 
-        // let meta = ManyToManyReadQueryMeta {
-        //     single_table: todo!(),
-        //     many_table: todo!(),
-        //     join_table: todo!(),
-        //     single_pk: todo!(),
-        //     many_pk: todo!(),
-        //     many_fk: todo!(),
-        //     join_fk: todo!(),
-        //     agg_alias: todo!(),
-        //     has_audit: todo!(),
-        // };
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_attach_detach_many_to_many() -> Result<()> {
+        // -- Setup
+        let app = init_test().await;
+        let dbx = app.sm.db().clone();
+        let perm_store = PermissionStore::new(dbx.clone());
+        let role_store = RoleStore::new(dbx.clone());
+        let ctx = StoreCtx::new_root();
+
+        // -- Create test entities
+        let role = role_store
+            .create(
+                &ctx,
+                RoleForCreate {
+                    namespace_id: ctx.namespace_id(),
+                    name: "ROLE_FOR_ATTACH_DETACH".to_string(),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let perm1 = perm_store
+            .create(
+                &ctx,
+                PermissionForCreate {
+                    namespace_id: ctx.namespace_id(),
+                    name: "PERMISSION_1_FOR_ATTACH_DETACH".to_string(),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let perm2 = perm_store
+            .create(
+                &ctx,
+                PermissionForCreate {
+                    namespace_id: ctx.namespace_id(),
+                    name: "PERMISSION_2_FOR_ATTACH_DETACH".to_string(),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        // -- Define metadata for read and mutate operations
+        let mutate_meta = ManyToManyMutateQueryMeta {
+            single_table: RoleIden::Table,
+            many_table: RoleIden::Permission,
+            join_table: RoleIden::RolePermission,
+            single_pk: RoleIden::Id,
+            many_pk: RoleIden::PermissionPk,
+            many_fk: RoleIden::PermissionId,
+            join_fk: RoleIden::RoleId,
+        };
+
+        let read_meta = ManyToManyReadQueryMeta {
+            single_table: RoleIden::Table,
+            many_table: RoleIden::Permission,
+            join_table: RoleIden::RolePermission,
+            single_pk: RoleIden::Id,
+            many_pk: RoleIden::PermissionPk,
+            many_fk: RoleIden::PermissionId,
+            join_fk: RoleIden::RoleId,
+            agg_alias: RoleIden::Permissions,
+            has_audit: true,
+        };
+
+        // -- Initial State Verification
+        let role_with_perms: RoleWithPermissions =
+            get_many_to_many(&ctx, &dbx, &role.id, &read_meta).await?;
+        assert!(
+            role_with_perms.permissions.is_empty(),
+            "Initially, the role should have no permissions."
+        );
+
+        // -- Test Attach
+        // Attach the first permission
+        attach_link(&ctx, &dbx, &role.id, &perm1.id, &mutate_meta).await?;
+        let role_with_perms: RoleWithPermissions =
+            get_many_to_many(&ctx, &dbx, &role.id, &read_meta).await?;
+        assert_eq!(
+            role_with_perms.permissions.len(),
+            1,
+            "Should have one permission after attaching."
+        );
+        assert_eq!(
+            role_with_perms.permissions[0].id, perm1.id,
+            "The correct permission should be attached."
+        );
+
+        // Attach the same permission again to test idempotency
+        attach_link(&ctx, &dbx, &role.id, &perm1.id, &mutate_meta).await?;
+        let role_with_perms: RoleWithPermissions =
+            get_many_to_many(&ctx, &dbx, &role.id, &read_meta).await?;
+        assert_eq!(
+            role_with_perms.permissions.len(),
+            1,
+            "Attaching an existing link should be idempotent."
+        );
+
+        // Attach the second permission
+        attach_link(&ctx, &dbx, &role.id, &perm2.id, &mutate_meta).await?;
+        let role_with_perms: RoleWithPermissions =
+            get_many_to_many(&ctx, &dbx, &role.id, &read_meta).await?;
+        assert_eq!(
+            role_with_perms.permissions.len(),
+            2,
+            "Should have two permissions after attaching the second one."
+        );
+
+        // -- Test Detach
+        // Detach the first permission
+        detach_link(&ctx, &dbx, &role.id, &perm1.id, &mutate_meta).await?;
+        let role_with_perms: RoleWithPermissions =
+            get_many_to_many(&ctx, &dbx, &role.id, &read_meta).await?;
+        assert_eq!(
+            role_with_perms.permissions.len(),
+            1,
+            "Should have one permission remaining after detaching the first."
+        );
+        assert_eq!(
+            role_with_perms.permissions[0].id, perm2.id,
+            "The remaining permission should be the second one."
+        );
+
+        // Detach a non-existent link (perm1 again)
+        detach_link(&ctx, &dbx, &role.id, &perm1.id, &mutate_meta).await?;
+        let role_with_perms: RoleWithPermissions =
+            get_many_to_many(&ctx, &dbx, &role.id, &read_meta).await?;
+        assert_eq!(
+            role_with_perms.permissions.len(),
+            1,
+            "Detaching a non-existent link should not change anything."
+        );
+
+        // Detach the second permission
+        detach_link(&ctx, &dbx, &role.id, &perm2.id, &mutate_meta).await?;
+        let role_with_perms: RoleWithPermissions =
+            get_many_to_many(&ctx, &dbx, &role.id, &read_meta).await?;
+        assert!(
+            role_with_perms.permissions.is_empty(),
+            "Should have no permissions after detaching the last one."
+        );
 
         Ok(())
     }
