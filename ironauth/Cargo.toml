@@ -108,7 +108,7 @@ ironauth-macros = { path = "../ironauth-macros" }
 
 [dev-dependencies]
 actix-rt = "2.5"
-cargo-watch = "7.8"
+# cargo-watch = "7.8"
 mockall = "0.13.0"
 serial_test = "0.6"
 

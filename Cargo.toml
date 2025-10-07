@@ -22,7 +22,7 @@ resolver = "2"
 
 # --- Your Local Crates ---
 # This allows app-main to easily depend on app-macros.
-ironauth-macros = { path = "./ironauth-macros" }
+# ironauth-macros = { path = "./ironauth-macros" }
 
 
 # You can also define shared build profiles for all crates.
