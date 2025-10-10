@@ -16,7 +16,7 @@ use crate::store::entities::audit::{AuditFields, AuditMeta};
 use crate::store::entities::id::DbId;
 use crate::store::error::{Result as StoreResult, StoreError};
 use crate::store::traits::meta::HasId;
-use crate::store::utils::{json_to_sea_value, time_to_sea_value};
+use crate::store::utils::{gen_rand_str, json_to_sea_value, time_to_sea_value};
 
 #[derive(Iden, Copy, Clone)]
 pub enum CredentialIden {
@@ -49,7 +49,7 @@ pub struct CredentialRow {
     pub audit: AuditFields,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, EnumTextType)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, EnumTextType)]
 #[serde(rename_all = "lowercase")]
 // #[strum(serialize_all = "lowercase")]
 pub enum CredentialStatus {
@@ -71,7 +71,7 @@ impl Nullable for CredentialStatus {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, EnumTextType)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, EnumTextType)]
 #[serde(rename_all = "lowercase")]
 pub enum CredentialProvider {
     Local,
@@ -178,6 +178,7 @@ pub struct CredentialFilter {
     pub namespace_id: Option<OpValsString>,
     pub kind: Option<OpValsString>,
     pub provider: Option<OpValsString>,
+    pub secret: Option<OpValsString>,
     pub provider_id: Option<OpValsString>,
     pub email: Option<OpValsString>,
     pub status: Option<OpValsString>,
@@ -212,6 +213,7 @@ impl TryFrom<JsonValue> for CredentialFilter {
 #[cfg(test)]
 impl Default for CredentialForCreate {
     fn default() -> Self {
+        let email = format!("{}@{}.com", gen_rand_str(5), gen_rand_str(5));
         Self {
             account_id: Uuid::new_v4(),
             namespace_id: Uuid::new_v4(),
@@ -219,7 +221,7 @@ impl Default for CredentialForCreate {
             provider: CredentialProvider::Local,
             status: CredentialStatus::Active,
             provider_id: None,
-            email: Some("test@example.com".to_string()),
+            email: Some(email),
             secret: Some("hashed_password_placeholder".to_string()),
             last_used_at: None,
             tags: vec![],

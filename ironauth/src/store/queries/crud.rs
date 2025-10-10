@@ -238,7 +238,7 @@ mod tests {
     #[serial]
     async fn test_create_and_get_pass() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
 
         let acc_store = AccountStore::new(dbx.clone());
 
@@ -260,7 +260,7 @@ mod tests {
     async fn test_get_fail() -> anyhow::Result<()> {
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -280,7 +280,7 @@ mod tests {
     async fn test_list_with_filter_and_limit_pass() -> Result<()> {
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -328,7 +328,7 @@ mod tests {
     async fn test_list_pagination_pass() -> Result<()> {
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -380,7 +380,7 @@ mod tests {
 
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -414,7 +414,7 @@ mod tests {
     async fn test_update_success() -> Result<()> {
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -444,7 +444,7 @@ mod tests {
     async fn test_update_fail_not_found() -> Result<()> {
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -469,7 +469,7 @@ mod tests {
     async fn test_delete_success() -> Result<()> {
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -495,7 +495,7 @@ mod tests {
     async fn test_delete_fail_not_found() -> Result<()> {
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -517,7 +517,7 @@ mod tests {
     async fn test_update_tags() -> Result<()> {
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx);
         let ctx = StoreCtx::new_root();
 
@@ -550,7 +550,7 @@ mod tests {
     async fn test_update_meta() -> Result<()> {
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx);
         let ctx = StoreCtx::new_root();
 
@@ -584,7 +584,7 @@ mod tests {
     async fn test_list_filter_by_created_by() -> Result<()> {
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -624,7 +624,7 @@ mod tests {
     async fn test_list_filter_by_created_at() -> Result<()> {
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -673,7 +673,7 @@ mod tests {
 
         // Arrange
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 

@@ -176,9 +176,12 @@ impl TryFrom<JsonValue> for AccountFilter {
 #[cfg(test)]
 impl Default for AccountForCreate {
     fn default() -> Self {
+        use crate::store::utils::gen_rand_str;
+
+        let email = format!("{}@{}.com", gen_rand_str(5), gen_rand_str(5));
         Self {
-            email: "user1@example.com".into(),
-            name: "Test User".into(),
+            email: email,
+            name: gen_rand_str(10),
             description: Some("Fixture account for create() test".into()),
             avatar_url: Some("avatar_url.com".into()),
             verified: false,

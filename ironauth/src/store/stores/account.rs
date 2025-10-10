@@ -97,3 +97,255 @@ impl ContainsFilterStore for AccountStore {
 
 // -----------------------------------------------------------------------------
 // endregion: --- Base Trait Implementations
+// ... (all your existing Account struct definitions go here) ...
+// AccountIden, AccountRow, AccountWithCredentials, AccountForCreate, etc.
+
+// region:    --- Tests
+// -----------------------------------------------------------------------------
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        dev::init::init_test, // Your test setup helper
+        store::{
+            ctx::StoreCtx,
+            entities::credential::{CredentialForCreate, CredentialProvider},
+            error::StoreError,
+            traits::{
+                contains::FilterByContains, // Assuming this is the correct path
+                crud::*,
+                join::GetOneToMany,
+            },
+        },
+    };
+    use anyhow::Result;
+    use modql::filter::{ListOptions, OpValsString};
+    use serde_json::json;
+    use serial_test::serial;
+    use uuid::Uuid;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_create_get_ok() -> Result<()> {
+        // -- Setup
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = StoreCtx::new_root();
+
+        let data = AccountForCreate {
+            email: "create-get@example.com".to_string(),
+            name: "Test User".to_string(),
+            ..Default::default()
+        };
+
+        // -- Execute
+        let created_account = store.create(&ctx, data).await?;
+        let fetched_account = store.get(&ctx, &created_account.id).await?;
+
+        // -- Assert
+        assert_eq!(created_account.email, "create-get@example.com");
+        assert_eq!(fetched_account.id, created_account.id);
+        assert_eq!(fetched_account.name, created_account.name);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_update_ok() -> Result<()> {
+        // -- Setup
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = StoreCtx::new_root();
+
+        let created_account = store.create(&ctx, AccountForCreate::default()).await?;
+
+        let update_data = AccountForUpdate {
+            name: Some("User After Update".to_string()),
+            ..Default::default()
+        };
+
+        // -- Execute
+        let updated_account = store.update(&ctx, &created_account.id, update_data).await?;
+        let fetched_account = store.get(&ctx, &created_account.id).await?;
+
+        // -- Assert
+        assert_eq!(updated_account.name, "User After Update");
+        assert_eq!(fetched_account.name, "User After Update");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_delete_ok() -> Result<()> {
+        // -- Setup
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = StoreCtx::new_root();
+
+        let created_account = store.create(&ctx, AccountForCreate::default()).await?;
+
+        // -- Execute
+        let deleted_account = store.delete(&ctx, &created_account.id).await?;
+        let get_result = store.get(&ctx, &created_account.id).await;
+
+        // -- Assert
+        assert_eq!(deleted_account.id, created_account.id);
+        assert!(
+            matches!(get_result, Err(StoreError::EntityNotFound { .. })),
+            "Getting the account after deletion should fail"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_list_with_filter_ok() -> Result<()> {
+        // -- Setup
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = StoreCtx::new_root();
+
+        let accounts_to_create = vec![
+            AccountForCreate {
+                email: "list-a@example.com".to_string(),
+                ..Default::default()
+            },
+            AccountForCreate {
+                email: "list-b@example.com".to_string(),
+                ..Default::default()
+            },
+        ];
+        store.create_many(&ctx, accounts_to_create).await?;
+
+        // -- Execute
+        let filter: AccountFilter = json!({"email":{"$contains":"list-b"}}).try_into()?;
+        let accounts = store.list(&ctx, Some(filter), None).await?;
+
+        // -- Assert
+        assert_eq!(accounts.len(), 1);
+        assert_eq!(accounts[0].email, "list-b@example.com");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_get_one_to_many_ok() -> Result<()> {
+        // -- Setup
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = StoreCtx::new_root();
+
+        let account = store
+            .create(
+                &ctx,
+                AccountForCreate {
+                    email: "one-to-many@example.com".into(),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        // Manually insert related credentials
+        let mut n_cred = CredentialForCreate::default();
+        n_cred.account_id = account.id.into();
+        n_cred.namespace_id = ctx.namespace_id();
+        n_cred.provider = CredentialProvider::Google;
+        app.sm.credential.create(&ctx, n_cred).await?;
+
+        let mut n_cred = CredentialForCreate::default();
+        n_cred.account_id = account.id.into();
+        n_cred.namespace_id = ctx.namespace_id();
+        n_cred.provider = CredentialProvider::Local;
+        app.sm.credential.create(&ctx, n_cred).await?;
+
+        // -- Execute
+        let account_with_creds = store.get_one_to_many(&ctx, &account.id).await?;
+
+        // -- Assert
+        assert_eq!(account_with_creds.id, account.id);
+        assert_eq!(
+            account_with_creds.credentials.len(),
+            2,
+            "Should have 2 credentials attached"
+        );
+
+        let has_google = account_with_creds
+            .credentials
+            .iter()
+            .any(|c| c.provider == CredentialProvider::Google);
+        let has_local = account_with_creds
+            .credentials
+            .iter()
+            .any(|c| c.provider == CredentialProvider::Local);
+        assert!(has_google, "Should contain a google credential");
+        assert!(has_local, "Should contain a local credential");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_filter_by_contains_tags() -> Result<()> {
+        // -- Setup
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+        let store = AccountStore::new(dbx);
+        let ctx = StoreCtx::new_root();
+
+        // -- Create test data with different tags
+        store
+            .create(
+                &ctx,
+                AccountForCreate {
+                    email: "tags-a@example.com".into(),
+                    tags: vec!["system".into(), "critical".into()],
+                    ..Default::default()
+                },
+            )
+            .await?;
+        store
+            .create(
+                &ctx,
+                AccountForCreate {
+                    email: "tags-b@example.com".into(),
+                    tags: vec!["user".into(), "general".into()],
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        // -- Execute & Assert
+        let system_accounts = store
+            .filter_by_tags_contain(&ctx, vec!["system".into()])
+            .await?;
+        assert_eq!(
+            system_accounts.len(),
+            1,
+            "Should find 1 account with 'system' tag"
+        );
+        assert_eq!(system_accounts[0].email, "tags-a@example.com");
+
+        let general_accounts = store
+            .filter_by_tags_contain(&ctx, vec!["general".into()])
+            .await?;
+        assert_eq!(
+            general_accounts.len(),
+            1,
+            "Should find 1 account with 'general' tag"
+        );
+        assert_eq!(general_accounts[0].email, "tags-b@example.com");
+
+        Ok(())
+    }
+}
+// -----------------------------------------------------------------------------
+// endregion: --- Tests

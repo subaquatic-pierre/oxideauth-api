@@ -182,7 +182,7 @@ mod tests {
     #[serial]
     async fn test_update_many() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -211,7 +211,7 @@ mod tests {
     #[serial]
     async fn test_update_many_ignore_unknown() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -258,7 +258,7 @@ mod tests {
     #[serial]
     async fn test_create_many() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -289,7 +289,7 @@ mod tests {
     #[serial]
     async fn test_update_many_tags() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -330,7 +330,7 @@ mod tests {
     #[serial]
     async fn test_update_many_meta() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -376,7 +376,7 @@ mod tests {
     #[serial]
     async fn test_create_many_fail() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -403,7 +403,7 @@ mod tests {
     #[serial]
     async fn test_update_many_fail() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -435,7 +435,7 @@ mod tests {
     #[serial]
     async fn test_delete_many() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -468,7 +468,7 @@ mod tests {
     #[serial]
     async fn test_delete_many_wrong_id() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -497,7 +497,7 @@ mod tests {
     #[serial]
     async fn test_delete_many_fail() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 

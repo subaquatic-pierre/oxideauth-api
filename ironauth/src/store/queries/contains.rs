@@ -71,7 +71,7 @@ mod tests {
     #[serial]
     async fn test_filter_by_contains_meta() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = PermissionStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -132,7 +132,7 @@ mod tests {
     async fn test_filter_by_contains_tags() -> Result<()> {
         // -- Setup
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = PermissionStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 

@@ -97,7 +97,7 @@ mod tests {
     #[serial]
     async fn test_count_after_inserts_matches_number_of_rows() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 

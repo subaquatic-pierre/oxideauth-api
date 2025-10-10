@@ -486,7 +486,7 @@ mod tests {
     #[serial]
     async fn test_get_joined() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = CredentialStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
@@ -534,7 +534,7 @@ mod tests {
     #[serial]
     async fn test_list_joined() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let store = CredentialStore::new(dbx.clone());
         let acc_store = AccountStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
@@ -601,7 +601,7 @@ mod tests {
     #[serial]
     async fn test_get_many_to_many() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let perm_store = PermissionStore::new(dbx.clone());
         let role_store = RoleStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
@@ -704,7 +704,7 @@ mod tests {
     #[serial]
     async fn test_list_many_to_many() -> Result<()> {
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let perm_store = PermissionStore::new(dbx.clone());
         let role_store = RoleStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
@@ -802,7 +802,7 @@ mod tests {
     async fn test_attach_detach_many_to_many() -> Result<()> {
         // -- Setup
         let app = init_test().await;
-        let dbx = app.sm.db().clone();
+        let dbx = app.sm.dbx().clone();
         let perm_store = PermissionStore::new(dbx.clone());
         let role_store = RoleStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();

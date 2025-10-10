@@ -52,7 +52,7 @@ impl StoreManager {
         }
     }
 
-    pub fn db(&self) -> Arc<Dbx> {
+    pub fn dbx(&self) -> Arc<Dbx> {
         self.dbx.clone()
     }
 }
