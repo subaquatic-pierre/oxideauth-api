@@ -4,9 +4,10 @@ use crate::store::{
     dbx::Dbx,
     entities::namespace::{
         NamespaceFilter, NamespaceForCreate, NamespaceForUpdate, NamespaceIden, NamespaceRow,
+        NamespaceWithProjects,
     },
-    queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStore, ReadStore, Store},
+    queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
+    traits::meta::{ContainsFilterStoreMeta, MutateStore, OneToManyStore, ReadStore, Store},
 };
 
 /// The struct for our Namespace store, holding the database connection wrapper.
@@ -56,6 +57,40 @@ impl MutateStore for NamespaceStore {
             table: NamespaceIden::Table,
             pk: NamespaceIden::Id,
             has_audit: true,
+        }
+    }
+}
+
+impl OneToManyStore for NamespaceStore {
+    type OneToManyRow = NamespaceWithProjects;
+
+    type FilterStoreParams = NamespaceFilter;
+
+    fn one_to_many_meta(&self) -> OneToManyQueryMeta<Self::Iden> {
+        OneToManyQueryMeta {
+            single_table: NamespaceIden::Table,
+            many_table: NamespaceIden::Project,
+            single_pk: NamespaceIden::Id,
+            many_pk: NamespaceIden::Id,
+            many_fk: NamespaceIden::NamespaceId,
+            agg_alias: NamespaceIden::Projects,
+            has_audit: true,
+        }
+    }
+}
+
+impl ContainsFilterStoreMeta for NamespaceStore {
+    fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
+        ContainsFilterQueryMeta {
+            table: NamespaceIden::Table,
+            col: NamespaceIden::Tags,
+        }
+    }
+
+    fn contains_json_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
+        ContainsFilterQueryMeta {
+            table: NamespaceIden::Table,
+            col: NamespaceIden::Meta,
         }
     }
 }

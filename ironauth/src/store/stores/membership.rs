@@ -4,9 +4,10 @@ use crate::store::{
     dbx::Dbx,
     entities::membership::{
         MembershipFilter, MembershipForCreate, MembershipForUpdate, MembershipIden, MembershipRow,
+        MembershipWithRoles,
     },
-    queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStore, ReadStore, Store},
+    queries::meta::{ContainsFilterQueryMeta, ManyToManyQueryMeta, MutateQueryMeta, ReadQueryMeta},
+    traits::meta::{ContainsFilterStoreMeta, ManyToManyStore, MutateStore, ReadStore, Store},
 };
 
 /// The struct for our Membership store, holding the database connection wrapper.
@@ -56,6 +57,42 @@ impl MutateStore for MembershipStore {
             table: MembershipIden::Table,
             pk: MembershipIden::Id,
             has_audit: true,
+        }
+    }
+}
+
+impl ManyToManyStore for MembershipStore {
+    type ManyToManyRow = MembershipWithRoles;
+
+    type FilterStoreParams = MembershipFilter;
+
+    fn many_to_many_meta(&self) -> ManyToManyQueryMeta<Self::Iden> {
+        ManyToManyQueryMeta {
+            single_table: MembershipIden::Table,
+            many_table: MembershipIden::Role,
+            join_table: MembershipIden::MembershipRole,
+            single_pk: MembershipIden::Id,
+            many_pk: MembershipIden::RolePk,
+            many_fk: MembershipIden::RoleId,
+            join_fk: MembershipIden::MembershipId,
+            agg_alias: MembershipIden::Roles,
+            has_audit: true,
+        }
+    }
+}
+
+impl ContainsFilterStoreMeta for MembershipStore {
+    fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
+        ContainsFilterQueryMeta {
+            table: MembershipIden::Table,
+            col: MembershipIden::Tags,
+        }
+    }
+
+    fn contains_json_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
+        ContainsFilterQueryMeta {
+            table: MembershipIden::Table,
+            col: MembershipIden::Meta,
         }
     }
 }

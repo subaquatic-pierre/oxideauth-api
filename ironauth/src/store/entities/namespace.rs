@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::store::entities::audit::{AuditFields, AuditMeta};
 use crate::store::entities::id::DbId;
+use crate::store::entities::project::{ProjectConfig, ProjectMeta};
 use crate::store::error::{Result, StoreError};
 use crate::store::traits::meta::HasId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
@@ -19,6 +20,11 @@ pub enum NamespaceIden {
     #[iden = "namespace"]
     Table, // TABLE_NAME
     Id, // TABLE_PK
+    Tags,
+    Meta,
+    Project,
+    Projects,
+    NamespaceId,
 }
 
 // --- Row (DB-facing) ---
@@ -42,6 +48,43 @@ pub struct NamespaceRow {
 
     #[sqlx(flatten)]
     pub audit: AuditFields,
+}
+
+// --- Row (DB-facing) ---
+/// Maps to the `project` SQL table.
+#[derive(Debug, FromRow, Deserialize, HasId)]
+pub struct JoinedProjectOnNamespace {
+    pub id: DbId,
+    pub namespace_id: Uuid,
+
+    // Project identity
+    pub name: String,
+    pub code: Option<String>,
+    pub description: Option<String>,
+
+    // Config
+    #[sqlx(json)]
+    pub config: ProjectConfig,
+
+    pub tags: Vec<String>,
+    #[sqlx(json)]
+    pub meta: ProjectMeta,
+
+    pub created_by: DbId,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    pub updated_by: Option<DbId>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub updated_at: Option<OffsetDateTime>,
+}
+
+#[derive(Debug, FromRow, Deserialize, HasId)]
+pub struct NamespaceWithProjects {
+    id: DbId,
+    #[sqlx(flatten)]
+    namespace: NamespaceRow,
+    #[sqlx(json)]
+    projects: Vec<JoinedProjectOnNamespace>,
 }
 
 // --- Create (store input) ---
@@ -105,10 +148,10 @@ impl From<NamespaceMeta> for SeaValue {
 }
 
 /// Filtering options for `namespace` queries.
-#[derive(FilterNodes, Deserialize, Default, Debug)]
+#[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
 pub struct NamespaceFilter {
     #[modql(cast_as = "uuid")]
-    pub id: Option<String>,
+    pub id: Option<OpValsString>,
     pub name: Option<OpValsString>,
     pub slug: Option<OpValsString>,
     pub description: Option<OpValsString>,
@@ -120,11 +163,11 @@ pub struct NamespaceFilter {
 
     // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]
-    pub created_by: Option<String>,
+    pub created_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub created_at: Option<OpValsValue>,
     #[modql(cast_as = "uuid")]
-    pub updated_by: Option<String>,
+    pub updated_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
 }

@@ -20,6 +20,8 @@ pub enum ProjectIden {
     #[iden = "project"]
     Table, // TABLE_NAME
     Id, // TABLE_PK
+    Tags,
+    Meta,
 }
 
 // --- Row (DB-facing) ---
@@ -111,9 +113,9 @@ impl From<ProjectMeta> for SeaValue {
 #[derive(FilterNodes, Deserialize, Default, Debug)]
 pub struct ProjectFilter {
     #[modql(cast_as = "uuid")]
-    pub id: Option<String>,
+    pub id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<String>,
+    pub namespace_id: Option<OpValsString>,
     pub name: Option<OpValsString>,
     pub code: Option<OpValsString>,
     pub description: Option<OpValsString>,
@@ -125,11 +127,11 @@ pub struct ProjectFilter {
 
     // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]
-    pub created_by: Option<String>,
+    pub created_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub created_at: Option<OpValsValue>,
     #[modql(cast_as = "uuid")]
-    pub updated_by: Option<String>,
+    pub updated_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
 }

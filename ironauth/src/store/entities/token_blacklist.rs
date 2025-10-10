@@ -89,23 +89,23 @@ impl From<TokenBlacklistMeta> for SeaValue {
 #[derive(FilterNodes, Deserialize, Default, Debug)]
 pub struct TokenBlacklistFilter {
     #[modql(cast_as = "uuid")]
-    pub id: Option<String>,
+    pub id: Option<OpValsString>,
     pub token_hash: Option<Sha256Hash>,
     #[modql(cast_as = "uuid")]
-    pub account_id: Option<String>,
+    pub account_id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<String>,
+    pub namespace_id: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub expires_at: Option<OpValsValue>,
     pub reason: Option<OpValsString>,
 
     // Audit filters
     #[modql(cast_as = "uuid")]
-    pub created_by: Option<String>,
+    pub created_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub created_at: Option<OpValsValue>,
     #[modql(cast_as = "uuid")]
-    pub updated_by: Option<String>,
+    pub updated_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
 }

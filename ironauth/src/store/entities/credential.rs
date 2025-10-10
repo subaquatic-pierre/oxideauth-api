@@ -23,6 +23,8 @@ pub enum CredentialIden {
     #[iden = "credential"]
     Table, // TABLE_NAME
     Id, // TABLE_PK
+    Tags,
+    Meta,
 }
 
 // --- Row (DB-facing) ---

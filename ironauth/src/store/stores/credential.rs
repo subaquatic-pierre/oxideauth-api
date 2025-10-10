@@ -5,8 +5,8 @@ use crate::store::{
     entities::credential::{
         CredentialFilter, CredentialForCreate, CredentialForUpdate, CredentialIden, CredentialRow,
     },
-    queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStore, ReadStore, Store},
+    queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, ReadQueryMeta},
+    traits::meta::{ContainsFilterStoreMeta, MutateStore, ReadStore, Store},
 };
 
 /// The struct for our Credential store, holding the database connection wrapper.
@@ -56,6 +56,22 @@ impl MutateStore for CredentialStore {
             table: CredentialIden::Table,
             pk: CredentialIden::Id,
             has_audit: true,
+        }
+    }
+}
+
+impl ContainsFilterStoreMeta for CredentialStore {
+    fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
+        ContainsFilterQueryMeta {
+            table: CredentialIden::Table,
+            col: CredentialIden::Tags,
+        }
+    }
+
+    fn contains_json_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
+        ContainsFilterQueryMeta {
+            table: CredentialIden::Table,
+            col: CredentialIden::Meta,
         }
     }
 }

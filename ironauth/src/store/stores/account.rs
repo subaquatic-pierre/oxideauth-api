@@ -6,8 +6,8 @@ use crate::store::{
         AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountRow,
         AccountWithCredentials,
     },
-    queries::meta::{MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStore, OneToManyStore, ReadStore, Store},
+    queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
+    traits::meta::{ContainsFilterStoreMeta, MutateStore, OneToManyStore, ReadStore, Store},
 };
 
 /// The struct for our Account store, holding the database connection wrapper.
@@ -75,6 +75,22 @@ impl OneToManyStore for AccountStore {
             many_fk: AccountIden::AccountId,
             agg_alias: AccountIden::Credentials,
             has_audit: true,
+        }
+    }
+}
+
+impl ContainsFilterStoreMeta for AccountStore {
+    fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
+        ContainsFilterQueryMeta {
+            table: AccountIden::Table,
+            col: AccountIden::Tags,
+        }
+    }
+
+    fn contains_json_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
+        ContainsFilterQueryMeta {
+            table: AccountIden::Table,
+            col: AccountIden::Meta,
         }
     }
 }

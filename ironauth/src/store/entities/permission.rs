@@ -88,9 +88,9 @@ impl From<PermissionMeta> for SeaValue {
 #[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
 pub struct PermissionFilter {
     #[modql(cast_as = "uuid")]
-    pub id: Option<String>,
+    pub id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<String>,
+    pub namespace_id: Option<OpValsString>,
     #[modql(rel = "permission")]
     pub name: Option<OpValsString>,
     pub code: Option<OpValsString>,
@@ -102,11 +102,11 @@ pub struct PermissionFilter {
 
     // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]
-    pub created_by: Option<String>,
+    pub created_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub created_at: Option<OpValsValue>,
     #[modql(cast_as = "uuid")]
-    pub updated_by: Option<String>,
+    pub updated_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
 }

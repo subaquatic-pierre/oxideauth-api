@@ -5,8 +5,8 @@ use crate::store::{
     entities::project::{
         ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow,
     },
-    queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStore, ReadStore, Store},
+    queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, ReadQueryMeta},
+    traits::meta::{ContainsFilterStoreMeta, MutateStore, ReadStore, Store},
 };
 
 /// The struct for our Project store, holding the database connection wrapper.
@@ -56,6 +56,22 @@ impl MutateStore for ProjectStore {
             table: ProjectIden::Table,
             pk: ProjectIden::Id,
             has_audit: true,
+        }
+    }
+}
+
+impl ContainsFilterStoreMeta for ProjectStore {
+    fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
+        ContainsFilterQueryMeta {
+            table: ProjectIden::Table,
+            col: ProjectIden::Tags,
+        }
+    }
+
+    fn contains_json_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
+        ContainsFilterQueryMeta {
+            table: ProjectIden::Table,
+            col: ProjectIden::Meta,
         }
     }
 }

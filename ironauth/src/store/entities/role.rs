@@ -20,6 +20,8 @@ pub enum RoleIden {
     #[iden = "role"]
     Table, // TABLE_NAME
     Id, // TABLE_PK
+    Tags,
+    Meta,
     Permissions,
     RolePermission,
     RoleId,
@@ -120,9 +122,9 @@ impl From<RoleMeta> for SeaValue {
 #[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
 pub struct RoleFilter {
     #[modql(cast_as = "uuid")]
-    pub id: Option<String>,
+    pub id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<String>,
+    pub namespace_id: Option<OpValsString>,
     #[modql(rel = "role")]
     pub name: Option<OpValsString>,
     pub description: Option<OpValsString>,
@@ -133,11 +135,11 @@ pub struct RoleFilter {
 
     // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]
-    pub created_by: Option<String>,
+    pub created_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub created_at: Option<OpValsValue>,
     #[modql(cast_as = "uuid")]
-    pub updated_by: Option<String>,
+    pub updated_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
 }

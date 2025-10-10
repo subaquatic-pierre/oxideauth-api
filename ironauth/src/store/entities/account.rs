@@ -28,6 +28,8 @@ pub enum AccountIden {
     AccountId,
     Credential,
     Credentials,
+    Tags,
+    Meta,
 }
 
 // --- Row (DB-facing) ---
@@ -137,7 +139,7 @@ impl From<AccountMeta> for SeaValue {
 #[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
 pub struct AccountFilter {
     #[modql(cast_as = "uuid")]
-    pub id: Option<String>,
+    pub id: Option<OpValsString>,
     // TODO: server limitation on derive(FilterNodes), if filter is used on any join queries need to define base table_name here on the rel attribute. if base table is not defined then could cause ambiguous WHERE query on JOIN statement.
     #[modql(rel = "account")]
     pub email: Option<OpValsString>,
@@ -148,22 +150,15 @@ pub struct AccountFilter {
     pub verified: Option<OpValsValue>, // bool
     pub enabled: Option<OpValsValue>,  // bool
 
-    // TODO: Must update modql to handle filter by text[] and jsonb
-    // Free-form filtering
-    // tags: use array containment queries (e.g., @>)
-    // pub tags: Option<OpValsValue>,
-    // meta: use JSONB containment (@> '{"k":"v"}')
-    // pub meta: Option<OpValsValue>,
-
     // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]
-    pub created_by: Option<String>,
+    pub created_by: Option<OpValsString>,
 
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub created_at: Option<OpValsValue>,
 
     #[modql(cast_as = "uuid")]
-    pub updated_by: Option<String>,
+    pub updated_by: Option<OpValsString>,
 
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
