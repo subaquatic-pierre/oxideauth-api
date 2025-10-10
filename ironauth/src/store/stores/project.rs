@@ -6,7 +6,7 @@ use crate::store::{
         ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow,
     },
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{ContainsFilterStoreMeta, MutateStore, ReadStore, Store},
+    traits::meta::{ContainsFilterStore, MutateStore, ReadStore, Store},
 };
 
 /// The struct for our Project store, holding the database connection wrapper.
@@ -60,7 +60,7 @@ impl MutateStore for ProjectStore {
     }
 }
 
-impl ContainsFilterStoreMeta for ProjectStore {
+impl ContainsFilterStore for ProjectStore {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: ProjectIden::Table,

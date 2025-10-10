@@ -7,7 +7,7 @@ use crate::store::{
         NamespaceWithProjects,
     },
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
-    traits::meta::{ContainsFilterStoreMeta, MutateStore, OneToManyStore, ReadStore, Store},
+    traits::meta::{ContainsFilterStore, MutateStore, OneToManyStore, ReadStore, Store},
 };
 
 /// The struct for our Namespace store, holding the database connection wrapper.
@@ -79,7 +79,7 @@ impl OneToManyStore for NamespaceStore {
     }
 }
 
-impl ContainsFilterStoreMeta for NamespaceStore {
+impl ContainsFilterStore for NamespaceStore {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: NamespaceIden::Table,

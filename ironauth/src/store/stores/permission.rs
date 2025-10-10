@@ -6,7 +6,7 @@ use crate::store::{
         PermissionFilter, PermissionForCreate, PermissionForUpdate, PermissionIden, PermissionRow,
     },
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{ContainsFilterStoreMeta, MutateStore, ReadStore, Store},
+    traits::meta::{ContainsFilterStore, MutateStore, ReadStore, Store},
 };
 
 /// The struct for our Permission store, holding the database connection wrapper.
@@ -60,7 +60,7 @@ impl MutateStore for PermissionStore {
     }
 }
 
-impl ContainsFilterStoreMeta for PermissionStore {
+impl ContainsFilterStore for PermissionStore {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: PermissionIden::Table,

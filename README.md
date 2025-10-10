@@ -64,6 +64,14 @@ Rust - Actix Web authorization server
 
 ### Tests
 
+#### Run Tests
+
+##### All query methods
+
+```sh
+cargo test --  --test-threads=1 store::queries --no-capture
+```
+
 - database query integration tests
 - actix web endpoints integration tests
 - unit tests
@@ -155,3 +163,5 @@ pg_dump -h localhost -U oxideauth -d db_dev -F p > db_bak.sql
 ```sh
 db2dbml postgres 'postgresql://oxideauth:password@localhost:5432/db_dev?schemas=public' -o schema.dbml
 ```
+
+##

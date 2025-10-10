@@ -131,13 +131,13 @@ impl<T: ManyToManyStore + ReadStore> ListManyToMany for T {} // Note: `List` req
 impl<T: ManyToManyStore> LinkManyToMany for T {}
 
 /// Requires a store to provide metadata for filtering on JSONB columns.
-pub trait ContainsFilterStoreMeta: Store {
+pub trait ContainsFilterStore: Store {
     /// Returns metadata for querying a JSONB array column (e.g., `tags`).
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden>;
     /// Returns metadata for querying a JSONB object column (e.g., `meta`).
     fn contains_json_meta(&self) -> ContainsFilterQueryMeta<Self::Iden>;
 }
-// By implementing `ContainsFilterStoreMeta`, a type automatically gains the following capabilities:
-impl<T: ContainsFilterStoreMeta> FilterByContains for T {}
+// By implementing `ContainsFilterStore`, a type automatically gains the following capabilities:
+impl<T: ContainsFilterStore> FilterByContains for T {}
 
 // endregion: --- Store Meta Traits & Blanket Impls

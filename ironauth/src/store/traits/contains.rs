@@ -5,11 +5,11 @@ use crate::store::ctx::StoreCtx;
 use crate::store::error::Result;
 use crate::store::queries::contains::filter_by_value_contains;
 use crate::store::queries::meta::ContainsFilter;
-use crate::store::traits::meta::{ContainsFilterStoreMeta, Store};
+use crate::store::traits::meta::{ContainsFilterStore, Store};
 
 /// Trait for filtering records where a JSONB column contains certain values.
 #[async_trait]
-pub trait FilterByContains: ContainsFilterStoreMeta {
+pub trait FilterByContains: ContainsFilterStore {
     /// Finds all records where the designated tags column (a JSONB array)
     /// contains all of the specified tags.
     async fn filter_by_tags_contain(

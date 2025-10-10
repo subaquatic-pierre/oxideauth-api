@@ -6,7 +6,7 @@ use crate::store::{
         CredentialFilter, CredentialForCreate, CredentialForUpdate, CredentialIden, CredentialRow,
     },
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{ContainsFilterStoreMeta, MutateStore, ReadStore, Store},
+    traits::meta::{ContainsFilterStore, MutateStore, ReadStore, Store},
 };
 
 /// The struct for our Credential store, holding the database connection wrapper.
@@ -60,7 +60,7 @@ impl MutateStore for CredentialStore {
     }
 }
 
-impl ContainsFilterStoreMeta for CredentialStore {
+impl ContainsFilterStore for CredentialStore {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: CredentialIden::Table,

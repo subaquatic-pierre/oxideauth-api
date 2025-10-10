@@ -7,7 +7,7 @@ use crate::store::{
         AccountWithCredentials,
     },
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
-    traits::meta::{ContainsFilterStoreMeta, MutateStore, OneToManyStore, ReadStore, Store},
+    traits::meta::{ContainsFilterStore, MutateStore, OneToManyStore, ReadStore, Store},
 };
 
 /// The struct for our Account store, holding the database connection wrapper.
@@ -79,7 +79,7 @@ impl OneToManyStore for AccountStore {
     }
 }
 
-impl ContainsFilterStoreMeta for AccountStore {
+impl ContainsFilterStore for AccountStore {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: AccountIden::Table,
