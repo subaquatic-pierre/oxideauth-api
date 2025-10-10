@@ -609,14 +609,14 @@ mod tests {
         let c_perm = |i| {
             let mut perm = PermissionForCreate::default();
             perm.namespace_id = ctx.namespace_id();
-            perm.name = format!("PERMISSION_GET_MANY_TEST_{i}");
+            perm.name = format!("PERMISSION_GET_MANY_TEST_i_i_i_i{i}_iii_ii_iii___{i}__{i}");
             perm
         };
 
         let c_role = |i| {
             let mut role = RoleForCreate::default();
             role.namespace_id = ctx.namespace_id();
-            role.name = format!("ROLE_GET_MANY_TEST_{i}");
+            role.name = format!("ROLE_GET_MANY_TEST_i_i_i_i{i}_iii_ii_iii___{i}__{i}");
             role
         };
 
@@ -638,17 +638,16 @@ mod tests {
             perms.push(perm_store.create(&ctx, n).await?);
         }
 
-        let perm_filter: PermissionFilter = json!({"name":{"$contains":"MANY_TEST"}}).try_into()?;
-        let role_filter: RoleFilter = json!({"name":{"$contains":"MANY_TEST"}}).try_into()?;
+        let perm_filter: PermissionFilter =
+            json!({"name":{"$contains":"GET_MANY_TEST_i_i_i_i"}}).try_into()?;
+        let role_filter: RoleFilter =
+            json!({"name":{"$contains":"GET_MANY_TEST_i_i_i_i"}}).try_into()?;
 
         let filtered_perms = perm_store.list(&ctx, Some(perm_filter), None).await?;
         let filtered_roles = role_store.list(&ctx, Some(role_filter), None).await?;
 
         assert_eq!(role_count, filtered_roles.len());
         assert_eq!(perm_count, filtered_perms.len());
-
-        println!("{:#?}", filtered_perms);
-        println!("{:#?}", filtered_roles);
 
         let role = filtered_roles
             .into_iter()

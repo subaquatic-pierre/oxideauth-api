@@ -78,7 +78,7 @@ mod tests {
         let c_perm = |i| {
             let mut perm = PermissionForCreate::default();
             perm.namespace_id = ctx.namespace_id();
-            perm.name = format!("PERMISSION_GET_MANY_TEST_{i}");
+            perm.name = format!("PERMISSION_GET_MANY_TEST_{i}_i_{i}_i_{i}");
             if (i < 2) {
                 perm.meta = PermissionMeta {
                     schema_version: "1".to_string(),

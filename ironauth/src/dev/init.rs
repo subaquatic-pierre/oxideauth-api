@@ -46,7 +46,7 @@ pub async fn init_test<'a>() -> &'a AppData {
             let app = new_test_app_data().await;
             init_test_db(&app.db).await;
 
-            init_tracing_for_tests();
+            // init_tracing_for_tests();
 
             app
         })
