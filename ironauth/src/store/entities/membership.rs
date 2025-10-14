@@ -16,6 +16,7 @@ use uuid::Uuid;
 use crate::store::entities::audit::{AuditFields, AuditMeta};
 use crate::store::entities::id::DbId;
 use crate::store::entities::role::RoleMeta;
+use crate::store::error::{Result as StoreResult, StoreError};
 use crate::store::traits::meta::HasId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
@@ -194,6 +195,15 @@ pub struct MembershipFilter {
     pub updated_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
+}
+
+impl TryFrom<JsonValue> for MembershipFilter {
+    type Error = StoreError;
+
+    fn try_from(value: JsonValue) -> StoreResult<Self> {
+        let res = serde_json::from_value(value)?;
+        Ok(res)
+    }
 }
 
 // --- Defaults for testing ---

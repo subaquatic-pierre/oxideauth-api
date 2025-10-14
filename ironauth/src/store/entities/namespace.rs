@@ -185,9 +185,11 @@ impl TryFrom<JsonValue> for NamespaceFilter {
 #[cfg(test)]
 impl Default for NamespaceForCreate {
     fn default() -> Self {
+        use crate::store::utils::gen_rand_str;
+
         Self {
-            name: "Default Namespace".into(),
-            slug: "default-namespace".into(),
+            name: gen_rand_str(10),
+            slug: gen_rand_str(10),
             description: Some("A default namespace for testing.".into()),
             config: NamespaceConfig {
                 schema_version: "1".into(),

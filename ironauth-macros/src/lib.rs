@@ -108,7 +108,7 @@ pub fn enum_text_type_derive(input: TokenStream) -> TokenStream {
         impl std::str::FromStr for #name {
             // Use a generic boxed error to avoid defining a new struct.
             type Err = Box<dyn std::error::Error + Send + Sync + 'static>;
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
+            fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
                match s {
                     #(#from_str_arms,)*
 
@@ -121,7 +121,7 @@ pub fn enum_text_type_derive(input: TokenStream) -> TokenStream {
 
             // --- DECODE (From database TEXT to Rust Enum) ---
         impl<'r> sqlx::decode::Decode<'r, sqlx::Postgres> for #name {
-            fn decode(value: sqlx::postgres::PgValueRef<'r>) -> Result<Self, sqlx::error::BoxDynError> {
+            fn decode(value: sqlx::postgres::PgValueRef<'r>) -> std::result::Result<Self, sqlx::error::BoxDynError> {
                 let value_str = <&str as sqlx::decode::Decode<sqlx::Postgres>>::decode(value)?;
                 Ok(#name::from_str(value_str)?)
             }
@@ -129,7 +129,7 @@ pub fn enum_text_type_derive(input: TokenStream) -> TokenStream {
 
         // --- ENCODE (From Rust Enum to database TEXT) ---
         impl<'q> sqlx::encode::Encode<'q, sqlx::Postgres> for #name {
-            fn encode_by_ref(&self, buf: &mut sqlx::postgres::PgArgumentBuffer) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+            fn encode_by_ref(&self, buf: &mut sqlx::postgres::PgArgumentBuffer) -> std::result::Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
                 let s = self.to_string();
                 <&str as sqlx::encode::Encode<sqlx::Postgres>>::encode(&s, buf)
             }
