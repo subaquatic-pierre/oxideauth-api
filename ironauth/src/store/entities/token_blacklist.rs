@@ -35,9 +35,9 @@ pub struct TokenBlacklistRow {
     pub namespace_id: Option<Uuid>,
     pub expires_at: OffsetDateTime,
     pub reason: Option<String>,
-    pub tags: Vec<String>,
-    #[sqlx(json)]
-    pub meta: TokenBlacklistMeta,
+    // pub tags: Vec<String>,
+    // #[sqlx(json)]
+    // pub meta: TokenBlacklistMeta,
     #[sqlx(flatten)]
     pub audit: AuditFields,
 }
@@ -46,13 +46,13 @@ pub struct TokenBlacklistRow {
 /// Input for creating a new `token_blacklist` entry.
 #[derive(Debug, Fields)]
 pub struct TokenBlacklistForCreate {
-    pub token_hash: Vec<u8>,
+    pub token_hash: Sha256Hash,
     pub account_id: Option<Uuid>,
     pub namespace_id: Option<Uuid>,
     pub expires_at: OffsetDateTime,
     pub reason: Option<String>,
-    pub tags: Vec<String>,
-    pub meta: TokenBlacklistMeta,
+    // pub tags: Vec<String>,
+    // pub meta: TokenBlacklistMeta,
 }
 
 // --- Update (store input) ---
@@ -63,8 +63,8 @@ pub struct TokenBlacklistForUpdate {
     pub namespace_id: Option<Uuid>,
     pub expires_at: Option<OffsetDateTime>,
     pub reason: Option<String>,
-    pub tags: Option<Vec<String>>,
-    pub meta: Option<TokenBlacklistMeta>,
+    // pub tags: Option<Vec<String>>,
+    // pub meta: Option<TokenBlacklistMeta>,
 }
 
 #[derive(Debug, Default, Fields, Serialize, Deserialize, Clone)]
@@ -124,15 +124,15 @@ impl TryFrom<JsonValue> for TokenBlacklistFilter {
 impl Default for TokenBlacklistForCreate {
     fn default() -> Self {
         Self {
-            token_hash: vec![0; 32],
+            token_hash: Sha256Hash::gen_rand(),
             account_id: None,
             namespace_id: None,
             expires_at: OffsetDateTime::now_utc(),
             reason: Some("test_revoke".into()),
-            tags: vec![],
-            meta: TokenBlacklistMeta {
-                schema_version: "1".into(),
-            },
+            // tags: vec![],
+            // meta: TokenBlacklistMeta {
+            //     schema_version: "1".into(),
+            // },
         }
     }
 }
@@ -145,8 +145,8 @@ impl Default for TokenBlacklistForUpdate {
             namespace_id: None,
             expires_at: None,
             reason: None,
-            tags: None,
-            meta: None,
+            // tags: None,
+            // meta: None,
         }
     }
 }

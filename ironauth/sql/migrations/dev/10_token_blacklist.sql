@@ -25,9 +25,14 @@ CREATE TABLE IF NOT EXISTS
     expires_at TIMESTAMPTZ NOT NULL,
     -- Optional reason/context for auditing (e.g., "manual-revoke", "password-rotate").
     reason TEXT,
+    -- START Meta & Tags
+    tags TEXT[] NOT NULL DEFAULT '{}', -- lightweight labels
+    meta JSONB NOT NULL DEFAULT '{}'::jsonb, -- structured metadata
     -- START Audit
     created_by UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_by UUID,
+    updated_at TIMESTAMPTZ,
     -- Enforce 32 bytes for SHA-256 if you standardize on it (adjust if using another algo)
     CONSTRAINT token_blacklist_token_hash_len CHECK (octet_length(token_hash) = 32),
     -- FKs (ON DELETE SET NULL to retain historical context)
