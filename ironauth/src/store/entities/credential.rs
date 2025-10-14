@@ -51,7 +51,6 @@ pub struct CredentialRow {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, EnumTextType)]
 #[serde(rename_all = "lowercase")]
-// #[strum(serialize_all = "lowercase")]
 pub enum CredentialStatus {
     Active,
     Revoked,

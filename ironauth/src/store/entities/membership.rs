@@ -1,4 +1,6 @@
-use ironauth_macros::HasId;
+use std::str::FromStr;
+
+use ironauth_macros::{EnumTextType, HasId};
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
 use sea_query::{Iden, Nullable, Value as SeaValue};
@@ -14,7 +16,6 @@ use uuid::Uuid;
 use crate::store::entities::audit::{AuditFields, AuditMeta};
 use crate::store::entities::id::DbId;
 use crate::store::entities::role::RoleMeta;
-use crate::store::error::{Result, StoreError};
 use crate::store::traits::meta::HasId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
@@ -83,9 +84,8 @@ pub struct MembershipWithRoles {
     pub roles: Vec<JoinedRoleOnMembership>,
 }
 
-#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, EnumTextType)]
 #[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
 pub enum MembershipScope {
     Namespace,
     Project,
@@ -104,9 +104,8 @@ impl Nullable for MembershipScope {
     }
 }
 
-#[derive(Debug, Display, Serialize, Deserialize, Clone, Type)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, EnumTextType)]
 #[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
 pub enum MembershipStatus {
     Invited,
     Active,
@@ -195,15 +194,6 @@ pub struct MembershipFilter {
     pub updated_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
-}
-
-impl TryFrom<JsonValue> for MembershipFilter {
-    type Error = StoreError;
-
-    fn try_from(value: JsonValue) -> Result<Self> {
-        let res = serde_json::from_value(value)?;
-        Ok(res)
-    }
 }
 
 // --- Defaults for testing ---
