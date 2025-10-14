@@ -124,9 +124,11 @@ impl TryFrom<JsonValue> for PermissionFilter {
 #[cfg(test)]
 impl Default for PermissionForCreate {
     fn default() -> Self {
+        use crate::store::utils::gen_rand_str;
+
         Self {
             namespace_id: Uuid::new_v4(),
-            name: "default.permission".to_string(),
+            name: gen_rand_str(10),
             code: Some("default-perm".to_string()),
             description: Some("A default permission for testing.".to_string()),
             tags: vec![],

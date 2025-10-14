@@ -80,11 +80,11 @@ pub struct JoinedProjectOnNamespace {
 
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct NamespaceWithProjects {
-    id: DbId,
+    pub id: DbId,
     #[sqlx(flatten)]
-    namespace: NamespaceRow,
+    pub namespace: NamespaceRow,
     #[sqlx(json)]
-    projects: Vec<JoinedProjectOnNamespace>,
+    pub projects: Vec<JoinedProjectOnNamespace>,
 }
 
 // --- Create (store input) ---
