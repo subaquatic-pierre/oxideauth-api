@@ -12,8 +12,12 @@ pub type CoreResult<T> = core::result::Result<T, CoreError>;
 #[serde_as]
 #[derive(Debug, Serialize, From)]
 pub enum CoreError {
-    AlreadyExists(&'static str),
-    ParseError(&'static str),
+    ApiError(String),
+    AlreadyExists(String),
+    ParseError(String),
+
+    #[from]
+    StoreError(#[serde_as(as = "DisplayFromStr")] crate::store::error::StoreError),
     #[from]
     FormatError(#[serde_as(as = "DisplayFromStr")] std::fmt::Error),
     #[from]

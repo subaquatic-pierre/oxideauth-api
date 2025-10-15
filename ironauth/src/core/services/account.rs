@@ -1,11 +1,17 @@
 use std::sync::Arc;
 
+use serde_json::json;
+
 use crate::{
-    core::error::{CoreError, CoreResult},
+    core::{
+        ctx::CoreCtx,
+        error::{CoreError, CoreResult},
+        models::account::Account,
+    },
     store::{
         entities::account::{AccountFilter, AccountForCreate},
         manager::StoreManager,
-        traits::crud::List,
+        traits::crud::*,
     },
 };
 
@@ -25,19 +31,21 @@ impl AccountService {
         email: &str,
         password: &str,
     ) -> CoreResult<Account> {
-        let filter = AccountFilter {
-            email: email.to_string(),
-            ..Default::default()
-        };
+        let filter: AccountFilter = json!({
+            "email": email.to_string()
+        })
+        .try_into()?;
 
-        if let Some(acc) = self.sm.account.list(&ctx.into(), filter, None).await? {
-            return Err(CoreError::AlreadyExists("email already exists"));
+        if !self
+            .sm
+            .account
+            .list(&ctx.into(), Some(filter), None)
+            .await?
+            .is_empty()
+        {
+            return Err(CoreError::AlreadyExists("email already exists".to_string()));
         }
 
-        // // 2. Perform its own logic: hashing the password
-        // let password_hash = self.password_hasher.hash(password)?;
-
-        // 3. Delegate to the store to create the new account and credential
         let n_acc = AccountForCreate {
             email: todo!(),
             name: todo!(),
@@ -51,6 +59,6 @@ impl AccountService {
 
         let new_account = self.sm.account.create(&ctx.into(), n_acc).await?;
 
-        Ok(new_account)
+        Ok(new_account.into())
     }
 }

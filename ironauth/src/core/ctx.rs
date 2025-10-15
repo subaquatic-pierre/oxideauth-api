@@ -5,8 +5,8 @@ use uuid::Uuid;
 use crate::store::ctx::StoreCtx;
 
 pub struct CoreCtx {
-    user_id: Uuid,
-    ns_id: Uuid,
+    pub user_id: Uuid,
+    pub ns_id: Uuid,
 }
 
 impl CoreCtx {
@@ -24,17 +24,16 @@ impl CoreCtx {
             ns_id: root_namespace_id,
         }
     }
-
-    pub fn user_id(&self) -> Uuid {
-        self.user_id
-    }
-    pub fn namespace_id(&self) -> Uuid {
-        self.ns_id
-    }
 }
 
 impl From<CoreCtx> for StoreCtx {
-    fn from(value: CoreCtx) -> Self {
-        Self::new(value.user_id(), value.namespace_id())
+    fn from(ctx: CoreCtx) -> Self {
+        Self::new(ctx.user_id, ctx.ns_id)
+    }
+}
+
+impl From<&CoreCtx> for StoreCtx {
+    fn from(ctx: &CoreCtx) -> Self {
+        Self::new(ctx.user_id, ctx.ns_id)
     }
 }

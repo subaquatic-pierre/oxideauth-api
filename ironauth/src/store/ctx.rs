@@ -3,8 +3,8 @@ use std::str::FromStr;
 use uuid::Uuid;
 
 pub struct StoreCtx {
-    user_id: Uuid,
-    ns_id: Uuid,
+    pub user_id: Uuid,
+    pub ns_id: Uuid,
 }
 
 impl StoreCtx {
@@ -21,12 +21,5 @@ impl StoreCtx {
             user_id: root_user_id,
             ns_id: root_namespace_id,
         }
-    }
-
-    pub fn user_id(&self) -> Uuid {
-        self.user_id
-    }
-    pub fn namespace_id(&self) -> Uuid {
-        self.ns_id
     }
 }

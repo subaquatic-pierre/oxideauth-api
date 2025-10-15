@@ -120,7 +120,7 @@ mod tests {
 
         let mut data = CredentialForCreate::default();
         data.account_id = account.id.into();
-        data.namespace_id = ctx.namespace_id();
+        data.namespace_id = ctx.ns_id;
 
         data.provider = CredentialProvider::Google;
 
@@ -153,7 +153,7 @@ mod tests {
             .await?;
         let mut data = CredentialForCreate::default();
         data.account_id = account.id.into();
-        data.namespace_id = ctx.namespace_id();
+        data.namespace_id = ctx.ns_id;
         let created_cred = store.create(&ctx, data).await?;
 
         let update_data = CredentialForUpdate {
@@ -188,7 +188,7 @@ mod tests {
             .await?;
         let mut data = CredentialForCreate::default();
         data.account_id = account.id.into();
-        data.namespace_id = ctx.namespace_id();
+        data.namespace_id = ctx.ns_id;
         let created_cred = store.create(&ctx, data).await?;
 
         // -- Execute
@@ -223,13 +223,13 @@ mod tests {
         let creds_to_create = vec![
             CredentialForCreate {
                 account_id: account.id.into(),
-                namespace_id: ctx.namespace_id(),
+                namespace_id: ctx.ns_id,
                 provider: CredentialProvider::Local,
                 ..Default::default()
             },
             CredentialForCreate {
                 account_id: account.id.into(),
-                namespace_id: ctx.namespace_id(),
+                namespace_id: ctx.ns_id,
                 secret: Some("cool".to_string()),
                 provider: CredentialProvider::Google,
                 ..Default::default()
@@ -268,13 +268,13 @@ mod tests {
         let creds_to_create = vec![
             CredentialForCreate {
                 account_id: account.id.into(),
-                namespace_id: ctx.namespace_id(),
+                namespace_id: ctx.ns_id,
                 tags: vec!["primary".into(), "oauth".into()],
                 ..Default::default()
             },
             CredentialForCreate {
                 account_id: account.id.into(),
-                namespace_id: ctx.namespace_id(),
+                namespace_id: ctx.ns_id,
                 tags: vec!["secondary".into(), "mfa".into()],
                 ..Default::default()
             },

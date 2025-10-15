@@ -109,7 +109,6 @@ ironauth-macros = { path = "../ironauth-macros" }
 
 [dev-dependencies]
 actix-rt = "2.5"
-sqlx-mock = "0.7"
 mockall = "0.13.0"
 serial_test = "0.6"
 

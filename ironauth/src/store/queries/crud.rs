@@ -23,7 +23,7 @@ pub async fn create<T: StoreRow, D: HasSeaFields, I: TableIden>(
     data: D,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<T> {
-    let user_id = ctx.user_id();
+    let user_id = ctx.user_id;
     let mut fields = data.not_none_sea_fields();
 
     if meta.has_audit {
@@ -126,12 +126,12 @@ pub async fn update_opt<T: StoreRow, D: HasSeaFields, I: TableIden>(
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<Option<T>> {
     let mut query = Query::update();
-    let user_id = ctx.user_id().to_string();
+    let user_id = ctx.user_id.to_string();
 
     let mut fields = data.not_none_sea_fields();
 
     if meta.has_audit {
-        prepare_audit_fields(&mut fields, ctx.user_id(), false);
+        prepare_audit_fields(&mut fields, ctx.user_id, false);
     }
 
     let fields = fields.for_sea_update();
@@ -602,7 +602,7 @@ mod tests {
 
         let filter = AccountFilter::try_from(serde_json::json!({
             "name": name_tag,
-            "created_by":  ctx.user_id()
+            "created_by":  ctx.user_id
         }))?;
 
         // Act
@@ -613,7 +613,7 @@ mod tests {
         assert!(!rows.is_empty());
         for r in &rows {
             assert_eq!(r.name, name_tag);
-            assert_eq!(r.audit.created_by, ctx.user_id().into());
+            assert_eq!(r.audit.created_by, ctx.user_id.into());
         }
 
         Ok(())

@@ -77,18 +77,18 @@ pub fn get_sql_dir() -> PathBuf {
     sql_dir
 }
 
-pub fn mock_store_manager() -> (StoreManager, MockPool) {
-    // 1. Create the mock pool from sqlx-mock.
-    let mock_pool = MockPool::new();
+// pub async fn mock_store_manager() -> (StoreManager, DbPool) {
+//     // 1. Create the mock pool from sqlx-mock.
+//     let mock_pool = TestPostgres::default().get_pool().await;
 
-    // 2. Your StoreManager::new() function takes a `PgPool`.
-    //    `sqlx_mock::MockPool` can be cloned into a `PgPool`,
-    //    so we can pass it directly without any code changes!
-    let store_manager = StoreManager::new(mock_pool.clone());
+//     // 2. Your StoreManager::new() function takes a `PgPool`.
+//     //    `sqlx_mock::MockPool` can be cloned into a `PgPool`,
+//     //    so we can pass it directly without any code changes!
+//     let store_manager = StoreManager::new(mock_pool.clone());
 
-    // 3. Return both so the test can use them.
-    (store_manager, mock_pool)
-}
+//     // 3. Return both so the test can use them.
+//     (store_manager, mock_pool)
+// }
 
 #[cfg(test)]
 mod tests {

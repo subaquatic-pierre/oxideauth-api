@@ -77,7 +77,7 @@ impl EmailService {
 
             let body = match tera.render(template_name, &context) {
                 Ok(body) => body,
-                Err(e) => return Err(ApiError::new_400(&format!("Template render error: {}", e))),
+                Err(e) => return Err(CoreError::ApiError(e.to_string())),
             };
 
             let destination = Destination::builder().to_addresses(to_email).build();
@@ -108,7 +108,7 @@ impl EmailService {
                 }
                 Err(e) => {
                     error!("Could not send email: {:?}", e);
-                    Err(ApiError::new_400(&e.to_string()))
+                    Err(CoreError::ApiError(e.to_string()))
                 }
             }
         }

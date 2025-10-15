@@ -490,14 +490,14 @@ mod tests {
         let store = CredentialStore::new(dbx.clone());
         let ctx = StoreCtx::new_root();
 
-        let filter: CredentialFilter = json!({"account_id": ctx.user_id()}).try_into()?;
+        let filter: CredentialFilter = json!({"account_id": ctx.user_id}).try_into()?;
 
         let existing_cred = store.list(&ctx, Some(filter), None).await?;
 
         let c = |i| {
             let mut cred = CredentialForCreate::default();
-            cred.account_id = ctx.user_id();
-            cred.namespace_id = ctx.namespace_id();
+            cred.account_id = ctx.user_id;
+            cred.namespace_id = ctx.ns_id;
             cred.provider_id = Some("TEST".to_string());
 
             cred
@@ -520,8 +520,7 @@ mod tests {
             has_audit: true,
         };
 
-        let res: AccountWithCredentials =
-            get_one_to_many(&ctx, &dbx, &ctx.user_id(), &meta).await?;
+        let res: AccountWithCredentials = get_one_to_many(&ctx, &dbx, &ctx.user_id, &meta).await?;
 
         let all_cred = res.credentials;
 
@@ -559,7 +558,7 @@ mod tests {
         let c = |acc_id| {
             let mut cred = CredentialForCreate::default();
             cred.account_id = acc_id;
-            cred.namespace_id = ctx.namespace_id();
+            cred.namespace_id = ctx.ns_id;
             cred
         };
 
@@ -608,14 +607,14 @@ mod tests {
 
         let c_perm = |i| {
             let mut perm = PermissionForCreate::default();
-            perm.namespace_id = ctx.namespace_id();
+            perm.namespace_id = ctx.ns_id;
             perm.name = format!("PERMISSION_GET_MANY_TEST_i_i_i_i{i}_iii_ii_iii___{i}__{i}");
             perm
         };
 
         let c_role = |i| {
             let mut role = RoleForCreate::default();
-            role.namespace_id = ctx.namespace_id();
+            role.namespace_id = ctx.ns_id;
             role.name = format!("ROLE_GET_MANY_TEST_i_i_i_i{i}_iii_ii_iii___{i}__{i}");
             role
         };
@@ -711,14 +710,14 @@ mod tests {
 
         let c_perm = |i, name: String| {
             let mut perm = PermissionForCreate::default();
-            perm.namespace_id = ctx.namespace_id();
+            perm.namespace_id = ctx.ns_id;
             perm.name = format!("PERMISSION_GET_MANY_TEST_{i}_{name}");
             perm
         };
 
         let c_role = |i| {
             let mut role = RoleForCreate::default();
-            role.namespace_id = ctx.namespace_id();
+            role.namespace_id = ctx.ns_id;
             role.name = format!("ROLE_GET_MANY_TEST_{i}");
             role
         };
@@ -812,7 +811,7 @@ mod tests {
             .create(
                 &ctx,
                 RoleForCreate {
-                    namespace_id: ctx.namespace_id(),
+                    namespace_id: ctx.ns_id,
                     name: "ROLE_FOR_ATTACH_DETACH".to_string(),
                     ..Default::default()
                 },
@@ -823,7 +822,7 @@ mod tests {
             .create(
                 &ctx,
                 PermissionForCreate {
-                    namespace_id: ctx.namespace_id(),
+                    namespace_id: ctx.ns_id,
                     name: "PERMISSION_1_FOR_ATTACH_DETACH".to_string(),
                     ..Default::default()
                 },
@@ -834,7 +833,7 @@ mod tests {
             .create(
                 &ctx,
                 PermissionForCreate {
-                    namespace_id: ctx.namespace_id(),
+                    namespace_id: ctx.ns_id,
                     name: "PERMISSION_2_FOR_ATTACH_DETACH".to_string(),
                     ..Default::default()
                 },

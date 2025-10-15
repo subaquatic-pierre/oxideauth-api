@@ -31,7 +31,7 @@ pub async fn create_many<T: StoreRow, D: HasSeaFields, I: TableIden>(
 
     ListOptionsValidator::validate_limit(data.len() as i64)?;
 
-    let user_id = ctx.user_id();
+    let user_id = ctx.user_id;
     let mut query = Query::insert();
 
     query.into_table(meta.table);
@@ -93,7 +93,7 @@ pub async fn update_many<T: StoreRow, D: HasSeaFields, I: TableIden>(
         let mut fields = updates.not_none_sea_fields();
 
         if meta.has_audit {
-            prepare_audit_fields(&mut fields, ctx.user_id(), false);
+            prepare_audit_fields(&mut fields, ctx.user_id, false);
         }
 
         let fields = fields.for_sea_update();

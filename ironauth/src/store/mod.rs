@@ -12,3 +12,4 @@ pub mod traits;
 pub mod utils;
 
 pub use init::DbPool;
+pub use traits::*;
