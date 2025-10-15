@@ -1,5 +1,5 @@
 [package]
-name = "ironauth"
+name = "ironstone"
 version = "0.1.0"
 edition = "2021"
 
@@ -31,11 +31,9 @@ clap = { version = "4.0", features = ["derive"] }
 reqwest = { version = "0.12.5", features = ["json"] }
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Web (Actix)
+# Web Axum
 # ──────────────────────────────────────────────────────────────────────────────
-actix-cors = "0.7.0"
-actix-http = "3.9.0"
-actix-web = "4.8.0"
+axum = "0.7"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Serialization
@@ -91,13 +89,13 @@ modql = { version = "0.4.1", features = ["with-sea-query"]}
 # Test / Mock
 # ──────────────────────────────────────────────────────────────────────────────
 mockito = "1.5.0"
-derive_more = "2.0.1"
+derive_more = { version = "2.0.1", features = ["from", "display"] }
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Macros
 # ──────────────────────────────────────────────────────────────────────────────
 # Add this line to use your local macro crate
-ironauth-macros = { path = "../ironauth-macros" }
+ironauth-macros = { path = "../ironstone-macros" }
 
 # ──────────────────────────────────────────────────────────────────────────────
 # (Optional) Diesel stack (kept for reference)
@@ -108,7 +106,6 @@ ironauth-macros = { path = "../ironauth-macros" }
 # r2d2 = "0.8"
 
 [dev-dependencies]
-actix-rt = "2.5"
 mockall = "0.13.0"
 serial_test = "0.6"
 

@@ -4,8 +4,8 @@
 [workspace]
 # List all the crates that are part of this workspace.
 members = [
-    "ironauth",
-    "ironauth-macros",
+    "ironstone",
+    "ironstone-macros",
 ]
 # Use the modern feature resolver for better dependency management.
 resolver = "2"

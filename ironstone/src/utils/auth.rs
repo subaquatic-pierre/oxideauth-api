@@ -1,41 +1,21 @@
-use actix_web::web::{scope, Data, Json};
-use actix_web::{web, App, HttpServer, Scope};
 use log::info;
 use std::{collections::HashSet, env};
 
 use dotenv::dotenv;
 
-use crate::config::Config;
-use crate::models::api::{ApiError, ApiResult};
-use crate::routes::accounts::register_accounts_collection;
-use crate::routes::auth::{register_auth_collection, RegisterReq};
-use crate::routes::roles::register_roles_collection;
-use crate::routes::services::register_services_collection;
+use crate::{
+    config::Config,
+    core::error::{CoreError, CoreResult},
+};
 
 use reqwest::{Client, Url};
 use serde::Deserialize;
+use serde_json::Value;
 use std::error::Error;
 
-use crate::models::{
-    account::{Account, AccountType},
-    role::RolePermissions,
-};
+use crate::core::models::account::Account;
 
 use super::crypt::hash_password;
-
-pub fn build_owner_account() -> Account {
-    dotenv().ok();
-
-    let owner_email = env::var("OWNER_EMAIL").unwrap_or("owner@email.com".to_string());
-    let password = env::var("OWNER_PASSWORD").unwrap_or("password".to_string());
-
-    let pw_hash = hash_password(&password).unwrap_or("unhashed_password".to_string());
-
-    let mut owner_acc = Account::new_local_user(&owner_email, "Owner", &pw_hash, None);
-    owner_acc.description = Some("Default Owner account created by OxideAuth".to_string());
-    owner_acc.verified = true;
-    owner_acc
-}
 
 #[derive(Deserialize, Debug)]
 pub struct OAuthResponse {
@@ -64,7 +44,7 @@ pub struct GoogleUserResult {
 pub async fn request_google_token(
     authorization_code: &str,
     config: &Config,
-) -> ApiResult<OAuthResponse> {
+) -> CoreResult<OAuthResponse> {
     let redirect_url = config.google_oauth_redirect_url.to_owned();
     let client_secret = config.google_oauth_client_secret.to_owned();
     let client_id = config.google_oauth_client_id.to_owned();
@@ -80,70 +60,44 @@ pub async fn request_google_token(
         ("client_secret", client_secret.as_str()),
     ];
 
-    let res = client
-        .post(root_url)
-        .form(&params)
-        .send()
-        .await
-        .map_err(|e| {
-            ApiError::new_400(&format!(
-                "An error occurred while trying to retrieve access token, {e}"
-            ))
-        })?;
+    let res = client.post(root_url).form(&params).send().await?;
 
     info!("response: {res:?}");
 
     match res.status().is_success() {
         true => match res.json::<OAuthResponse>().await {
             Ok(r) => Ok(r),
-            Err(e) => Err(ApiError::new_400(&format!(
-                "An error occurred while trying to retrieve access token, {e}"
-            ))),
+            Err(e) => Err(CoreError::ApiError(e.to_string())),
         },
         false => {
             if let Ok(json) = res.json::<OAuthErrorResponse>().await {
-                Err(ApiError::new_400(&format!(
-                    "An error occurred while trying to retrieve access token, error: {}, description: {}",
-                    json.error,
-                    json.error_description
-                )))
+                Err(CoreError::ApiError(
+                    "An error occurred while trying to retrieve access token.".to_string(),
+                ))
             } else {
-                Err(ApiError::new_400(&format!(
-                    "An error occurred while trying to retrieve access token.",
-                )))
+                Err(CoreError::ApiError(
+                    "An error occurred while trying to retrieve access token.".to_string(),
+                ))
             }
         }
     }
 }
 
-pub async fn get_google_user(access_token: &str, id_token: &str) -> ApiResult<GoogleUserResult> {
+pub async fn get_google_user(access_token: &str, id_token: &str) -> CoreResult<GoogleUserResult> {
     let client = Client::new();
     let mut url = Url::parse("https://www.googleapis.com/oauth2/v1/userinfo").unwrap();
     url.query_pairs_mut().append_pair("alt", "json");
     url.query_pairs_mut()
         .append_pair("access_token", access_token);
 
-    let response = client
-        .get(url)
-        .bearer_auth(id_token)
-        .send()
-        .await
-        .map_err(|e| {
-            ApiError::new_400(&format!(
-                "An error occurred while trying to retrieve access token, {e}"
-            ))
-        })?;
+    let response = client.get(url).bearer_auth(id_token).send().await?;
 
     if response.status().is_success() {
-        let user_info = response.json::<GoogleUserResult>().await.map_err(|e| {
-            ApiError::new_400(&format!(
-                "An error occurred while trying to retrieve access token, {e}"
-            ))
-        })?;
+        let user_info = response.json::<GoogleUserResult>().await?;
         Ok(user_info)
     } else {
         let message = "An error occurred while trying to retrieve user information.";
-        Err(ApiError::new_400(message))
+        Err(CoreError::ApiError(message.to_string()))
     }
 }
 
@@ -153,31 +107,32 @@ pub struct RegisterRedirectParams {
 }
 
 impl RegisterRedirectParams {
-    pub fn from_req(body: Json<RegisterReq>, config: &Config, token: &str) -> Self {
-        let redirect_url = match (&body.redirect_host, &body.confirm_email_redirect_endpoint) {
-            (Some(host), Some(endpoint)) => format!("{}{}", host.clone(), endpoint.clone()),
-            _ => format!("{}/auth/sign-in", config.client_origin),
-        };
+    pub fn from_req(body: Value, config: &Config, token: &str) -> Self {
+        // let redirect_url = match (&body.redirect_host, &body.confirm_email_redirect_endpoint) {
+        //     (Some(host), Some(endpoint)) => format!("{}{}", host.clone(), endpoint.clone()),
+        //     _ => format!("{}/auth/sign-in", config.client_origin),
+        // };
 
-        let dashboard_url = match (&body.redirect_host, &body.dashboard_endpoint) {
-            (Some(host), Some(endpoint)) => format!("{}{}", host.clone(), endpoint.clone()),
-            _ => format!("{}/dashboard", config.client_origin),
-        };
+        // let dashboard_url = match (&body.redirect_host, &body.dashboard_endpoint) {
+        //     (Some(host), Some(endpoint)) => format!("{}{}", host.clone(), endpoint.clone()),
+        //     _ => format!("{}/dashboard", config.client_origin),
+        // };
 
-        let project_name = match &body.project_name {
-            Some(name) => name.to_string(),
-            None => "OxideAuth".to_string(),
-        };
+        // let project_name = match &body.project_name {
+        //     Some(name) => name.to_string(),
+        //     None => "OxideAuth".to_string(),
+        // };
 
-        let server_host = format!("{}:{}", config.host.clone(), config.port.clone());
-        let confirm_url = format!(
-            "{}/auth/confirm-account?token={}&redirectUrl={}&dashboardUrl={}&projectName={}",
-            server_host, token, redirect_url, dashboard_url, project_name
-        );
+        // let server_host = format!("{}:{}", config.host.clone(), config.port.clone());
+        // let confirm_url = format!(
+        //     "{}/auth/confirm-account?token={}&redirectUrl={}&dashboardUrl={}&projectName={}",
+        //     server_host, token, redirect_url, dashboard_url, project_name
+        // );
 
-        Self {
-            project_name,
-            confirm_url,
-        }
+        // Self {
+        //     project_name,
+        //     confirm_url,
+        // }
+        todo!()
     }
 }

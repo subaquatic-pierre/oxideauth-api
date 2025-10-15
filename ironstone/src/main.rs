@@ -1,33 +1,26 @@
 #![deny(unused_must_use)]
-use std::{env, io};
+use std::{env, io, str::FromStr};
 
-use actix_cors::Cors;
-use actix_web::middleware::Logger;
-use actix_web::web::Data;
-use actix_web::{http::header, web as ActixWeb, App, HttpServer, Scope};
 use dotenv::dotenv;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
+use axum::{routing::get, Router};
+use std::net::SocketAddr;
+
 mod app;
-mod cli;
 mod config;
 mod core;
 mod dev;
-mod models;
-mod routes;
-mod rpc;
-mod services;
 mod store;
 mod utils;
 mod web;
 
-use app::{new_app_data, register_all_services};
+use app::new_app_data;
+use web::routes::root::root_handler;
 
-use crate::dev::init::init_dev;
-
-#[actix_web::main]
-async fn main() -> io::Result<()> {
+#[tokio::main]
+async fn main() {
     dotenv().ok();
     tracing_subscriber::fmt()
         .without_time() // For early local development.
@@ -36,31 +29,17 @@ async fn main() -> io::Result<()> {
         .init();
 
     let app = new_app_data().await;
+    let bind_addr = format!("{}:{}", app.config.host, app.config.port);
 
-    let app_data = Data::new(app);
+    // Define the application's routes.
+    let app = Router::new().route("/", get(root_handler));
 
-    let bind_addr = format!("{}:{}", app_data.config.host, app_data.config.port);
+    // Define the address to run the server on.
+    let addr = SocketAddr::from_str(&bind_addr);
     info!("Server listening at {bind_addr} ... ",);
 
-    let server = HttpServer::new(move || {
-        let cors = Cors::default()
-            .allow_any_origin()
-            .send_wildcard()
-            .allowed_methods(vec!["GET", "POST", "OPTIONS", "DELETE"])
-            .allowed_headers(vec![
-                header::CONTENT_TYPE,
-                header::AUTHORIZATION,
-                header::ACCEPT,
-            ]);
+    // Create a TCP listener and serve the application.
+    let listener = tokio::net::TcpListener::bind(bind_addr).await.unwrap();
 
-        App::new()
-            .app_data(app_data.clone())
-            .service(register_all_services())
-            .wrap(Logger::default())
-            .wrap(cors)
-    })
-    .bind(bind_addr)?
-    .run();
-
-    server.await
+    axum::serve(listener, app).await.unwrap();
 }

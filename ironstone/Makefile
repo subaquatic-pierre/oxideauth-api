@@ -7,11 +7,11 @@ run:
 
 build:
 	cargo build --release
-	cp ./target/release/ironauth-server .
-	chmod +x ./ironauth-server
+	cp ./target/release/ironstone-server .
+	chmod +x ./ironstone-server
 
 dev:
-	cargo watch -x "run --bin ironauth" 
+	cargo watch -x "run --bin ironstone" 
 
 # .PHONY: start-db
 # start-db:

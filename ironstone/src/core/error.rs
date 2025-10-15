@@ -15,7 +15,10 @@ pub enum CoreError {
     ApiError(String),
     AlreadyExists(String),
     ParseError(String),
+    Auth(String),
 
+    #[from]
+    ReqwestError(#[serde_as(as = "DisplayFromStr")] reqwest::Error),
     #[from]
     StoreError(#[serde_as(as = "DisplayFromStr")] crate::store::error::StoreError),
     #[from]
