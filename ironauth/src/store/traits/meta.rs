@@ -20,7 +20,6 @@ use sqlx::{postgres::PgRow, FromRow};
 use crate::store::{
     ctx::StoreCtx,
     dbx::Dbx,
-    error::Result,
     queries::meta::{
         ContainsFilterQueryMeta, ManyToManyQueryMeta, MutateQueryMeta, OneToManyQueryMeta,
         ReadQueryMeta,

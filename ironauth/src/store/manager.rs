@@ -4,7 +4,6 @@ use sqlx::PgPool;
 
 use crate::store::{
     dbx::Dbx,
-    error::Result,
     stores::{
         account::AccountStore, credential::CredentialStore, membership::MembershipStore,
         namespace::NamespaceStore, permission::PermissionStore, project::ProjectStore,

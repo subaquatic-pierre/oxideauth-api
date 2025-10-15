@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::store::entities::audit::{AuditFields, AuditMeta};
 use crate::store::entities::id::DbId;
 use crate::store::entities::project::{ProjectConfig, ProjectMeta};
-use crate::store::error::{Result, StoreError};
+use crate::store::error::{StoreError, StoreResult};
 use crate::store::traits::meta::HasId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
@@ -175,7 +175,7 @@ pub struct NamespaceFilter {
 impl TryFrom<JsonValue> for NamespaceFilter {
     type Error = StoreError;
 
-    fn try_from(value: JsonValue) -> Result<Self> {
+    fn try_from(value: JsonValue) -> StoreResult<Self> {
         let res = serde_json::from_value(value)?;
         Ok(res)
     }

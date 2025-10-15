@@ -7,7 +7,7 @@ use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, query_scalar_with, query_with, Value};
 
 use crate::store::dbx::Dbx;
-use crate::store::error::{Result, StoreError};
+use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::{CountManyQueryMeta, ReadQueryMeta};
 use crate::store::traits::meta::{StoreId, TableIden};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
@@ -18,7 +18,7 @@ pub async fn count<F: Into<FilterGroups>, I: TableIden>(
     dbx: &Dbx,
     filter: Option<F>,
     meta: &ReadQueryMeta<I>,
-) -> Result<i64> {
+) -> StoreResult<i64> {
     let mut query = Query::select();
 
     // SELECT COUNT(*)
@@ -51,7 +51,7 @@ pub async fn count_many<I: TableIden>(
     dbx: &Dbx,
     id: &impl StoreId,
     meta: &CountManyQueryMeta<I>,
-) -> Result<i64> {
+) -> StoreResult<i64> {
     let mut query = Query::select();
 
     // SELECT COUNT(*) FROM {many_table}
@@ -95,7 +95,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_count_after_inserts_matches_number_of_rows() -> Result<()> {
+    async fn test_count_after_inserts_matches_number_of_rows() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());

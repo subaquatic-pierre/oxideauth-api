@@ -3,7 +3,7 @@ use sea_query::Iden;
 use serde::Deserialize;
 
 use crate::store::entities::audit::AuditIden;
-use crate::store::error::{Result, StoreError};
+use crate::store::error::{StoreError, StoreResult};
 use crate::store::traits::meta::Store;
 
 /// Default number of rows to return in a list query.
@@ -32,7 +32,7 @@ impl ListOptionsValidator {
     pub fn validate_list_opts(
         opts: Option<ListOptions>,
         has_audit_fields: bool,
-    ) -> Result<ListOptions> {
+    ) -> StoreResult<ListOptions> {
         let opts = match opts {
             Some(mut opts) => {
                 // If caller provided a limit, check it's within the allowed max
@@ -71,7 +71,7 @@ impl ListOptionsValidator {
         }
     }
 
-    pub fn validate_limit(limit: i64) -> Result<()> {
+    pub fn validate_limit(limit: i64) -> StoreResult<()> {
         if limit > LIST_LIMIT_MAX {
             return Err(StoreError::ListLimitExceeded {
                 max: LIST_LIMIT_MAX,

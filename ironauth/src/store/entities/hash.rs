@@ -19,7 +19,7 @@ use serde_json::Value as JsonValue;
 use sha2::Digest;
 use tracing::{error, warn};
 
-use crate::store::error::{Result as StoreResult, StoreError};
+use crate::store::error::{StoreError, StoreResult};
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 pub struct Sha256Hash {

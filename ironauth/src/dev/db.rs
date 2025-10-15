@@ -11,7 +11,7 @@ use tracing::info;
 
 use crate::{
     dev::config::{PROJECT_ROOT, SQL_DIR},
-    store::init::DbPool,
+    store::{init::DbPool, manager::StoreManager},
 };
 
 static INIT: OnceCell<()> = OnceCell::const_new();
@@ -75,6 +75,19 @@ pub fn get_sql_dir() -> PathBuf {
     let base_dir = PathBuf::from(PROJECT_ROOT);
     let sql_dir = base_dir.join(SQL_DIR);
     sql_dir
+}
+
+pub fn mock_store_manager() -> (StoreManager, MockPool) {
+    // 1. Create the mock pool from sqlx-mock.
+    let mock_pool = MockPool::new();
+
+    // 2. Your StoreManager::new() function takes a `PgPool`.
+    //    `sqlx_mock::MockPool` can be cloned into a `PgPool`,
+    //    so we can pass it directly without any code changes!
+    let store_manager = StoreManager::new(mock_pool.clone());
+
+    // 3. Return both so the test can use them.
+    (store_manager, mock_pool)
 }
 
 #[cfg(test)]

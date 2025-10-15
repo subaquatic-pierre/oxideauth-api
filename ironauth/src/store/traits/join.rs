@@ -1,5 +1,5 @@
 use crate::store::ctx::StoreCtx;
-use crate::store::error::Result;
+use crate::store::error::StoreResult;
 use crate::store::queries::join::{
     attach_link, detach_link, get_many_to_many, get_many_to_many_opt, get_one_to_many,
     get_one_to_many_opt, list_many_to_many, list_one_to_many, set_many_to_many_links,
@@ -18,7 +18,7 @@ pub trait GetOneToMany: OneToManyStore {
         &self,
         ctx: &StoreCtx,
         id: &<Self::OneToManyRow as HasId>::Id,
-    ) -> Result<Self::OneToManyRow> {
+    ) -> StoreResult<Self::OneToManyRow> {
         let db = self.db();
         let meta = self.one_to_many_meta();
         get_one_to_many(ctx, db, id, &meta).await
@@ -29,7 +29,7 @@ pub trait GetOneToMany: OneToManyStore {
         &self,
         ctx: &StoreCtx,
         id: &<Self::OneToManyRow as HasId>::Id,
-    ) -> Result<Option<Self::OneToManyRow>> {
+    ) -> StoreResult<Option<Self::OneToManyRow>> {
         let db = self.db();
         let meta = self.one_to_many_meta();
         get_one_to_many_opt(ctx, db, id, &meta).await
@@ -45,7 +45,7 @@ pub trait ListOneToMany: OneToManyStore {
         ctx: &StoreCtx,
         filter: Option<Self::FilterStoreParams>,
         opts: Option<ListOptions>,
-    ) -> Result<Vec<Self::OneToManyRow>> {
+    ) -> StoreResult<Vec<Self::OneToManyRow>> {
         let db = self.db();
         let meta = self.one_to_many_meta();
         list_one_to_many(ctx, db, filter, opts, &meta).await
@@ -62,7 +62,7 @@ pub trait GetManyToMany: ManyToManyStore {
         &self,
         ctx: &StoreCtx,
         id: &<Self::ManyToManyRow as HasId>::Id,
-    ) -> Result<Self::ManyToManyRow> {
+    ) -> StoreResult<Self::ManyToManyRow> {
         let db = self.db();
         let meta = self.many_to_many_meta();
         get_many_to_many(ctx, db, id, &meta).await
@@ -73,7 +73,7 @@ pub trait GetManyToMany: ManyToManyStore {
         &self,
         ctx: &StoreCtx,
         id: &<Self::ManyToManyRow as HasId>::Id,
-    ) -> Result<Option<Self::ManyToManyRow>> {
+    ) -> StoreResult<Option<Self::ManyToManyRow>> {
         let db = self.db();
         let meta = self.many_to_many_meta();
         get_many_to_many_opt(ctx, db, id, &meta).await
@@ -89,7 +89,7 @@ pub trait ListManyToMany: ManyToManyStore {
         ctx: &StoreCtx,
         filter: Option<Self::FilterStoreParams>,
         opts: Option<ListOptions>,
-    ) -> Result<Vec<Self::ManyToManyRow>> {
+    ) -> StoreResult<Vec<Self::ManyToManyRow>> {
         let db = self.db();
         let meta = self.many_to_many_meta();
         list_many_to_many(ctx, db, filter, opts, &meta).await
@@ -105,7 +105,7 @@ pub trait LinkManyToMany: ManyToManyStore {
         ctx: &StoreCtx,
         self_id: &<Self::ManyToManyRow as HasId>::Id,
         other_ids: Vec<<Self::ManyToManyRow as HasId>::Id>,
-    ) -> Result<()> {
+    ) -> StoreResult<()> {
         let db = self.db();
         let meta = self.many_to_many_meta();
         set_many_to_many_links(ctx, db, self_id, other_ids, &meta).await
@@ -117,7 +117,7 @@ pub trait LinkManyToMany: ManyToManyStore {
         ctx: &StoreCtx,
         self_id: &<Self::Row as HasId>::Id,
         other_id: &<Self::Row as HasId>::Id,
-    ) -> Result<()> {
+    ) -> StoreResult<()> {
         let db = self.db();
         let meta = self.many_to_many_meta();
         attach_link(ctx, db, self_id, other_id, &meta).await
@@ -129,7 +129,7 @@ pub trait LinkManyToMany: ManyToManyStore {
         ctx: &StoreCtx,
         self_id: &<Self::Row as HasId>::Id,
         other_id: &<Self::Row as HasId>::Id,
-    ) -> Result<()> {
+    ) -> StoreResult<()> {
         let db = self.db();
         let meta = self.many_to_many_meta();
         detach_link(ctx, db, self_id, other_id, &meta).await

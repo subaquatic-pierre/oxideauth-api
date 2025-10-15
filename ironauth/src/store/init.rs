@@ -2,9 +2,6 @@ use anyhow::{Context, Result};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres};
 
-use crate::app::AppData;
-use crate::{config::Config, models::account::Account};
-
 // Type alias for DB
 pub type DbPool = Pool<Postgres>;
 

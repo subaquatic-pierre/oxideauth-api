@@ -10,7 +10,7 @@ use sqlx::{postgres::PgRow, FromRow};
 use crate::store::{
     ctx::StoreCtx,
     dbx::Dbx,
-    error::{Result, StoreError},
+    error::{StoreError, StoreResult},
     queries::{
         count::{count, count_many},
         meta::{CountManyQueryMeta, ManyToManyQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
@@ -27,7 +27,7 @@ pub async fn get_one_to_many_opt<T: StoreRow, I: TableIden>(
     dbx: &Dbx,
     id: &impl StoreId,
     meta: &OneToManyQueryMeta<I>,
-) -> Result<Option<T>> {
+) -> StoreResult<Option<T>> {
     // Guard: count rows on the many side via its FK -> single PK
     let count_meta = CountManyQueryMeta {
         table: meta.many_table,
@@ -93,7 +93,7 @@ pub async fn get_one_to_many<T: StoreRow, I: TableIden>(
     dbx: &Dbx,
     id: &impl StoreId,
     meta: &OneToManyQueryMeta<I>,
-) -> Result<T> {
+) -> StoreResult<T> {
     match get_one_to_many_opt(ctx, dbx, id, meta).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
@@ -109,7 +109,7 @@ pub async fn list_one_to_many<T: StoreRow, F: Into<FilterGroups> + Clone, I: Tab
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &OneToManyQueryMeta<I>,
-) -> Result<Vec<T>> {
+) -> StoreResult<Vec<T>> {
     let count_meta = ReadQueryMeta {
         table: meta.single_table,
         pk: meta.single_pk,
@@ -186,7 +186,7 @@ pub async fn get_many_to_many_opt<T: StoreRow, I: TableIden>(
     dbx: &Dbx,
     id: &impl StoreId,
     meta: &ManyToManyQueryMeta<I>,
-) -> Result<Option<T>> {
+) -> StoreResult<Option<T>> {
     // Guard: count rows on the many side via its FK -> single PK
     let count_meta = CountManyQueryMeta {
         table: meta.join_table,
@@ -259,7 +259,7 @@ pub async fn get_many_to_many<T: StoreRow, I: TableIden>(
     dbx: &Dbx,
     id: &impl StoreId,
     meta: &ManyToManyQueryMeta<I>,
-) -> Result<T> {
+) -> StoreResult<T> {
     match get_many_to_many_opt(ctx, dbx, id, meta).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
@@ -275,7 +275,7 @@ pub async fn list_many_to_many<T: StoreRow, F: Into<FilterGroups> + Clone, I: Ta
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &ManyToManyQueryMeta<I>,
-) -> Result<Vec<T>> {
+) -> StoreResult<Vec<T>> {
     let count_meta = ReadQueryMeta {
         table: meta.single_table,
         pk: meta.join_fk,
@@ -359,7 +359,7 @@ pub async fn set_many_to_many_links<I: TableIden, ID: StoreId + Clone>(
     self_id: &ID,
     other_ids: Vec<ID>,
     meta: &ManyToManyQueryMeta<I>,
-) -> Result<()> {
+) -> StoreResult<()> {
     let mut tx = dbx.begin().await?;
 
     // // Delete all existing associations for self_id
@@ -402,7 +402,7 @@ pub async fn attach_link<I: TableIden, ID: StoreId>(
     self_id: &ID,
     other_id: &ID,
     meta: &ManyToManyQueryMeta<I>,
-) -> Result<()> {
+) -> StoreResult<()> {
     // Build an INSERT statement for a single row.
     let (sql, vals) = Query::insert()
         .into_table(meta.join_table)
@@ -431,7 +431,7 @@ pub async fn detach_link<I: TableIden, ID: StoreId>(
     self_id: &ID,
     other_id: &ID,
     meta: &ManyToManyQueryMeta<I>,
-) -> Result<()> {
+) -> StoreResult<()> {
     // Build a DELETE statement targeting the specific link.
     let (sql, vals) = Query::delete()
         .from_table(meta.join_table)
@@ -484,7 +484,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_get_joined() -> Result<()> {
+    async fn test_get_joined() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let store = CredentialStore::new(dbx.clone());
@@ -532,7 +532,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_list_joined() -> Result<()> {
+    async fn test_list_joined() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let store = CredentialStore::new(dbx.clone());
@@ -599,7 +599,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_get_many_to_many() -> Result<()> {
+    async fn test_get_many_to_many() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let perm_store = PermissionStore::new(dbx.clone());
@@ -702,7 +702,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_list_many_to_many() -> Result<()> {
+    async fn test_list_many_to_many() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let perm_store = PermissionStore::new(dbx.clone());
@@ -799,7 +799,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_attach_detach_many_to_many() -> Result<()> {
+    async fn test_attach_detach_many_to_many() -> StoreResult<()> {
         // -- Setup
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();

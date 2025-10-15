@@ -11,7 +11,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::store::entities::audit::AuditFields;
-use crate::store::error::{Result, StoreError};
+use crate::store::error::{StoreError, StoreResult};
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 #[derive(Iden, Copy, Clone)]
@@ -114,7 +114,7 @@ pub struct PermissionFilter {
 impl TryFrom<JsonValue> for PermissionFilter {
     type Error = StoreError;
 
-    fn try_from(value: JsonValue) -> Result<Self> {
+    fn try_from(value: JsonValue) -> StoreResult<Self> {
         let res = serde_json::from_value(value)?;
         Ok(res)
     }

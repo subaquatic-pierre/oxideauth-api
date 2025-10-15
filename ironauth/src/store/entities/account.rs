@@ -10,7 +10,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::store::entities::audit::AuditFields;
-use crate::store::error::{Result, StoreError};
+use crate::store::error::{StoreError, StoreResult};
 
 use crate::store::entities::credential::{
     CredentialKind, CredentialProvider, CredentialRow, CredentialStatus,
@@ -167,7 +167,7 @@ pub struct AccountFilter {
 impl TryFrom<JsonValue> for AccountFilter {
     type Error = StoreError;
 
-    fn try_from(value: JsonValue) -> Result<Self> {
+    fn try_from(value: JsonValue) -> StoreResult<Self> {
         let res = serde_json::from_value(value)?;
         Ok(res)
     }

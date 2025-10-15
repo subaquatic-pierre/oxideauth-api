@@ -7,11 +7,13 @@ use serde_json::Error as JsonError;
 use serde_with::{serde_as, DisplayFromStr};
 use time::error::{Format, Parse};
 
-pub type Result<T> = core::result::Result<T, Error>;
+pub type CoreResult<T> = core::result::Result<T, CoreError>;
 
 #[serde_as]
 #[derive(Debug, Serialize, From)]
-pub enum Error {
+pub enum CoreError {
+    AlreadyExists(&'static str),
+    ParseError(&'static str),
     #[from]
     FormatError(#[serde_as(as = "DisplayFromStr")] std::fmt::Error),
     #[from]
@@ -20,10 +22,10 @@ pub enum Error {
     InfallibleError(#[serde_as(as = "DisplayFromStr")] Infallible),
 }
 
-impl Display for Error {
+impl Display for CoreError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for CoreError {}

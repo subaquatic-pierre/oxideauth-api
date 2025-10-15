@@ -5,7 +5,7 @@ use serde_json::{to_value, Value as JsonValue};
 use std::fmt::Debug;
 use time::{format_description::well_known::Rfc3339, serde::rfc3339, OffsetDateTime};
 
-use crate::store::error::{StoreError, Result};
+use crate::store::error::StoreError;
 
 pub fn json_to_sea_value(v: JsonValue) -> SeaResult<SeaValue> {
     match serde_json::to_value(v) {

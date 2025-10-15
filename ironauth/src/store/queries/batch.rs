@@ -11,7 +11,7 @@ use sqlx::{query_as_with, Postgres, QueryBuilder, Value};
 use uuid::Uuid;
 
 use crate::store::dbx::Dbx;
-use crate::store::error::{Result, StoreError};
+use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::MutateQueryMeta;
 use crate::store::traits::meta::{Store, StoreId, StoreRow, TableIden};
 use crate::store::utils::ListOptionsValidator;
@@ -23,7 +23,7 @@ pub async fn create_many<T: StoreRow, D: HasSeaFields, I: TableIden>(
     dbx: &Dbx,
     data: Vec<D>,
     meta: &MutateQueryMeta<I>,
-) -> Result<Vec<T>> {
+) -> StoreResult<Vec<T>> {
     // --- Early exit: nothing to do, return empty result.
     if data.is_empty() {
         return Ok(vec![]);
@@ -74,7 +74,7 @@ pub async fn update_many<T: StoreRow, D: HasSeaFields, I: TableIden>(
     dbx: &Dbx,
     data: Vec<(impl StoreId, D)>,
     meta: &MutateQueryMeta<I>,
-) -> Result<Vec<T>> {
+) -> StoreResult<Vec<T>> {
     // exit: nothing to do, return empty result.
     if data.is_empty() {
         return Ok(vec![]);
@@ -124,7 +124,7 @@ pub async fn delete_many<T: StoreRow, I: TableIden>(
     dbx: &Dbx,
     ids: Vec<impl StoreId>,
     meta: &MutateQueryMeta<I>,
-) -> Result<Vec<T>> {
+) -> StoreResult<Vec<T>> {
     // --- Early exit: nothing to do, return empty result.
     if ids.is_empty() {
         return Ok(vec![]);
@@ -163,7 +163,7 @@ mod tests {
                 },
                 id::DbId,
             },
-            error::Result,
+            error::StoreResult,
             queries::{
                 crud::{create, list},
                 meta::{MutateQueryMeta, ReadQueryMeta},
@@ -180,7 +180,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_update_many() -> Result<()> {
+    async fn test_update_many() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
@@ -209,7 +209,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_update_many_ignore_unknown() -> Result<()> {
+    async fn test_update_many_ignore_unknown() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let acc_store = AccountStore::new(dbx.clone());
@@ -256,7 +256,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_create_many() -> Result<()> {
+    async fn test_create_many() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
@@ -287,7 +287,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_update_many_tags() -> Result<()> {
+    async fn test_update_many_tags() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
@@ -328,7 +328,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_update_many_meta() -> Result<()> {
+    async fn test_update_many_meta() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
@@ -374,7 +374,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_create_many_fail() -> Result<()> {
+    async fn test_create_many_fail() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
@@ -389,7 +389,7 @@ mod tests {
         }
 
         let meta = store.mutate_meta();
-        let res: Result<Vec<AccountRow>> = create_many(&ctx, &dbx, payloads, &meta).await;
+        let res: StoreResult<Vec<AccountRow>> = create_many(&ctx, &dbx, payloads, &meta).await;
 
         assert!(
             res.is_err(),
@@ -401,7 +401,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_update_many_fail() -> Result<()> {
+    async fn test_update_many_fail() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
@@ -421,7 +421,8 @@ mod tests {
         }
 
         let mutate_meta = store.mutate_meta();
-        let res: Result<Vec<AccountRow>> = update_many(&ctx, &dbx, updates, &mutate_meta).await;
+        let res: StoreResult<Vec<AccountRow>> =
+            update_many(&ctx, &dbx, updates, &mutate_meta).await;
 
         assert!(
             res.is_err(),
@@ -433,7 +434,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_delete_many() -> Result<()> {
+    async fn test_delete_many() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
@@ -466,7 +467,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_delete_many_wrong_id() -> Result<()> {
+    async fn test_delete_many_wrong_id() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
@@ -495,7 +496,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_delete_many_fail() -> Result<()> {
+    async fn test_delete_many_fail() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let store = AccountStore::new(dbx.clone());
@@ -505,7 +506,7 @@ mod tests {
         let ids: Vec<Uuid> = (0..over_limit).map(|_| Uuid::new_v4()).collect();
 
         let meta = store.mutate_meta();
-        let res: Result<Vec<AccountRow>> = delete_many(&ctx, &dbx, ids, &meta).await;
+        let res: StoreResult<Vec<AccountRow>> = delete_many(&ctx, &dbx, ids, &meta).await;
 
         assert!(
             res.is_err(),

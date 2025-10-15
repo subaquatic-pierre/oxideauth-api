@@ -15,7 +15,7 @@ use ironauth_macros::HasId;
 
 use crate::store::entities::audit::{AuditFields, AuditMeta};
 use crate::store::entities::hash::Sha256Hash;
-use crate::store::error::{Result, StoreError};
+use crate::store::error::{StoreError, StoreResult};
 use crate::store::utils::{bytes_to_sea_value, json_to_sea_value, time_to_sea_value};
 
 #[derive(Iden, Copy, Clone)]
@@ -113,7 +113,7 @@ pub struct TokenBlacklistFilter {
 impl TryFrom<JsonValue> for TokenBlacklistFilter {
     type Error = StoreError;
 
-    fn try_from(value: JsonValue) -> Result<Self> {
+    fn try_from(value: JsonValue) -> StoreResult<Self> {
         let res = serde_json::from_value(value)?;
         Ok(res)
     }

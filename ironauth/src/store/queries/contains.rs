@@ -5,7 +5,7 @@ use serde_json::Value as JsonValue;
 use crate::store::{
     ctx::StoreCtx,
     dbx::Dbx,
-    error::{Result, StoreError},
+    error::{StoreError, StoreResult},
     queries::meta::{ContainsFilter, ContainsFilterQueryMeta},
     traits::meta::{StoreRow, TableIden},
 };
@@ -15,7 +15,7 @@ pub async fn filter_by_value_contains<T: StoreRow, I: TableIden>(
     dbx: &Dbx,
     value: ContainsFilter,
     meta: &ContainsFilterQueryMeta<I>,
-) -> Result<Vec<T>> {
+) -> StoreResult<Vec<T>> {
     // count ensure list limit not exceeded
 
     let mut query = Query::select();
@@ -69,7 +69,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_filter_by_contains_meta() -> Result<()> {
+    async fn test_filter_by_contains_meta() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
         let store = PermissionStore::new(dbx.clone());
@@ -129,7 +129,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_filter_by_contains_tags() -> Result<()> {
+    async fn test_filter_by_contains_tags() -> StoreResult<()> {
         // -- Setup
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();

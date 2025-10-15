@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::store::entities::audit::{AuditFields, AuditMeta};
 use crate::store::entities::id::DbId;
 use crate::store::entities::role::RoleMeta;
-use crate::store::error::{Result as StoreResult, StoreError};
+use crate::store::error::{StoreError, StoreResult};
 use crate::store::traits::meta::HasId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 

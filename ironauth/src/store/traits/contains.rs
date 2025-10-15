@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use serde_json::Value as JsonValue;
 
 use crate::store::ctx::StoreCtx;
-use crate::store::error::Result;
+use crate::store::error::StoreResult;
 use crate::store::queries::contains::filter_by_value_contains;
 use crate::store::queries::meta::ContainsFilter;
 use crate::store::traits::meta::{ContainsFilterStore, Store};
@@ -16,7 +16,7 @@ pub trait FilterByContains: ContainsFilterStore {
         &self,
         ctx: &StoreCtx,
         tags: Vec<String>,
-    ) -> Result<Vec<Self::Row>> {
+    ) -> StoreResult<Vec<Self::Row>> {
         let db = self.db();
         let meta = self.contains_tags_meta();
         let value = ContainsFilter::Array(tags);
@@ -29,7 +29,7 @@ pub trait FilterByContains: ContainsFilterStore {
         &self,
         ctx: &StoreCtx,
         json: JsonValue,
-    ) -> Result<Vec<Self::Row>> {
+    ) -> StoreResult<Vec<Self::Row>> {
         let db = self.db();
         let meta = self.contains_json_meta();
         let value = ContainsFilter::Json(json);

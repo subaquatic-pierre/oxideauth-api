@@ -49,6 +49,7 @@ strum_macros = "0.24"
 hex = "0.4.3"
 sha2 = "0.10.6"
 bincode = "1.3.3"
+url = "2.5"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Auth / Security
@@ -108,7 +109,7 @@ ironauth-macros = { path = "../ironauth-macros" }
 
 [dev-dependencies]
 actix-rt = "2.5"
-# cargo-watch = "7.8"
+sqlx-mock = "0.7"
 mockall = "0.13.0"
 serial_test = "0.6"
 

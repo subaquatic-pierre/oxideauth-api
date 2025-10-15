@@ -10,7 +10,7 @@ use sqlx::{query_as_with, Value};
 use uuid::Uuid;
 
 use crate::store::dbx::Dbx;
-use crate::store::error::{Result, StoreError};
+use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::{MutateQueryMeta, ReadQueryMeta};
 use crate::store::traits::meta::{Store, StoreId, StoreRow, TableIden};
 use crate::store::utils::prepare_audit_fields;
@@ -22,7 +22,7 @@ pub async fn create<T: StoreRow, D: HasSeaFields, I: TableIden>(
     dbx: &Dbx,
     data: D,
     meta: &MutateQueryMeta<I>,
-) -> Result<T> {
+) -> StoreResult<T> {
     let user_id = ctx.user_id();
     let mut fields = data.not_none_sea_fields();
 
@@ -51,7 +51,7 @@ pub async fn get_opt<T: StoreRow, I: TableIden>(
     dbx: &Dbx,
     id: &impl StoreId,
     meta: &ReadQueryMeta<I>,
-) -> Result<Option<T>> {
+) -> StoreResult<Option<T>> {
     let mut query = Query::select();
 
     query
@@ -72,7 +72,7 @@ pub async fn get<T: StoreRow, I: TableIden>(
     dbx: &Dbx,
     id: &impl StoreId,
     meta: &ReadQueryMeta<I>,
-) -> Result<T> {
+) -> StoreResult<T> {
     match get_opt(ctx, dbx, id, meta).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
@@ -88,7 +88,7 @@ pub async fn list<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &ReadQueryMeta<I>,
-) -> Result<Vec<T>> {
+) -> StoreResult<Vec<T>> {
     let mut query = Query::select();
 
     // FROM {DB::TABLE_NAME} SELECT *
@@ -124,7 +124,7 @@ pub async fn update_opt<T: StoreRow, D: HasSeaFields, I: TableIden>(
     id: &impl StoreId,
     data: D,
     meta: &MutateQueryMeta<I>,
-) -> Result<Option<T>> {
+) -> StoreResult<Option<T>> {
     let mut query = Query::update();
     let user_id = ctx.user_id().to_string();
 
@@ -157,7 +157,7 @@ pub async fn update<T: StoreRow, D: HasSeaFields, I: TableIden>(
     id: &impl StoreId,
     data: D,
     meta: &MutateQueryMeta<I>,
-) -> Result<T> {
+) -> StoreResult<T> {
     match update_opt(ctx, dbx, id, data, meta).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
@@ -172,7 +172,7 @@ pub async fn delete_opt<T: StoreRow, I: TableIden>(
     dbx: &Dbx,
     id: &impl StoreId,
     meta: &MutateQueryMeta<I>,
-) -> Result<Option<T>> {
+) -> StoreResult<Option<T>> {
     let id_str = id.to_string();
     let mut query = Query::delete();
 
@@ -195,7 +195,7 @@ pub async fn delete<T: StoreRow, I: TableIden>(
     dbx: &Dbx,
     id: &impl StoreId,
     meta: &MutateQueryMeta<I>,
-) -> Result<T> {
+) -> StoreResult<T> {
     match delete_opt(ctx, dbx, id, meta).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {
@@ -236,7 +236,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_create_and_get_pass() -> Result<()> {
+    async fn test_create_and_get_pass() -> StoreResult<()> {
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
 
@@ -277,7 +277,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_list_with_filter_and_limit_pass() -> Result<()> {
+    async fn test_list_with_filter_and_limit_pass() -> StoreResult<()> {
         // Arrange
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
@@ -325,7 +325,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_list_pagination_pass() -> Result<()> {
+    async fn test_list_pagination_pass() -> StoreResult<()> {
         // Arrange
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
@@ -411,7 +411,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_update_success() -> Result<()> {
+    async fn test_update_success() -> StoreResult<()> {
         // Arrange
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
@@ -441,7 +441,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_update_fail_not_found() -> Result<()> {
+    async fn test_update_fail_not_found() -> StoreResult<()> {
         // Arrange
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
@@ -466,7 +466,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_delete_success() -> Result<()> {
+    async fn test_delete_success() -> StoreResult<()> {
         // Arrange
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
@@ -492,7 +492,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_delete_fail_not_found() -> Result<()> {
+    async fn test_delete_fail_not_found() -> StoreResult<()> {
         // Arrange
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
@@ -514,7 +514,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_update_tags() -> Result<()> {
+    async fn test_update_tags() -> StoreResult<()> {
         // Arrange
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
@@ -547,7 +547,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_update_meta() -> Result<()> {
+    async fn test_update_meta() -> StoreResult<()> {
         // Arrange
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
@@ -581,7 +581,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_list_filter_by_created_by() -> Result<()> {
+    async fn test_list_filter_by_created_by() -> StoreResult<()> {
         // Arrange
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
@@ -621,7 +621,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_list_filter_by_created_at() -> Result<()> {
+    async fn test_list_filter_by_created_at() -> StoreResult<()> {
         // Arrange
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
@@ -668,7 +668,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_list_order_by_created_at() -> Result<()> {
+    async fn test_list_order_by_created_at() -> StoreResult<()> {
         use tokio::time::{sleep, Duration};
 
         // Arrange

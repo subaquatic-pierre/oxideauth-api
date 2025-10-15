@@ -6,7 +6,7 @@ use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, Value};
 
 use crate::store::dbx::Dbx;
-use crate::store::error::{Result, StoreError};
+use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::ReadQueryMeta;
 use crate::store::traits::meta::{StoreRow, TableIden};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
@@ -18,7 +18,7 @@ pub async fn first_opt<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &ReadQueryMeta<I>,
-) -> Result<Option<T>> {
+) -> StoreResult<Option<T>> {
     let mut query = Query::select();
 
     // FROM {DB::TABLE_NAME} SELECT *
@@ -58,7 +58,7 @@ pub async fn first<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &ReadQueryMeta<I>,
-) -> Result<T> {
+) -> StoreResult<T> {
     match first_opt(ctx, dbx, filter, opts, meta).await? {
         Some(t) => Ok(t),
         None => Err(StoreError::EntityNotFound {

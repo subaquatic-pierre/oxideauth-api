@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::store::{
     ctx::StoreCtx,
     dbx::Dbx,
-    error::Result,
+    error::StoreResult,
     init::DbPool,
     queries::{
         batch::{create_many, delete_many, update_many},
@@ -37,7 +37,11 @@ where
     Self: MutateStore,
 {
     /// Inserts a new row and returns the created record.
-    async fn create(&self, ctx: &StoreCtx, data: Self::CreateStoreParams) -> Result<Self::Row> {
+    async fn create(
+        &self,
+        ctx: &StoreCtx,
+        data: Self::CreateStoreParams,
+    ) -> StoreResult<Self::Row> {
         let db = self.db();
         let meta = self.mutate_meta();
         create(&ctx, &db, data, &meta).await
@@ -52,7 +56,7 @@ where
 {
     /// Fetches a single row by its primary key.
     /// Returns an error if the row is not found.
-    async fn get(&self, ctx: &StoreCtx, id: &<Self::Row as HasId>::Id) -> Result<Self::Row> {
+    async fn get(&self, ctx: &StoreCtx, id: &<Self::Row as HasId>::Id) -> StoreResult<Self::Row> {
         let db = self.db();
         let meta = self.read_meta();
         get(&ctx, &db, id, &meta).await
@@ -64,7 +68,7 @@ where
         &self,
         ctx: &StoreCtx,
         id: &<Self::Row as HasId>::Id,
-    ) -> Result<Option<Self::Row>> {
+    ) -> StoreResult<Option<Self::Row>> {
         let db = self.db();
         let meta = self.read_meta();
         get_opt(&ctx, &db, id, &meta).await
@@ -83,7 +87,7 @@ where
         ctx: &StoreCtx,
         filter: Option<Self::FilterStoreParams>,
         opts: Option<ListOptions>,
-    ) -> Result<Vec<Self::Row>> {
+    ) -> StoreResult<Vec<Self::Row>> {
         let db = self.db();
         let meta = self.read_meta();
         list(ctx, &db, filter, opts, &meta).await
@@ -103,7 +107,7 @@ where
         ctx: &StoreCtx,
         id: &<Self::Row as HasId>::Id,
         data: Self::UpdateStoreParams,
-    ) -> Result<Self::Row> {
+    ) -> StoreResult<Self::Row> {
         let db = self.db();
         let meta = self.mutate_meta();
         update(ctx, &db, id, data, &meta).await
@@ -116,7 +120,7 @@ where
         ctx: &StoreCtx,
         id: &<Self::Row as HasId>::Id,
         data: Self::UpdateStoreParams,
-    ) -> Result<Option<Self::Row>> {
+    ) -> StoreResult<Option<Self::Row>> {
         let db = self.db();
         let meta = self.mutate_meta();
         update_opt(ctx, &db, id, data, &meta).await
@@ -131,7 +135,11 @@ where
 {
     /// Deletes a row by its primary key and returns the deleted record.
     /// Returns an error if the row is not found.
-    async fn delete(&self, ctx: &StoreCtx, id: &<Self::Row as HasId>::Id) -> Result<Self::Row> {
+    async fn delete(
+        &self,
+        ctx: &StoreCtx,
+        id: &<Self::Row as HasId>::Id,
+    ) -> StoreResult<Self::Row> {
         let db = self.db();
         let meta = self.mutate_meta();
         delete(ctx, &db, id, &meta).await
@@ -143,7 +151,7 @@ where
         &self,
         ctx: &StoreCtx,
         id: &<Self::Row as HasId>::Id,
-    ) -> Result<Option<Self::Row>> {
+    ) -> StoreResult<Option<Self::Row>> {
         let db = self.db();
         let meta = self.mutate_meta();
         delete_opt(ctx, &db, id, &meta).await
@@ -166,7 +174,7 @@ where
         &self,
         ctx: &StoreCtx,
         data: Vec<Self::CreateStoreParams>,
-    ) -> Result<Vec<Self::Row>> {
+    ) -> StoreResult<Vec<Self::Row>> {
         let db = self.db();
         let meta = self.mutate_meta();
         create_many(ctx, &db, data, &meta).await
@@ -185,7 +193,7 @@ where
         &self,
         ctx: &StoreCtx,
         data: Vec<(<Self::Row as HasId>::Id, Self::UpdateStoreParams)>,
-    ) -> Result<Vec<Self::Row>> {
+    ) -> StoreResult<Vec<Self::Row>> {
         let db = self.db();
         let meta = self.mutate_meta();
         update_many(ctx, &db, data, &meta).await
@@ -203,7 +211,7 @@ where
         &self,
         ctx: &StoreCtx,
         ids: Vec<<Self::Row as HasId>::Id>,
-    ) -> Result<Vec<Self::Row>> {
+    ) -> StoreResult<Vec<Self::Row>> {
         let db = self.db();
         let meta = self.mutate_meta();
         delete_many(ctx, &db, ids, &meta).await
@@ -228,7 +236,7 @@ where
         ctx: &StoreCtx,
         filter: Option<Self::FilterStoreParams>,
         opts: Option<ListOptions>,
-    ) -> Result<Self::Row> {
+    ) -> StoreResult<Self::Row> {
         let db = self.db();
         let meta = self.read_meta();
         first(ctx, &db, filter, opts, &meta).await
@@ -241,7 +249,7 @@ where
         ctx: &StoreCtx,
         filter: Option<Self::FilterStoreParams>,
         opts: Option<ListOptions>,
-    ) -> Result<Option<Self::Row>> {
+    ) -> StoreResult<Option<Self::Row>> {
         let db = self.db();
         let meta = self.read_meta();
         first_opt(ctx, &db, filter, opts, &meta).await
@@ -255,7 +263,11 @@ where
     Self: ReadStore,
 {
     /// Returns a count of all rows matching the given filter.
-    async fn count(&self, ctx: &StoreCtx, filter: Option<Self::FilterStoreParams>) -> Result<i64> {
+    async fn count(
+        &self,
+        ctx: &StoreCtx,
+        filter: Option<Self::FilterStoreParams>,
+    ) -> StoreResult<i64> {
         let db = self.db();
         let meta = self.read_meta();
         count(ctx, &db, filter, &meta).await

@@ -18,7 +18,7 @@ use tokio::{
 use tracing::{debug, error};
 
 use crate::store::{
-    error::{Result, StoreError},
+    error::{StoreError, StoreResult},
     init::DbPool,
 };
 
@@ -42,7 +42,7 @@ impl Dbx {
     }
 
     /// Borrow the underlying pool (used when no transaction is active).
-    pub async fn begin(&self) -> Result<Transaction<'static, Postgres>> {
+    pub async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>> {
         Ok(self.db_pool.begin().await?)
     }
 
@@ -50,7 +50,7 @@ impl Dbx {
 
     /// Execute a `query_as` and fetch exactly one row.
     /// If a transaction is active, runs against it; otherwise uses the pool.
-    pub async fn fetch_one<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> Result<O>
+    pub async fn fetch_one<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<O>
     where
         O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
         A: IntoArguments<'q, Postgres> + 'q,
@@ -65,7 +65,7 @@ impl Dbx {
     pub async fn fetch_optional<'q, O, A>(
         &self,
         query: QueryAs<'q, Postgres, O, A>,
-    ) -> Result<Option<O>>
+    ) -> StoreResult<Option<O>>
     where
         O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
         A: IntoArguments<'q, Postgres> + 'q,
@@ -77,7 +77,10 @@ impl Dbx {
 
     /// Execute a `query_as` and fetch all rows.
     /// If a transaction is active, runs against it; otherwise uses the pool.
-    pub async fn fetch_all<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> Result<Vec<O>>
+    pub async fn fetch_all<'q, O, A>(
+        &self,
+        query: QueryAs<'q, Postgres, O, A>,
+    ) -> StoreResult<Vec<O>>
     where
         O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
         A: IntoArguments<'q, Postgres> + 'q,
@@ -91,7 +94,7 @@ impl Dbx {
 
     /// Execute a `query` (no mapping) and return rows affected.
     /// If a transaction is active, runs against it; otherwise uses the pool.
-    pub async fn execute<'q, A>(&self, query: Query<'q, Postgres, A>) -> Result<u64>
+    pub async fn execute<'q, A>(&self, query: Query<'q, Postgres, A>) -> StoreResult<u64>
     where
         A: IntoArguments<'q, Postgres> + 'q,
     {
