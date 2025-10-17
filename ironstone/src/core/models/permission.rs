@@ -2,25 +2,85 @@ use std::collections::{HashMap, HashSet};
 
 use crate::core::error::CoreError;
 
-pub struct RolePermissions<'a> {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Permission {
+    resource: String,
+    action: String,
+}
+
+impl Permission {
+    pub fn to_check(&self) -> PermissionCheck<'_> {
+        PermissionCheck {
+            resource: &self.resource,
+            action: &self.action,
+        }
+    }
+}
+
+impl TryFrom<String> for Permission {
+    type Error = CoreError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.as_str().try_into()
+    }
+}
+
+impl TryFrom<&str> for Permission {
+    type Error = CoreError;
+
+    // Parses a string like "projects:create" into the struct.
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        // Find the position of the first ':'
+        if let Some(index) = value.find(':') {
+            let (resource, action_with_colon) = value.split_at(index);
+            // The action part includes the colon, so we slice it off.
+            let action = &action_with_colon[1..];
+
+            if resource.is_empty() || action.is_empty() {
+                Err(CoreError::ParseError(
+                    "Permission string cannot have empty parts.".to_string(),
+                ))
+            } else {
+                Ok(Self {
+                    resource: resource.to_string(),
+                    action: action.to_string(),
+                })
+            }
+        } else {
+            Err(CoreError::ParseError(
+                "Permission string must contain a ':' delimiter.".to_string(),
+            ))
+        }
+    }
+}
+
+pub struct PermissionChecker<'a> {
     // Key: resource name (e.g., "projects").
     // Value: Set of actions for that resource (e.g., {"*", "read"}).
     granted: HashMap<&'a str, HashSet<&'a str>>,
 }
 
-impl<'a> RolePermissions<'a> {
-    pub fn new(perms: HashSet<PermissionCheck<'a>>) -> Self {
-        let mut granted: HashMap<&str, HashSet<&str>> = HashMap::new();
+impl<'a> PermissionChecker<'a> {
+    pub fn new(perms: &[PermissionCheck<'a>]) -> Self {
+        let mut _self = Self {
+            granted: HashMap::new(),
+        };
+        _self.extend(perms);
+        _self
+    }
 
+    pub fn extend(&mut self, perms: &[PermissionCheck<'a>]) {
         for perm in perms {
-            if let Some(resource) = granted.get_mut(perm.resource) {
+            if let Some(resource) = self.granted.get_mut(perm.resource) {
                 resource.insert(perm.action);
             } else {
-                granted.insert(perm.resource, HashSet::new());
+                self.granted.insert(perm.resource, HashSet::new());
             }
         }
+    }
 
-        Self { granted }
+    pub fn has_subset(&self, required: &[PermissionCheck<'a>]) -> bool {
+        required.iter().all(|needed| self.is_allowed(needed))
     }
 
     pub fn is_allowed(&self, required: &PermissionCheck) -> bool {

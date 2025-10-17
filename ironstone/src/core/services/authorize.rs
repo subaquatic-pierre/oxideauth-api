@@ -1,7 +1,7 @@
 use std::{collections::HashSet, sync::Arc};
 
 use crate::{
-    core::models::permission::{PermissionCheck, RolePermissions},
+    core::models::permission::{PermissionCheck, PermissionChecker},
     store::manager::StoreManager,
 };
 
@@ -16,10 +16,10 @@ impl AuthorizeService {
 
     pub fn validate_perms<'a>(
         &self,
-        granted: RolePermissions<'a>,
-        required: HashSet<PermissionCheck<'a>>,
+        granted: PermissionChecker<'a>,
+        required: &[PermissionCheck<'a>],
     ) -> bool {
-        let all_required_match_granted = required.iter().all(|needed| granted.is_allowed(needed));
+        let all_required_match_granted = granted.has_subset(required);
         all_required_match_granted
     }
 }
