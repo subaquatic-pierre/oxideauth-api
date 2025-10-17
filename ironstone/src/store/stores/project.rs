@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::Dbx,
+    dbx::{DbExecutor, Dbx},
     entities::project::{
         ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow,
     },
@@ -30,8 +30,8 @@ impl Store for ProjectStore {
     type Iden = ProjectIden;
     type Row = ProjectRow;
 
-    fn db(&self) -> &Dbx {
-        &self.db
+    fn db(&self) -> impl DbExecutor {
+        self.db.clone()
     }
 }
 

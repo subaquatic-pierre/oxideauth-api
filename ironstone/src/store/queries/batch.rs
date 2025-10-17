@@ -10,7 +10,7 @@ use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, Postgres, QueryBuilder, Value};
 use uuid::Uuid;
 
-use crate::store::dbx::Dbx;
+use crate::store::dbx::{DbExecutor, Dbx};
 use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::MutateQueryMeta;
 use crate::store::traits::meta::{Store, StoreId, StoreRow, TableIden};
@@ -20,7 +20,7 @@ use crate::store::{ctx::StoreCtx, manager::StoreManager};
 
 pub async fn create_many<T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     data: Vec<D>,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<Vec<T>> {
@@ -71,7 +71,7 @@ pub async fn create_many<T: StoreRow, D: HasSeaFields, I: TableIden>(
 
 pub async fn update_many<T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     data: Vec<(impl StoreId, D)>,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<Vec<T>> {
@@ -121,7 +121,7 @@ pub async fn update_many<T: StoreRow, D: HasSeaFields, I: TableIden>(
 
 pub async fn delete_many<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     ids: Vec<impl StoreId>,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<Vec<T>> {

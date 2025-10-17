@@ -6,7 +6,7 @@ use sqlx::Row;
 use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, query_scalar_with, query_with, Value};
 
-use crate::store::dbx::Dbx;
+use crate::store::dbx::{DbExecutor, Dbx};
 use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::{CountManyQueryMeta, ReadQueryMeta};
 use crate::store::traits::meta::{StoreId, TableIden};
@@ -15,7 +15,7 @@ use crate::store::{traits::meta::Store, utils::ListOptionsValidator};
 
 pub async fn count<F: Into<FilterGroups>, I: TableIden>(
     _ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     filter: Option<F>,
     meta: &ReadQueryMeta<I>,
 ) -> StoreResult<i64> {
@@ -48,7 +48,7 @@ pub async fn count<F: Into<FilterGroups>, I: TableIden>(
 /// Counts the number of related items for a given parent ID.
 pub async fn count_many<I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     id: &impl StoreId,
     meta: &CountManyQueryMeta<I>,
 ) -> StoreResult<i64> {

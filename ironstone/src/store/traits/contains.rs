@@ -20,7 +20,7 @@ pub trait FilterByContains: ContainsFilterStore {
         let db = self.db();
         let meta = self.contains_tags_meta();
         let value = ContainsFilter::Array(tags);
-        filter_by_value_contains(ctx, db, value, &meta).await
+        filter_by_value_contains(ctx, &db, value, &meta).await
     }
 
     /// Finds all records where the designated JSONB column contains the
@@ -33,6 +33,6 @@ pub trait FilterByContains: ContainsFilterStore {
         let db = self.db();
         let meta = self.contains_json_meta();
         let value = ContainsFilter::Json(json);
-        filter_by_value_contains(ctx, db, value, &meta).await
+        filter_by_value_contains(ctx, &db, value, &meta).await
     }
 }

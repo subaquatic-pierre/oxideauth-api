@@ -4,7 +4,7 @@ use serde_json::Value as JsonValue;
 
 use crate::store::{
     ctx::StoreCtx,
-    dbx::Dbx,
+    dbx::{DbExecutor, Dbx},
     error::{StoreError, StoreResult},
     queries::meta::{ContainsFilter, ContainsFilterQueryMeta},
     traits::meta::{StoreRow, TableIden},
@@ -12,7 +12,7 @@ use crate::store::{
 
 pub async fn filter_by_value_contains<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     value: ContainsFilter,
     meta: &ContainsFilterQueryMeta<I>,
 ) -> StoreResult<Vec<T>> {

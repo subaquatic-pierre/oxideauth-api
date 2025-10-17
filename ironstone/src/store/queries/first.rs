@@ -5,7 +5,7 @@ use sea_query_binder::SqlxBinder;
 use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, Value};
 
-use crate::store::dbx::Dbx;
+use crate::store::dbx::{DbExecutor, Dbx};
 use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::ReadQueryMeta;
 use crate::store::traits::meta::{StoreRow, TableIden};
@@ -14,7 +14,7 @@ use crate::store::{traits::meta::Store, utils::ListOptionsValidator};
 
 pub async fn first_opt<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &ReadQueryMeta<I>,
@@ -54,7 +54,7 @@ pub async fn first_opt<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
 }
 pub async fn first<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &ReadQueryMeta<I>,

@@ -21,7 +21,7 @@ pub trait GetOneToMany: OneToManyStore {
     ) -> StoreResult<Self::OneToManyRow> {
         let db = self.db();
         let meta = self.one_to_many_meta();
-        get_one_to_many(ctx, db, id, &meta).await
+        get_one_to_many(ctx, &db, id, &meta).await
     }
 
     /// Fetches a single record by ID, returning `Ok(None)` if not found.
@@ -32,7 +32,7 @@ pub trait GetOneToMany: OneToManyStore {
     ) -> StoreResult<Option<Self::OneToManyRow>> {
         let db = self.db();
         let meta = self.one_to_many_meta();
-        get_one_to_many_opt(ctx, db, id, &meta).await
+        get_one_to_many_opt(ctx, &db, id, &meta).await
     }
 }
 
@@ -48,7 +48,7 @@ pub trait ListOneToMany: OneToManyStore {
     ) -> StoreResult<Vec<Self::OneToManyRow>> {
         let db = self.db();
         let meta = self.one_to_many_meta();
-        list_one_to_many(ctx, db, filter, opts, &meta).await
+        list_one_to_many(ctx, &db, filter, opts, &meta).await
     }
 }
 
@@ -65,7 +65,7 @@ pub trait GetManyToMany: ManyToManyStore {
     ) -> StoreResult<Self::ManyToManyRow> {
         let db = self.db();
         let meta = self.many_to_many_meta();
-        get_many_to_many(ctx, db, id, &meta).await
+        get_many_to_many(ctx, &db, id, &meta).await
     }
 
     /// Fetches a single record by ID, returning `Ok(None)` if not found.
@@ -76,7 +76,7 @@ pub trait GetManyToMany: ManyToManyStore {
     ) -> StoreResult<Option<Self::ManyToManyRow>> {
         let db = self.db();
         let meta = self.many_to_many_meta();
-        get_many_to_many_opt(ctx, db, id, &meta).await
+        get_many_to_many_opt(ctx, &db, id, &meta).await
     }
 }
 
@@ -92,7 +92,7 @@ pub trait ListManyToMany: ManyToManyStore {
     ) -> StoreResult<Vec<Self::ManyToManyRow>> {
         let db = self.db();
         let meta = self.many_to_many_meta();
-        list_many_to_many(ctx, db, filter, opts, &meta).await
+        list_many_to_many(ctx, &db, filter, opts, &meta).await
     }
 }
 
@@ -108,7 +108,7 @@ pub trait LinkManyToMany: ManyToManyStore {
     ) -> StoreResult<()> {
         let db = self.db();
         let meta = self.many_to_many_meta();
-        set_many_to_many_links(ctx, db, self_id, other_ids, &meta).await
+        set_many_to_many_links(ctx, &db, self_id, other_ids, &meta).await
     }
 
     /// Creates a single link between a record and another record.
@@ -120,7 +120,7 @@ pub trait LinkManyToMany: ManyToManyStore {
     ) -> StoreResult<()> {
         let db = self.db();
         let meta = self.many_to_many_meta();
-        attach_link(ctx, db, self_id, other_id, &meta).await
+        attach_link(ctx, &db, self_id, other_id, &meta).await
     }
 
     /// Removes a single link between a record and another record.
@@ -132,6 +132,6 @@ pub trait LinkManyToMany: ManyToManyStore {
     ) -> StoreResult<()> {
         let db = self.db();
         let meta = self.many_to_many_meta();
-        detach_link(ctx, db, self_id, other_id, &meta).await
+        detach_link(ctx, &db, self_id, other_id, &meta).await
     }
 }

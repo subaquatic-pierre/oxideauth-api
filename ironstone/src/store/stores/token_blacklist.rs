@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::Dbx,
+    dbx::{DbExecutor, Dbx},
     entities::token_blacklist::{
         TokenBlacklistFilter, TokenBlacklistForCreate, TokenBlacklistForUpdate, TokenBlacklistIden,
         TokenBlacklistRow,
@@ -31,8 +31,8 @@ impl Store for TokenBlacklistStore {
     type Iden = TokenBlacklistIden;
     type Row = TokenBlacklistRow;
 
-    fn db(&self) -> &Dbx {
-        &self.db
+    fn db(&self) -> impl DbExecutor {
+        self.db.clone()
     }
 }
 

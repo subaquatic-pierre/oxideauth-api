@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::Dbx,
+    dbx::{DbExecutor, Dbx},
     entities::role::{
         RoleFilter, RoleForCreate, RoleForUpdate, RoleIden, RoleRow, RoleWithPermissions,
     },
@@ -30,8 +30,8 @@ impl Store for RoleStore {
     type Iden = RoleIden;
     type Row = RoleRow;
 
-    fn db(&self) -> &Dbx {
-        &self.db
+    fn db(&self) -> impl DbExecutor {
+        self.db.clone()
     }
 }
 

@@ -17,6 +17,7 @@ use modql::filter::{FilterGroups, ListOptions};
 use sea_query::Iden;
 use sqlx::{postgres::PgRow, FromRow};
 
+use crate::store::dbx::DbExecutor;
 use crate::store::{
     ctx::StoreCtx,
     dbx::Dbx,
@@ -69,7 +70,7 @@ pub trait Store: Sized + Send + Sync {
     type Row: StoreRow;
 
     /// Access the underlying database connection wrapper (`Dbx`).
-    fn db(&self) -> &Dbx;
+    fn db(&self) -> impl DbExecutor;
 }
 
 /// Requires a store to provide metadata for read operations (get, list, etc.).

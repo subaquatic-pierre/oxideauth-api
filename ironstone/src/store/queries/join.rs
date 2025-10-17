@@ -9,7 +9,7 @@ use sqlx::{postgres::PgRow, FromRow};
 
 use crate::store::{
     ctx::StoreCtx,
-    dbx::Dbx,
+    dbx::{DbExecutor, Dbx},
     error::{StoreError, StoreResult},
     queries::{
         count::{count, count_many},
@@ -24,7 +24,7 @@ pub struct ManyCte;
 
 pub async fn get_one_to_many_opt<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     id: &impl StoreId,
     meta: &OneToManyQueryMeta<I>,
 ) -> StoreResult<Option<T>> {
@@ -90,7 +90,7 @@ pub async fn get_one_to_many_opt<T: StoreRow, I: TableIden>(
 
 pub async fn get_one_to_many<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     id: &impl StoreId,
     meta: &OneToManyQueryMeta<I>,
 ) -> StoreResult<T> {
@@ -105,7 +105,7 @@ pub async fn get_one_to_many<T: StoreRow, I: TableIden>(
 
 pub async fn list_one_to_many<T: StoreRow, F: Into<FilterGroups> + Clone, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &OneToManyQueryMeta<I>,
@@ -183,7 +183,7 @@ pub async fn list_one_to_many<T: StoreRow, F: Into<FilterGroups> + Clone, I: Tab
 
 pub async fn get_many_to_many_opt<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     id: &impl StoreId,
     meta: &ManyToManyQueryMeta<I>,
 ) -> StoreResult<Option<T>> {
@@ -256,7 +256,7 @@ pub async fn get_many_to_many_opt<T: StoreRow, I: TableIden>(
 
 pub async fn get_many_to_many<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     id: &impl StoreId,
     meta: &ManyToManyQueryMeta<I>,
 ) -> StoreResult<T> {
@@ -271,7 +271,7 @@ pub async fn get_many_to_many<T: StoreRow, I: TableIden>(
 
 pub async fn list_many_to_many<T: StoreRow, F: Into<FilterGroups> + Clone, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &ManyToManyQueryMeta<I>,
@@ -355,7 +355,7 @@ pub async fn list_many_to_many<T: StoreRow, F: Into<FilterGroups> + Clone, I: Ta
 
 pub async fn set_many_to_many_links<I: TableIden, ID: StoreId + Clone>(
     ctx: &StoreCtx, // Ctx might be used for auditing in the future
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     self_id: &ID,
     other_ids: Vec<ID>,
     meta: &ManyToManyQueryMeta<I>,
@@ -398,7 +398,7 @@ pub async fn set_many_to_many_links<I: TableIden, ID: StoreId + Clone>(
 
 pub async fn attach_link<I: TableIden, ID: StoreId>(
     _ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     self_id: &ID,
     other_id: &ID,
     meta: &ManyToManyQueryMeta<I>,
@@ -427,7 +427,7 @@ pub async fn attach_link<I: TableIden, ID: StoreId>(
 
 pub async fn detach_link<I: TableIden, ID: StoreId>(
     _ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     self_id: &ID,
     other_id: &ID,
     meta: &ManyToManyQueryMeta<I>,

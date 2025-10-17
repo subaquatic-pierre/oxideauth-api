@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::Dbx,
+    dbx::{DbExecutor, Dbx},
     entities::permission::{
         PermissionFilter, PermissionForCreate, PermissionForUpdate, PermissionIden, PermissionRow,
     },
@@ -30,8 +30,8 @@ impl Store for PermissionStore {
     type Iden = PermissionIden;
     type Row = PermissionRow;
 
-    fn db(&self) -> &Dbx {
-        &self.db
+    fn db(&self) -> impl DbExecutor {
+        self.db.clone()
     }
 }
 

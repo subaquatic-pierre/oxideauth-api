@@ -9,7 +9,7 @@ use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, Value};
 use uuid::Uuid;
 
-use crate::store::dbx::Dbx;
+use crate::store::dbx::{DbExecutor, Dbx};
 use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::{MutateQueryMeta, ReadQueryMeta};
 use crate::store::traits::meta::{Store, StoreId, StoreRow, TableIden};
@@ -19,7 +19,7 @@ use crate::store::{ctx::StoreCtx, manager::StoreManager};
 
 pub async fn create<T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     data: D,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<T> {
@@ -48,7 +48,7 @@ pub async fn create<T: StoreRow, D: HasSeaFields, I: TableIden>(
 
 pub async fn get_opt<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     id: &impl StoreId,
     meta: &ReadQueryMeta<I>,
 ) -> StoreResult<Option<T>> {
@@ -69,7 +69,7 @@ pub async fn get_opt<T: StoreRow, I: TableIden>(
 
 pub async fn get<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     id: &impl StoreId,
     meta: &ReadQueryMeta<I>,
 ) -> StoreResult<T> {
@@ -84,7 +84,7 @@ pub async fn get<T: StoreRow, I: TableIden>(
 
 pub async fn list<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &ReadQueryMeta<I>,
@@ -120,7 +120,7 @@ pub async fn list<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
 
 pub async fn update_opt<T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     id: &impl StoreId,
     data: D,
     meta: &MutateQueryMeta<I>,
@@ -153,7 +153,7 @@ pub async fn update_opt<T: StoreRow, D: HasSeaFields, I: TableIden>(
 
 pub async fn update<T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     id: &impl StoreId,
     data: D,
     meta: &MutateQueryMeta<I>,
@@ -169,7 +169,7 @@ pub async fn update<T: StoreRow, D: HasSeaFields, I: TableIden>(
 
 pub async fn delete_opt<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     id: &impl StoreId,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<Option<T>> {
@@ -192,7 +192,7 @@ pub async fn delete_opt<T: StoreRow, I: TableIden>(
 
 pub async fn delete<T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &Dbx,
+    dbx: &impl DbExecutor,
     id: &impl StoreId,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<T> {
