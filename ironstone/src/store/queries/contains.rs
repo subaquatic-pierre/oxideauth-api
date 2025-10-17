@@ -10,9 +10,9 @@ use crate::store::{
     traits::meta::{StoreRow, TableIden},
 };
 
-pub async fn filter_by_value_contains<T: StoreRow, I: TableIden>(
+pub async fn filter_by_value_contains<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     value: ContainsFilter,
     meta: &ContainsFilterQueryMeta<I>,
 ) -> StoreResult<Vec<T>> {

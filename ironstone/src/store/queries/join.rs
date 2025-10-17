@@ -22,9 +22,9 @@ use crate::store::{
 #[derive(Iden)]
 pub struct ManyCte;
 
-pub async fn get_one_to_many_opt<T: StoreRow, I: TableIden>(
+pub async fn get_one_to_many_opt<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     id: &impl StoreId,
     meta: &OneToManyQueryMeta<I>,
 ) -> StoreResult<Option<T>> {

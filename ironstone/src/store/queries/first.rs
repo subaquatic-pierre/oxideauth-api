@@ -12,9 +12,9 @@ use crate::store::traits::meta::{StoreRow, TableIden};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 use crate::store::{traits::meta::Store, utils::ListOptionsValidator};
 
-pub async fn first_opt<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
+pub async fn first_opt<E: DbExecutor, T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &ReadQueryMeta<I>,

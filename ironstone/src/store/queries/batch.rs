@@ -18,9 +18,9 @@ use crate::store::utils::ListOptionsValidator;
 use crate::store::utils::{pg_type_of, prepare_audit_fields, push_sq_value};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 
-pub async fn create_many<T: StoreRow, D: HasSeaFields, I: TableIden>(
+pub async fn create_many<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     data: Vec<D>,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<Vec<T>> {
@@ -69,9 +69,9 @@ pub async fn create_many<T: StoreRow, D: HasSeaFields, I: TableIden>(
     Ok(ret)
 }
 
-pub async fn update_many<T: StoreRow, D: HasSeaFields, I: TableIden>(
+pub async fn update_many<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     data: Vec<(impl StoreId, D)>,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<Vec<T>> {
@@ -119,9 +119,9 @@ pub async fn update_many<T: StoreRow, D: HasSeaFields, I: TableIden>(
     Ok(updated_rows)
 }
 
-pub async fn delete_many<T: StoreRow, I: TableIden>(
+pub async fn delete_many<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     ids: Vec<impl StoreId>,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<Vec<T>> {

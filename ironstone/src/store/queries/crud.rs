@@ -17,9 +17,9 @@ use crate::store::utils::prepare_audit_fields;
 use crate::store::utils::ListOptionsValidator;
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 
-pub async fn create<T: StoreRow, D: HasSeaFields, I: TableIden>(
+pub async fn create<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     data: D,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<T> {
@@ -46,9 +46,9 @@ pub async fn create<T: StoreRow, D: HasSeaFields, I: TableIden>(
     Ok(ret)
 }
 
-pub async fn get_opt<T: StoreRow, I: TableIden>(
+pub async fn get_opt<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     id: &impl StoreId,
     meta: &ReadQueryMeta<I>,
 ) -> StoreResult<Option<T>> {
@@ -67,9 +67,9 @@ pub async fn get_opt<T: StoreRow, I: TableIden>(
     Ok(ret)
 }
 
-pub async fn get<T: StoreRow, I: TableIden>(
+pub async fn get<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     id: &impl StoreId,
     meta: &ReadQueryMeta<I>,
 ) -> StoreResult<T> {
@@ -82,9 +82,9 @@ pub async fn get<T: StoreRow, I: TableIden>(
     }
 }
 
-pub async fn list<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
+pub async fn list<E: DbExecutor, T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     filter: Option<F>,
     opts: Option<ListOptions>,
     meta: &ReadQueryMeta<I>,
@@ -118,9 +118,9 @@ pub async fn list<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     Ok(ret)
 }
 
-pub async fn update_opt<T: StoreRow, D: HasSeaFields, I: TableIden>(
+pub async fn update_opt<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     id: &impl StoreId,
     data: D,
     meta: &MutateQueryMeta<I>,
@@ -151,9 +151,9 @@ pub async fn update_opt<T: StoreRow, D: HasSeaFields, I: TableIden>(
     Ok(ret)
 }
 
-pub async fn update<T: StoreRow, D: HasSeaFields, I: TableIden>(
+pub async fn update<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     id: &impl StoreId,
     data: D,
     meta: &MutateQueryMeta<I>,
@@ -167,9 +167,9 @@ pub async fn update<T: StoreRow, D: HasSeaFields, I: TableIden>(
     }
 }
 
-pub async fn delete_opt<T: StoreRow, I: TableIden>(
+pub async fn delete_opt<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     id: &impl StoreId,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<Option<T>> {
@@ -190,9 +190,9 @@ pub async fn delete_opt<T: StoreRow, I: TableIden>(
     Ok(ret)
 }
 
-pub async fn delete<T: StoreRow, I: TableIden>(
+pub async fn delete<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     id: &impl StoreId,
     meta: &MutateQueryMeta<I>,
 ) -> StoreResult<T> {
@@ -291,13 +291,13 @@ mod tests {
             let mut d = AccountForCreate::default();
             d.email = format!("in_{}@example.com", i);
             d.name = "LIST_FILTER_MATCH".to_string();
-            create::<AccountRow, _, _>(&ctx, &dbx, d, &meta).await?;
+            create::<_, AccountRow, _, _>(&ctx, &dbx, d, &meta).await?;
         }
         for i in 0..2 {
             let mut d = AccountForCreate::default();
             d.email = format!("out_{}@example.com", i);
             d.name = "OTHER_PROVIDER".to_string();
-            create::<AccountRow, _, _>(&ctx, &dbx, d, &meta).await?;
+            create::<_, AccountRow, _, _>(&ctx, &dbx, d, &meta).await?;
         }
 
         // Filter: name contains LIST_FILTER
@@ -339,7 +339,7 @@ mod tests {
             let mut d = AccountForCreate::default();
             d.email = format!("page_{}@example.com", i);
             d.name = "LIST_PAGINATION".to_string();
-            create::<AccountRow, _, _>(&ctx, &dbx, d, &meta).await?;
+            create::<_, AccountRow, _, _>(&ctx, &dbx, d, &meta).await?;
         }
 
         let filter: AccountFilter = from_value(json!({"name":{"$eq":"LIST_PAGINATION"}})).unwrap();
@@ -388,7 +388,7 @@ mod tests {
         let mut d = AccountForCreate::default();
         d.email = "limit_fail@example.com".into();
         d.name = "LIMIT_FAIL".into();
-        create::<AccountRow, _, _>(&ctx, &dbx, d, &mutate_meta).await?;
+        create::<_, AccountRow, _, _>(&ctx, &dbx, d, &mutate_meta).await?;
 
         let filter: Option<AccountFilter> =
             Some(from_value(json!({"name":{"$eq":"LIMIT_FAIL"}})).unwrap());
@@ -401,7 +401,7 @@ mod tests {
 
         // Act
         let read_meta = acc_store.read_meta();
-        let err = list::<AccountRow, _, _>(&ctx, &dbx, filter, opts, &read_meta).await;
+        let err = list::<_, AccountRow, _, _>(&ctx, &dbx, filter, opts, &read_meta).await;
 
         // Assert
         matches!(err, Err(StoreError::ListLimitExceeded { .. }));
@@ -456,7 +456,7 @@ mod tests {
 
         // Act
         let meta = acc_store.mutate_meta();
-        let err = update::<AccountRow, _, _>(&ctx, &dbx, &missing_id, u, &meta).await;
+        let err = update::<_, AccountRow, _, _>(&ctx, &dbx, &missing_id, u, &meta).await;
 
         // Assert
         matches!(err, Err(StoreError::EntityNotFound { .. }));
@@ -504,7 +504,7 @@ mod tests {
 
         // Act
         let meta = acc_store.mutate_meta();
-        let err = delete::<AccountRow, _>(&ctx, &dbx, &missing_id, &meta).await;
+        let err = delete::<_, AccountRow, _>(&ctx, &dbx, &missing_id, &meta).await;
 
         // Assert
         matches!(err, Err(StoreError::EntityNotFound { .. }));
@@ -598,7 +598,8 @@ mod tests {
         }
         let meta = store.mutate_meta();
 
-        create_many::<AccountRow, AccountForCreate, AccountIden>(&ctx, &dbx, data, &meta).await?;
+        create_many::<_, AccountRow, AccountForCreate, AccountIden>(&ctx, &dbx, data, &meta)
+            .await?;
 
         let filter = AccountFilter::try_from(serde_json::json!({
             "name": name_tag,
@@ -639,7 +640,8 @@ mod tests {
             data.push(ac)
         }
         let meta = store.mutate_meta();
-        create_many::<AccountRow, AccountForCreate, AccountIden>(&ctx, &dbx, data, &meta).await?;
+        create_many::<_, AccountRow, AccountForCreate, AccountIden>(&ctx, &dbx, data, &meta)
+            .await?;
 
         let end = OffsetDateTime::now_utc() + Duration::minutes(1);
 

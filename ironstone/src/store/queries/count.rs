@@ -13,9 +13,9 @@ use crate::store::traits::meta::{StoreId, TableIden};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 use crate::store::{traits::meta::Store, utils::ListOptionsValidator};
 
-pub async fn count<F: Into<FilterGroups>, I: TableIden>(
+pub async fn count<E: DbExecutor, F: Into<FilterGroups>, I: TableIden>(
     _ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     filter: Option<F>,
     meta: &ReadQueryMeta<I>,
 ) -> StoreResult<i64> {
@@ -46,9 +46,9 @@ pub async fn count<F: Into<FilterGroups>, I: TableIden>(
 }
 
 /// Counts the number of related items for a given parent ID.
-pub async fn count_many<I: TableIden>(
+pub async fn count_many<E: DbExecutor, I: TableIden>(
     ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
+    dbx: &E,
     id: &impl StoreId,
     meta: &CountManyQueryMeta<I>,
 ) -> StoreResult<i64> {

@@ -104,6 +104,50 @@ impl Dbx {
         Ok(rows_affected)
     }
 }
+#[async_trait]
+impl DbExecutor for Dbx {
+    fn db(&self) -> &DbPool {
+        self.db()
+    }
+
+    async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>> {
+        self.begin().await
+    }
+
+    async fn fetch_one<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<O>
+    where
+        O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
+        A: IntoArguments<'q, Postgres> + 'q,
+    {
+        self.fetch_one(query).await
+    }
+
+    async fn fetch_optional<'q, O, A>(
+        &self,
+        query: QueryAs<'q, Postgres, O, A>,
+    ) -> StoreResult<Option<O>>
+    where
+        O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
+        A: IntoArguments<'q, Postgres> + 'q,
+    {
+        self.fetch_optional(query).await
+    }
+
+    async fn fetch_all<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<Vec<O>>
+    where
+        O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
+        A: IntoArguments<'q, Postgres> + 'q,
+    {
+        self.fetch_all(query).await
+    }
+
+    async fn execute<'q, A>(&self, query: Query<'q, Postgres, A>) -> StoreResult<u64>
+    where
+        A: IntoArguments<'q, Postgres> + 'q,
+    {
+        self.execute(query).await
+    }
+}
 
 #[async_trait]
 impl DbExecutor for Arc<Dbx> {
