@@ -4,11 +4,11 @@ use crate::{
 };
 use std::sync::Arc;
 
-pub struct AuthService {
+pub struct AuthenticateService {
     sm: Arc<StoreManager>,
 }
 
-impl AuthService {
+impl AuthenticateService {
     // The constructor takes the dependencies.
     pub fn new(sm: Arc<StoreManager>) -> Self {
         Self { sm }

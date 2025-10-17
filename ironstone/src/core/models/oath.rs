@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use crate::{
     config::Config,
     core::error::{CoreError, CoreResult},
+    store::entities::credential::CredentialProvider,
 };
+
+pub type AuthProvider = CredentialProvider;
 
 #[derive(Debug, Default)]
 pub struct GoogleOAuthState {
