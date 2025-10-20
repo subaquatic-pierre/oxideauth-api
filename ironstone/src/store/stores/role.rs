@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, Dbx},
+    dbx::{DbExecutor, PgDbx},
     entities::role::{
         RoleFilter, RoleForCreate, RoleForUpdate, RoleIden, RoleRow, RoleWithPermissions,
     },
@@ -11,12 +11,12 @@ use crate::store::{
 
 /// The struct for our Role store, holding the database connection wrapper.
 pub struct RoleStore {
-    dbx: Arc<Dbx>,
+    dbx: Arc<PgDbx>,
 }
 
 impl RoleStore {
     /// Creates a new `RoleStore`.
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+    pub fn new(dbx: Arc<PgDbx>) -> Self {
         Self { dbx }
     }
 }

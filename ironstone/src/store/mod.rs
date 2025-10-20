@@ -11,5 +11,5 @@ pub mod stores;
 pub mod traits;
 pub mod utils;
 
-pub use init::DbPool;
+pub use init::PgPool;
 pub use traits::*;

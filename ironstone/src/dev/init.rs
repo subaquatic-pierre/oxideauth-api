@@ -12,10 +12,10 @@ use tracing::info;
 use crate::{
     app::{new_test_app_data, AppData},
     dev::db::{init_dev_db, init_test_db},
-    store::{manager::StoreManager, DbPool},
+    store::{manager::StoreManager, PgPool},
 };
 
-pub async fn init_dev(db_pool: &DbPool) {
+pub async fn init_dev(db_pool: &PgPool) {
     info!("{:<12} - init_dev()", "FOR-DEV-ONLY");
     init_dev_db(db_pool).await;
 }

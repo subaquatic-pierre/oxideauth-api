@@ -12,9 +12,9 @@ use uuid::Uuid;
 
 use crate::store::{
     ctx::StoreCtx,
-    dbx::Dbx,
+    dbx::PgDbx,
     error::StoreResult,
-    init::DbPool,
+    init::PgPool,
     queries::{
         batch::{create_many, delete_many, update_many},
         count::count,

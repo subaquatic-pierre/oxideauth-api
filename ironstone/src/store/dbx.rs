@@ -20,25 +20,25 @@ use tracing::{debug, error};
 
 use crate::store::{
     error::{StoreError, StoreResult},
-    init::DbPool,
+    init::PgPool,
 };
 
-/// Dbx is a thin wrapper over a sqlx Pool that can (optionally) route all queries
+/// PgDbx is a thin wrapper over a sqlx Pool that can (optionally) route all queries
 /// through a shared transaction. It also supports *nested* transactions via a
 /// simple ref-count on a single physical transaction.
-pub struct Dbx {
+pub struct PgDbx {
     /// Underlying sqlx connection pool.
-    db_pool: DbPool,
+    db_pool: PgPool,
 }
 
-impl Dbx {
-    /// Create a new Dbx from a pool.
-    pub fn new(db: DbPool) -> Self {
+impl PgDbx {
+    /// Create a new PgDbx from a pool.
+    pub fn new(db: PgPool) -> Self {
         Self { db_pool: db }
     }
 
     /// Borrow the underlying pool (used when no transaction is active).
-    pub fn db(&self) -> &DbPool {
+    pub fn pool(&self) -> &PgPool {
         &self.db_pool
     }
 
@@ -56,7 +56,7 @@ impl Dbx {
         O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
         A: IntoArguments<'q, Postgres> + 'q,
     {
-        let data = query.fetch_one(self.db()).await?;
+        let data = query.fetch_one(self.pool()).await?;
 
         Ok(data)
     }
@@ -71,7 +71,7 @@ impl Dbx {
         O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
         A: IntoArguments<'q, Postgres> + 'q,
     {
-        let data = query.fetch_optional(self.db()).await?;
+        let data = query.fetch_optional(self.pool()).await?;
 
         Ok(data)
     }
@@ -88,7 +88,7 @@ impl Dbx {
     {
         // No need to debug here, sqlx::query logs debug info
         // debug!("--- QUERY --- : SQL: {}", query.sql());
-        let data = query.fetch_all(self.db()).await?;
+        let data = query.fetch_all(self.pool()).await?;
 
         Ok(data)
     }
@@ -99,17 +99,13 @@ impl Dbx {
     where
         A: IntoArguments<'q, Postgres> + 'q,
     {
-        let rows_affected = query.execute(self.db()).await?.rows_affected();
+        let rows_affected = query.execute(self.pool()).await?.rows_affected();
 
         Ok(rows_affected)
     }
 }
 #[async_trait]
-impl DbExecutor for Dbx {
-    // fn db(&self) -> &DbPool {
-    //     self.db()
-    // }
-
+impl DbExecutor for PgDbx {
     async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>> {
         self.begin().await
     }
@@ -151,9 +147,6 @@ impl DbExecutor for Dbx {
 
 #[async_trait]
 pub trait DbExecutor: Send + Sync + Unpin {
-    // /// Borrow the underlying pool (used when no transaction is active).
-    // fn db(&self) -> &DbPool;
-
     /// Borrow the underlying pool (used when no transaction is active).
     async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>>;
 
@@ -191,11 +184,6 @@ pub trait DbExecutor: Send + Sync + Unpin {
 }
 #[async_trait]
 impl<T: DbExecutor> DbExecutor for Arc<T> {
-    // // <-- Make this generic
-    // fn db(&self) -> &DbPool {
-    //     self.as_ref().db()
-    // }
-
     async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>> {
         self.as_ref().begin().await
     }

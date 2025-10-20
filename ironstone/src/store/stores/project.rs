@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, Dbx},
+    dbx::{DbExecutor, PgDbx},
     entities::project::{
         ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow,
     },
@@ -11,12 +11,12 @@ use crate::store::{
 
 /// The struct for our Project store, holding the database connection wrapper.
 pub struct ProjectStore {
-    dbx: Arc<Dbx>,
+    dbx: Arc<PgDbx>,
 }
 
 impl ProjectStore {
     /// Creates a new `ProjectStore`.
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+    pub fn new(dbx: Arc<PgDbx>) -> Self {
         Self { dbx }
     }
 }

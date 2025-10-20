@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, Dbx},
+    dbx::{DbExecutor, PgDbx},
     entities::namespace::{
         NamespaceFilter, NamespaceForCreate, NamespaceForUpdate, NamespaceIden, NamespaceRow,
         NamespaceWithProjects,
@@ -12,12 +12,12 @@ use crate::store::{
 
 /// The struct for our Namespace store, holding the database connection wrapper.
 pub struct NamespaceStore {
-    dbx: Arc<Dbx>,
+    dbx: Arc<PgDbx>,
 }
 
 impl NamespaceStore {
     /// Creates a new `NamespaceStore`.
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+    pub fn new(dbx: Arc<PgDbx>) -> Self {
         Self { dbx }
     }
 }

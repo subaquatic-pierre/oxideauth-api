@@ -8,7 +8,7 @@ use crate::dev::init::init_dev;
 use crate::store::manager::StoreManager;
 use crate::{
     config::Config,
-    store::init::{new_db_pool, DbPool},
+    store::init::{new_db_pool, PgPool},
 };
 
 pub enum AppEnv {
@@ -30,7 +30,7 @@ impl AppEnv {
 
 pub struct AppData {
     pub config: Config,
-    pub db: DbPool,
+    pub db: PgPool,
     pub sm: StoreManager,
 }
 
@@ -62,7 +62,7 @@ pub async fn new_app_data() -> AppData {
 
 pub async fn new_prod_app_data() -> AppData {
     let config = Config::from_env();
-    let db: DbPool = new_db_pool(&config.database_url, 5).await;
+    let db: PgPool = new_db_pool(&config.database_url, 5).await;
 
     let sm = StoreManager::new(db.clone());
 
@@ -72,7 +72,7 @@ pub async fn new_prod_app_data() -> AppData {
 pub async fn new_dev_app_data() -> AppData {
     let config = Config::dev_config();
 
-    let db: DbPool = new_db_pool(&config.database_url, 5).await;
+    let db: PgPool = new_db_pool(&config.database_url, 5).await;
     let sm = StoreManager::new(db.clone());
 
     AppData { db, config, sm }
@@ -81,7 +81,7 @@ pub async fn new_dev_app_data() -> AppData {
 pub async fn new_test_app_data() -> AppData {
     let config = Config::test_config();
 
-    let db: DbPool = new_db_pool(&config.database_url, 1).await;
+    let db: PgPool = new_db_pool(&config.database_url, 1).await;
     let sm = StoreManager::new(db.clone());
 
     AppData { db, config, sm }

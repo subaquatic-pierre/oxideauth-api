@@ -4,7 +4,7 @@ use serde_json::Value as JsonValue;
 
 use crate::store::{
     ctx::StoreCtx,
-    dbx::{DbExecutor, Dbx},
+    dbx::{DbExecutor, PgDbx},
     error::{StoreError, StoreResult},
     queries::meta::{ContainsFilter, ContainsFilterQueryMeta},
     traits::meta::{StoreRow, TableIden},

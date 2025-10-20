@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, Dbx},
+    dbx::{DbExecutor, PgDbx},
     entities::account::{
         AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountRow,
         AccountWithCredentials,
@@ -12,12 +12,12 @@ use crate::store::{
 
 /// The struct for our Account store, holding the database connection wrapper.
 pub struct AccountStore {
-    dbx: Arc<Dbx>,
+    dbx: Arc<PgDbx>,
 }
 
 impl AccountStore {
     /// Creates a new `AccountStore`.
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+    pub fn new(dbx: Arc<PgDbx>) -> Self {
         Self { dbx }
     }
 }

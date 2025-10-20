@@ -11,19 +11,19 @@ use tracing::info;
 
 use crate::{
     dev::config::{PROJECT_ROOT, SQL_DIR},
-    store::{init::DbPool, manager::StoreManager},
+    store::{init::PgPool, manager::StoreManager},
 };
 
 static INIT: OnceCell<()> = OnceCell::const_new();
 
-pub async fn reset_db(pool: &DbPool) -> Result<()> {
+pub async fn reset_db(pool: &PgPool) -> Result<()> {
     pool.execute("DROP SCHEMA public CASCADE").await?;
     pool.execute("CREATE SCHEMA public").await?;
 
     Ok(())
 }
 
-pub async fn run_migrations(pool: &DbPool, migration_env: &str) -> Result<()> {
+pub async fn run_migrations(pool: &PgPool, migration_env: &str) -> Result<()> {
     let path = get_sql_dir().join("migrations").join(migration_env);
     let migrator = Migrator::new(path).await?;
     migrator.run(pool).await?;
@@ -31,7 +31,7 @@ pub async fn run_migrations(pool: &DbPool, migration_env: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn load_fixture(pool: &DbPool, filename: &str) -> Result<()> {
+pub async fn load_fixture(pool: &PgPool, filename: &str) -> Result<()> {
     let path = get_sql_dir().join("fixtures").join(filename);
     let sql = fs::read_to_string(path)?;
     pool.execute(sql.as_str()).await?;
@@ -39,7 +39,7 @@ pub async fn load_fixture(pool: &DbPool, filename: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn load_all_fixtures(pool: &DbPool) -> Result<()> {
+pub async fn load_all_fixtures(pool: &PgPool) -> Result<()> {
     let path = get_sql_dir().join("fixtures");
     let mut files: Vec<String> = vec![];
 
@@ -59,13 +59,13 @@ pub async fn load_all_fixtures(pool: &DbPool) -> Result<()> {
     Ok(())
 }
 
-pub async fn init_dev_db(pool: &DbPool) {
+pub async fn init_dev_db(pool: &PgPool) {
     reset_db(pool).await.unwrap();
     run_migrations(pool, "dev").await.unwrap();
     load_all_fixtures(pool).await.unwrap();
 }
 
-pub async fn init_test_db(pool: &DbPool) {
+pub async fn init_test_db(pool: &PgPool) {
     reset_db(pool).await.unwrap();
     run_migrations(pool, "dev").await.unwrap();
     load_all_fixtures(pool).await.unwrap();
@@ -77,7 +77,7 @@ pub fn get_sql_dir() -> PathBuf {
     sql_dir
 }
 
-// pub async fn mock_store_manager() -> (StoreManager, DbPool) {
+// pub async fn mock_store_manager() -> (StoreManager, PgPool) {
 //     // 1. Create the mock pool from sqlx-mock.
 //     let mock_pool = TestPostgres::default().get_pool().await;
 

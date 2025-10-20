@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, Dbx},
+    dbx::{DbExecutor, PgDbx},
     entities::credential::{
         CredentialFilter, CredentialForCreate, CredentialForUpdate, CredentialIden, CredentialRow,
     },
@@ -11,12 +11,12 @@ use crate::store::{
 
 /// The struct for our Credential store, holding the database connection wrapper.
 pub struct CredentialStore {
-    dbx: Arc<Dbx>,
+    dbx: Arc<PgDbx>,
 }
 
 impl CredentialStore {
     /// Creates a new `CredentialStore`.
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+    pub fn new(dbx: Arc<PgDbx>) -> Self {
         Self { dbx }
     }
 }

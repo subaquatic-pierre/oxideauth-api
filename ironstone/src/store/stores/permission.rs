@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, Dbx},
+    dbx::{DbExecutor, PgDbx},
     entities::permission::{
         PermissionFilter, PermissionForCreate, PermissionForUpdate, PermissionIden, PermissionRow,
     },
@@ -11,12 +11,12 @@ use crate::store::{
 
 /// The struct for our Permission store, holding the database connection wrapper.
 pub struct PermissionStore {
-    dbx: Arc<Dbx>,
+    dbx: Arc<PgDbx>,
 }
 
 impl PermissionStore {
     /// Creates a new `PermissionStore`.
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+    pub fn new(dbx: Arc<PgDbx>) -> Self {
         Self { dbx }
     }
 }

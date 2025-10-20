@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, Dbx},
+    dbx::{DbExecutor, PgDbx},
     entities::token_blacklist::{
         TokenBlacklistFilter, TokenBlacklistForCreate, TokenBlacklistForUpdate, TokenBlacklistIden,
         TokenBlacklistRow,
@@ -12,12 +12,12 @@ use crate::store::{
 use modql::field::HasSeaFields;
 
 pub struct TokenBlacklistStore {
-    dbx: Arc<Dbx>,
+    dbx: Arc<PgDbx>,
 }
 
 impl TokenBlacklistStore {
     /// Creates a new `TokenBlacklistStore`.
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+    pub fn new(dbx: Arc<PgDbx>) -> Self {
         Self { dbx }
     }
 }

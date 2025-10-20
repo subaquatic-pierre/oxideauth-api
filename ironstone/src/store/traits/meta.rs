@@ -20,7 +20,7 @@ use sqlx::{postgres::PgRow, FromRow};
 use crate::store::dbx::DbExecutor;
 use crate::store::{
     ctx::StoreCtx,
-    dbx::Dbx,
+    dbx::PgDbx,
     queries::meta::{
         ContainsFilterQueryMeta, ManyToManyQueryMeta, MutateQueryMeta, OneToManyQueryMeta,
         ReadQueryMeta,
@@ -69,7 +69,7 @@ pub trait Store: Sized + Send + Sync {
     /// The struct type that this store primarily returns from queries.
     type Row: StoreRow;
 
-    /// Access the underlying database connection wrapper (`Dbx`).
+    /// Access the underlying database connection wrapper (`PgDbx`).
     fn dbx(&self) -> impl DbExecutor;
 }
 

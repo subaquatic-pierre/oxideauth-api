@@ -1,19 +1,17 @@
 use std::sync::Arc;
 
-use sqlx::PgPool;
-
 use crate::store::{
-    dbx::Dbx,
+    dbx::PgDbx,
+    init::PgPool,
     stores::{
         account::AccountStore, credential::CredentialStore, membership::MembershipStore,
         namespace::NamespaceStore, permission::PermissionStore, project::ProjectStore,
         role::RoleStore, token_blacklist::TokenBlacklistStore,
     },
-    DbPool,
 };
 
 pub struct StoreManager {
-    pub dbx: Arc<Dbx>,
+    pub dbx: Arc<PgDbx>,
 
     pub account: AccountStore,
     pub credential: CredentialStore,
@@ -26,8 +24,8 @@ pub struct StoreManager {
 }
 
 impl StoreManager {
-    pub fn new(db: DbPool) -> Self {
-        let dbx = Dbx::new(db);
+    pub fn new(db: PgPool) -> Self {
+        let dbx = PgDbx::new(db);
         let dbx_c = Arc::new(dbx);
         let account = AccountStore::new(dbx_c.clone());
         let credential = CredentialStore::new(dbx_c.clone());
@@ -51,7 +49,7 @@ impl StoreManager {
         }
     }
 
-    pub fn dbx(&self) -> Arc<Dbx> {
+    pub fn dbx(&self) -> Arc<PgDbx> {
         self.dbx.clone()
     }
 }

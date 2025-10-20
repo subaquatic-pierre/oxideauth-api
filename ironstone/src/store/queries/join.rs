@@ -9,7 +9,7 @@ use sqlx::{postgres::PgRow, FromRow};
 
 use crate::store::{
     ctx::StoreCtx,
-    dbx::{DbExecutor, Dbx},
+    dbx::{DbExecutor, PgDbx},
     error::{StoreError, StoreResult},
     queries::{
         count::{count, count_many},
