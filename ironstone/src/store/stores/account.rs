@@ -97,8 +97,6 @@ impl<Dbx: DbExecutor> ContainsFilterStore for AccountStore<Dbx> {
 
 // -----------------------------------------------------------------------------
 // endregion: --- Base Trait Implementations
-// ... (all your existing Account struct definitions go here) ...
-// AccountIden, AccountRow, AccountWithCredentials, AccountForCreate, etc.
 
 // region:    --- Tests
 // -----------------------------------------------------------------------------

@@ -11,12 +11,10 @@ use crate::store::{
 
 /// The struct for our Credential store, holding the database connection wrapper.
 pub struct CredentialStore<Dbx: DbExecutor> {
-    // Added generic
-    dbx: Arc<Dbx>, // Use generic
+    dbx: Arc<Dbx>,
 }
 
 impl<Dbx: DbExecutor> CredentialStore<Dbx> {
-    // Added generic
     /// Creates a new `CredentialStore`.
     pub fn new(dbx: Arc<Dbx>) -> Self {
         // Use generic
@@ -30,7 +28,6 @@ impl<Dbx: DbExecutor> CredentialStore<Dbx> {
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
 impl<Dbx: DbExecutor> Store for CredentialStore<Dbx> {
-    // Added generic
     type Iden = CredentialIden;
     type Row = CredentialRow;
 
@@ -40,7 +37,6 @@ impl<Dbx: DbExecutor> Store for CredentialStore<Dbx> {
 }
 
 impl<Dbx: DbExecutor> ReadStore for CredentialStore<Dbx> {
-    // Added generic
     type FilterStoreParams = CredentialFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -53,7 +49,6 @@ impl<Dbx: DbExecutor> ReadStore for CredentialStore<Dbx> {
 }
 
 impl<Dbx: DbExecutor> MutateStore for CredentialStore<Dbx> {
-    // Added generic
     type CreateStoreParams = CredentialForCreate;
     type UpdateStoreParams = CredentialForUpdate;
 
@@ -67,7 +62,6 @@ impl<Dbx: DbExecutor> MutateStore for CredentialStore<Dbx> {
 }
 
 impl<Dbx: DbExecutor> ContainsFilterStore for CredentialStore<Dbx> {
-    // Added generic
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: CredentialIden::Table,
@@ -85,8 +79,6 @@ impl<Dbx: DbExecutor> ContainsFilterStore for CredentialStore<Dbx> {
 
 // -----------------------------------------------------------------------------
 // endregion: --- Base Trait Implementations
-
-// ... (all your existing CredentialStore code and trait impls go here) ...
 
 // region:    --- Tests
 // -----------------------------------------------------------------------------

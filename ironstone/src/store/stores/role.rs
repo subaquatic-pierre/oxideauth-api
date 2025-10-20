@@ -16,7 +16,6 @@ pub struct RoleStore<Dbx: DbExecutor> {
 impl<Dbx: DbExecutor> RoleStore<Dbx> {
     /// Creates a new `RoleStore`.
     pub fn new(dbx: Arc<Dbx>) -> Self {
-        // Use generic
         Self { dbx }
     }
 }

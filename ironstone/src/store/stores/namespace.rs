@@ -9,14 +9,13 @@ use crate::store::{
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
     traits::meta::{ContainsFilterStore, MutateStore, OneToManyStore, ReadStore, Store},
 };
+
 /// The struct for our Namespace store, holding the database connection wrapper.
 pub struct NamespaceStore<Dbx: DbExecutor> {
-    // Added generic
-    dbx: Arc<Dbx>, // Use generic
+    dbx: Arc<Dbx>,
 }
 
 impl<Dbx: DbExecutor> NamespaceStore<Dbx> {
-    // Added generic
     /// Creates a new `NamespaceStore`.
     pub fn new(dbx: Arc<Dbx>) -> Self {
         // Use generic
@@ -30,7 +29,6 @@ impl<Dbx: DbExecutor> NamespaceStore<Dbx> {
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
 impl<Dbx: DbExecutor> Store for NamespaceStore<Dbx> {
-    // Added generic
     type Iden = NamespaceIden;
     type Row = NamespaceRow;
 
@@ -40,7 +38,6 @@ impl<Dbx: DbExecutor> Store for NamespaceStore<Dbx> {
 }
 
 impl<Dbx: DbExecutor> ReadStore for NamespaceStore<Dbx> {
-    // Added generic
     type FilterStoreParams = NamespaceFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -53,7 +50,6 @@ impl<Dbx: DbExecutor> ReadStore for NamespaceStore<Dbx> {
 }
 
 impl<Dbx: DbExecutor> MutateStore for NamespaceStore<Dbx> {
-    // Added generic
     type CreateStoreParams = NamespaceForCreate;
     type UpdateStoreParams = NamespaceForUpdate;
 
@@ -67,7 +63,6 @@ impl<Dbx: DbExecutor> MutateStore for NamespaceStore<Dbx> {
 }
 
 impl<Dbx: DbExecutor> OneToManyStore for NamespaceStore<Dbx> {
-    // Added generic
     type OneToManyRow = NamespaceWithProjects;
 
     type FilterStoreParams = NamespaceFilter;
@@ -86,7 +81,6 @@ impl<Dbx: DbExecutor> OneToManyStore for NamespaceStore<Dbx> {
 }
 
 impl<Dbx: DbExecutor> ContainsFilterStore for NamespaceStore<Dbx> {
-    // Added generic
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: NamespaceIden::Table,

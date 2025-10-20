@@ -13,13 +13,12 @@ use modql::field::HasSeaFields;
 
 /// The struct for our TokenBlacklist store, holding the database connection wrapper.
 pub struct TokenBlacklistStore<Dbx: DbExecutor> {
-    dbx: Arc<Dbx>, // Use generic
+    dbx: Arc<Dbx>,
 }
 
 impl<Dbx: DbExecutor> TokenBlacklistStore<Dbx> {
     /// Creates a new `TokenBlacklistStore`.
     pub fn new(dbx: Arc<Dbx>) -> Self {
-        // Use generic
         Self { dbx }
     }
 }

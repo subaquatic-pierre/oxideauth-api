@@ -8,17 +8,15 @@ use crate::store::{
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, ReadQueryMeta},
     traits::meta::{ContainsFilterStore, MutateStore, ReadStore, Store},
 };
+
 /// The struct for our Permission store, holding the database connection wrapper.
 pub struct PermissionStore<Dbx: DbExecutor> {
-    // Added generic
-    dbx: Arc<Dbx>, // Use generic
+    dbx: Arc<Dbx>,
 }
 
 impl<Dbx: DbExecutor> PermissionStore<Dbx> {
-    // Added generic
     /// Creates a new `PermissionStore`.
     pub fn new(dbx: Arc<Dbx>) -> Self {
-        // Use generic
         Self { dbx }
     }
 }
@@ -29,7 +27,6 @@ impl<Dbx: DbExecutor> PermissionStore<Dbx> {
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
 impl<Dbx: DbExecutor> Store for PermissionStore<Dbx> {
-    // Added generic
     type Iden = PermissionIden;
     type Row = PermissionRow;
 
@@ -39,7 +36,6 @@ impl<Dbx: DbExecutor> Store for PermissionStore<Dbx> {
 }
 
 impl<Dbx: DbExecutor> ReadStore for PermissionStore<Dbx> {
-    // Added generic
     type FilterStoreParams = PermissionFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -52,7 +48,6 @@ impl<Dbx: DbExecutor> ReadStore for PermissionStore<Dbx> {
 }
 
 impl<Dbx: DbExecutor> MutateStore for PermissionStore<Dbx> {
-    // Added generic
     type CreateStoreParams = PermissionForCreate;
     type UpdateStoreParams = PermissionForUpdate;
 
@@ -66,7 +61,6 @@ impl<Dbx: DbExecutor> MutateStore for PermissionStore<Dbx> {
 }
 
 impl<Dbx: DbExecutor> ContainsFilterStore for PermissionStore<Dbx> {
-    // Added generic
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: PermissionIden::Table,
