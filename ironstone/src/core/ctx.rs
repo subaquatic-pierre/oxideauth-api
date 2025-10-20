@@ -16,6 +16,16 @@ impl CoreCtx {
     pub fn new(account: Account, namespace: Namespace) -> Self {
         Self { account, namespace }
     }
+
+    #[cfg(test)]
+    pub fn new_test() -> Self {
+        let ctx_acc = Account::default();
+        let ctx_ns = Namespace::default();
+        Self {
+            account: ctx_acc,
+            namespace: ctx_ns,
+        }
+    }
 }
 
 impl From<CoreCtx> for StoreCtx {

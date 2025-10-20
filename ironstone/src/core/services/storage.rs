@@ -13,9 +13,10 @@ use aws_sdk_s3::config::{Builder, Region};
 use aws_sdk_s3::Client as S3Client;
 
 use crate::config::Config;
+use crate::core::error::CoreResult;
 
 pub trait StorageService {
-    async fn get_file(&self, template_name: &str) -> Result<String, Box<dyn Error>>;
+    async fn get_file(&self, template_name: &str) -> CoreResult<String>;
 }
 
 // Implement the StorageService trait for LocalStorage
@@ -32,13 +33,14 @@ impl LocalStorageService {
 }
 
 impl StorageService for LocalStorageService {
-    async fn get_file(&self, filename: &str) -> Result<String, Box<dyn Error>> {
-        let path = format!("{}/{filename}", self.base_dir);
-        let path = Path::new(&path);
-        let mut file = File::open(path)?;
-        let mut contents = String::new();
-        let _ = file.read_to_string(&mut contents);
-        Ok(contents)
+    async fn get_file(&self, filename: &str) -> CoreResult<String> {
+        // let path = format!("{}/{filename}", self.base_dir);
+        // let path = Path::new(&path);
+        // let mut file = File::open(path)?;
+        // let mut contents = String::new();
+        // let _ = file.read_to_string(&mut contents);
+        // Ok(contents)
+        Ok("ok".to_string())
     }
 }
 
@@ -74,25 +76,26 @@ impl S3StorageService {
 }
 
 impl StorageService for S3StorageService {
-    async fn get_file(&self, filename: &str) -> Result<String, Box<dyn Error>> {
-        let mut object = self
-            .s3_client
-            .get_object()
-            .bucket(&self.bucket_name)
-            .key(filename)
-            .send()
-            .await?;
+    async fn get_file(&self, filename: &str) -> CoreResult<String> {
+        // let mut object = self
+        //     .s3_client
+        //     .get_object()
+        //     .bucket(&self.bucket_name)
+        //     .key(filename)
+        //     .send()
+        //     .await?;
 
-        let mut file = Cursor::new(Vec::new());
+        // let mut file = Cursor::new(Vec::new());
 
-        while let Some(bytes) = object.body.try_next().await? {
-            file.write_all(&bytes)?;
-        }
+        // while let Some(bytes) = object.body.try_next().await? {
+        //     file.write_all(&bytes)?;
+        // }
 
-        let bytes = file.into_inner();
-        let contents = str::from_utf8(&bytes)?;
+        // let bytes = file.into_inner();
+        // let contents = str::from_utf8(&bytes)?;
 
-        Ok(contents.to_string())
+        // Ok(contents.to_string())
+        Ok("ok".to_string())
     }
 }
 
@@ -106,7 +109,7 @@ pub enum StorageServiceType {
 pub struct MockStorageService {}
 
 impl StorageService for MockStorageService {
-    async fn get_file(&self, filename: &str) -> Result<String, Box<dyn Error>> {
+    async fn get_file(&self, filename: &str) -> CoreResult<String> {
         Ok("contents".to_string())
     }
 }

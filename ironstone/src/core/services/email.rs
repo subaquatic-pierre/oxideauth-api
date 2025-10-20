@@ -17,15 +17,15 @@ pub struct EmailResult {
     pub message: String,
 }
 
-pub struct EmailService {
+pub struct EmailService<T: StorageService> {
     ses_client: SesClient,
     from_email: String,
-    storage: Box<dyn StorageService>,
+    storage: T,
     dry_mode: bool,
 }
 
-impl EmailService {
-    pub fn new(config: &Config, storage: Box<dyn StorageService>) -> Self {
+impl<T: StorageService> EmailService<T> {
+    pub fn new(config: &Config, storage: T) -> Self {
         let region = Region::new(config.aws_region.clone());
 
         let credentials = Credentials::new(
@@ -134,7 +134,7 @@ mod tests {
         let config = Config::mock_config();
         // Mocking SES client can be more complex, might need to use `mockito` or similar library if required
 
-        let service = EmailService::new(&config, Box::new(mock_storage));
+        let service = EmailService::new(&config, mock_storage);
 
         let context = Context::new();
         let result = service

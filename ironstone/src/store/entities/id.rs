@@ -4,7 +4,7 @@ use serde::Deserialize;
 use sqlx::{FromRow, Type};
 use uuid::Uuid;
 
-#[derive(Clone, Copy, PartialEq, Eq, Deserialize, Debug, FromRow, Type, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Deserialize, Debug, FromRow, Type, Hash, Default)]
 #[sqlx(transparent)]
 pub struct DbId(pub Uuid);
 

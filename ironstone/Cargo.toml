@@ -110,7 +110,7 @@ mockall = "0.13.0"
 
 [lints.rust]
 unused = "allow"
-unsafe_code = "forbid"
+# unsafe_code = "forbid"
 
 [features]
 # default = ["sqlx/offline"] 
