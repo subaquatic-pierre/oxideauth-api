@@ -17,7 +17,7 @@ pub trait FilterByContains: ContainsFilterStore {
         ctx: &StoreCtx,
         tags: Vec<String>,
     ) -> StoreResult<Vec<Self::Row>> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.contains_tags_meta();
         let value = ContainsFilter::Array(tags);
         filter_by_value_contains(ctx, &db, value, &meta).await
@@ -30,7 +30,7 @@ pub trait FilterByContains: ContainsFilterStore {
         ctx: &StoreCtx,
         json: JsonValue,
     ) -> StoreResult<Vec<Self::Row>> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.contains_json_meta();
         let value = ContainsFilter::Json(json);
         filter_by_value_contains(ctx, &db, value, &meta).await

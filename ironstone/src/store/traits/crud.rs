@@ -42,7 +42,7 @@ where
         ctx: &StoreCtx,
         data: Self::CreateStoreParams,
     ) -> StoreResult<Self::Row> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.mutate_meta();
         create(&ctx, &db, data, &meta).await
     }
@@ -57,7 +57,7 @@ where
     /// Fetches a single row by its primary key.
     /// Returns an error if the row is not found.
     async fn get(&self, ctx: &StoreCtx, id: &<Self::Row as HasId>::Id) -> StoreResult<Self::Row> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.read_meta();
         get(&ctx, &db, id, &meta).await
     }
@@ -69,7 +69,7 @@ where
         ctx: &StoreCtx,
         id: &<Self::Row as HasId>::Id,
     ) -> StoreResult<Option<Self::Row>> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.read_meta();
         get_opt(&ctx, &db, id, &meta).await
     }
@@ -88,7 +88,7 @@ where
         filter: Option<Self::FilterStoreParams>,
         opts: Option<ListOptions>,
     ) -> StoreResult<Vec<Self::Row>> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.read_meta();
         list(ctx, &db, filter, opts, &meta).await
     }
@@ -108,7 +108,7 @@ where
         id: &<Self::Row as HasId>::Id,
         data: Self::UpdateStoreParams,
     ) -> StoreResult<Self::Row> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.mutate_meta();
         update(ctx, &db, id, data, &meta).await
     }
@@ -121,7 +121,7 @@ where
         id: &<Self::Row as HasId>::Id,
         data: Self::UpdateStoreParams,
     ) -> StoreResult<Option<Self::Row>> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.mutate_meta();
         update_opt(ctx, &db, id, data, &meta).await
     }
@@ -140,7 +140,7 @@ where
         ctx: &StoreCtx,
         id: &<Self::Row as HasId>::Id,
     ) -> StoreResult<Self::Row> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.mutate_meta();
         delete(ctx, &db, id, &meta).await
     }
@@ -152,7 +152,7 @@ where
         ctx: &StoreCtx,
         id: &<Self::Row as HasId>::Id,
     ) -> StoreResult<Option<Self::Row>> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.mutate_meta();
         delete_opt(ctx, &db, id, &meta).await
     }
@@ -175,7 +175,7 @@ where
         ctx: &StoreCtx,
         data: Vec<Self::CreateStoreParams>,
     ) -> StoreResult<Vec<Self::Row>> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.mutate_meta();
         create_many(ctx, &db, data, &meta).await
     }
@@ -194,7 +194,7 @@ where
         ctx: &StoreCtx,
         data: Vec<(<Self::Row as HasId>::Id, Self::UpdateStoreParams)>,
     ) -> StoreResult<Vec<Self::Row>> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.mutate_meta();
         update_many(ctx, &db, data, &meta).await
     }
@@ -212,7 +212,7 @@ where
         ctx: &StoreCtx,
         ids: Vec<<Self::Row as HasId>::Id>,
     ) -> StoreResult<Vec<Self::Row>> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.mutate_meta();
         delete_many(ctx, &db, ids, &meta).await
     }
@@ -237,7 +237,7 @@ where
         filter: Option<Self::FilterStoreParams>,
         opts: Option<ListOptions>,
     ) -> StoreResult<Self::Row> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.read_meta();
         first(ctx, &db, filter, opts, &meta).await
     }
@@ -250,7 +250,7 @@ where
         filter: Option<Self::FilterStoreParams>,
         opts: Option<ListOptions>,
     ) -> StoreResult<Option<Self::Row>> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.read_meta();
         first_opt(ctx, &db, filter, opts, &meta).await
     }
@@ -268,7 +268,7 @@ where
         ctx: &StoreCtx,
         filter: Option<Self::FilterStoreParams>,
     ) -> StoreResult<i64> {
-        let db = self.db();
+        let db = self.dbx();
         let meta = self.read_meta();
         count(ctx, &db, filter, &meta).await
     }

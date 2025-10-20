@@ -12,13 +12,13 @@ use crate::store::{
 use modql::field::HasSeaFields;
 
 pub struct TokenBlacklistStore {
-    db: Arc<Dbx>,
+    dbx: Arc<Dbx>,
 }
 
 impl TokenBlacklistStore {
     /// Creates a new `TokenBlacklistStore`.
-    pub fn new(db: Arc<Dbx>) -> Self {
-        Self { db }
+    pub fn new(dbx: Arc<Dbx>) -> Self {
+        Self { dbx }
     }
 }
 
@@ -31,8 +31,8 @@ impl Store for TokenBlacklistStore {
     type Iden = TokenBlacklistIden;
     type Row = TokenBlacklistRow;
 
-    fn db(&self) -> impl DbExecutor {
-        self.db.clone()
+    fn dbx(&self) -> impl DbExecutor {
+        self.dbx.clone()
     }
 }
 

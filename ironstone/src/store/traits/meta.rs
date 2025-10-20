@@ -70,7 +70,7 @@ pub trait Store: Sized + Send + Sync {
     type Row: StoreRow;
 
     /// Access the underlying database connection wrapper (`Dbx`).
-    fn db(&self) -> impl DbExecutor;
+    fn dbx(&self) -> impl DbExecutor;
 }
 
 /// Requires a store to provide metadata for read operations (get, list, etc.).

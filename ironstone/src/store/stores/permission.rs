@@ -11,13 +11,13 @@ use crate::store::{
 
 /// The struct for our Permission store, holding the database connection wrapper.
 pub struct PermissionStore {
-    db: Arc<Dbx>,
+    dbx: Arc<Dbx>,
 }
 
 impl PermissionStore {
     /// Creates a new `PermissionStore`.
-    pub fn new(db: Arc<Dbx>) -> Self {
-        Self { db }
+    pub fn new(dbx: Arc<Dbx>) -> Self {
+        Self { dbx }
     }
 }
 
@@ -30,8 +30,8 @@ impl Store for PermissionStore {
     type Iden = PermissionIden;
     type Row = PermissionRow;
 
-    fn db(&self) -> impl DbExecutor {
-        self.db.clone()
+    fn dbx(&self) -> impl DbExecutor {
+        self.dbx.clone()
     }
 }
 

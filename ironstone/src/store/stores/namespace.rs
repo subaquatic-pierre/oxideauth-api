@@ -12,13 +12,13 @@ use crate::store::{
 
 /// The struct for our Namespace store, holding the database connection wrapper.
 pub struct NamespaceStore {
-    db: Arc<Dbx>,
+    dbx: Arc<Dbx>,
 }
 
 impl NamespaceStore {
     /// Creates a new `NamespaceStore`.
-    pub fn new(db: Arc<Dbx>) -> Self {
-        Self { db }
+    pub fn new(dbx: Arc<Dbx>) -> Self {
+        Self { dbx }
     }
 }
 
@@ -31,8 +31,8 @@ impl Store for NamespaceStore {
     type Iden = NamespaceIden;
     type Row = NamespaceRow;
 
-    fn db(&self) -> impl DbExecutor {
-        self.db.clone()
+    fn dbx(&self) -> impl DbExecutor {
+        self.dbx.clone()
     }
 }
 

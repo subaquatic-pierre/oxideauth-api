@@ -12,13 +12,13 @@ use crate::store::{
 
 /// The struct for our Membership store, holding the database connection wrapper.
 pub struct MembershipStore {
-    db: Arc<Dbx>,
+    dbx: Arc<Dbx>,
 }
 
 impl MembershipStore {
     /// Creates a new `MembershipStore`.
-    pub fn new(db: Arc<Dbx>) -> Self {
-        Self { db }
+    pub fn new(dbx: Arc<Dbx>) -> Self {
+        Self { dbx }
     }
 }
 
@@ -31,8 +31,8 @@ impl Store for MembershipStore {
     type Iden = MembershipIden;
     type Row = MembershipRow;
 
-    fn db(&self) -> impl DbExecutor {
-        self.db.clone()
+    fn dbx(&self) -> impl DbExecutor {
+        self.dbx.clone()
     }
 }
 

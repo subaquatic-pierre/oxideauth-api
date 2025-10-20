@@ -11,13 +11,13 @@ use crate::store::{
 
 /// The struct for our Project store, holding the database connection wrapper.
 pub struct ProjectStore {
-    db: Arc<Dbx>,
+    dbx: Arc<Dbx>,
 }
 
 impl ProjectStore {
     /// Creates a new `ProjectStore`.
-    pub fn new(db: Arc<Dbx>) -> Self {
-        Self { db }
+    pub fn new(dbx: Arc<Dbx>) -> Self {
+        Self { dbx }
     }
 }
 
@@ -30,8 +30,8 @@ impl Store for ProjectStore {
     type Iden = ProjectIden;
     type Row = ProjectRow;
 
-    fn db(&self) -> impl DbExecutor {
-        self.db.clone()
+    fn dbx(&self) -> impl DbExecutor {
+        self.dbx.clone()
     }
 }
 
