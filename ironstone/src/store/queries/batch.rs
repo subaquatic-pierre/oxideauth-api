@@ -85,8 +85,6 @@ pub async fn update_many<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableId
 
     let mut updated_rows = Vec::with_capacity(data.len());
 
-    let mut txn = dbx.begin().await?;
-
     for (id, updates) in data {
         let mut query = Query::update();
 
@@ -106,16 +104,15 @@ pub async fn update_many<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableId
 
         let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
 
-        let res = sqlx::query_as_with::<_, T, _>(&sql, vals)
-            .fetch_optional(&mut *txn)
-            .await?;
+        let query = sqlx::query_as_with::<_, T, _>(&sql, vals);
+
+        let res = dbx.fetch_optional(query).await?;
 
         if let Some(ret) = res {
             updated_rows.push(ret);
         }
     }
 
-    txn.commit().await?;
     Ok(updated_rows)
 }
 

@@ -360,15 +360,15 @@ pub async fn set_many_to_many_links<I: TableIden, ID: StoreId + Clone>(
     other_ids: Vec<ID>,
     meta: &ManyToManyQueryMeta<I>,
 ) -> StoreResult<()> {
-    let mut tx = dbx.begin().await?;
-
     // // Delete all existing associations for self_id
     let (sql, vals) = Query::delete()
         .from_table(meta.join_table)
         .and_where(Expr::col(meta.join_fk).eq(self_id.clone()))
         .build_sqlx(PostgresQueryBuilder);
 
-    sqlx::query_with(&sql, vals).execute(&mut *tx).await?;
+    let query = sqlx::query_with(&sql, vals);
+
+    let _ = dbx.execute(query).await?;
 
     // If there are new IDs to link, insert them
     if !other_ids.is_empty() {
@@ -388,10 +388,9 @@ pub async fn set_many_to_many_links<I: TableIden, ID: StoreId + Clone>(
         }
 
         let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
-        sqlx::query_with(&sql, vals).execute(&mut *tx).await?;
+        let query = sqlx::query_with(&sql, vals);
+        let _ = dbx.execute(query).await?;
     }
-
-    tx.commit().await?;
 
     Ok(())
 }

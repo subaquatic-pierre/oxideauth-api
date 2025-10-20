@@ -106,9 +106,9 @@ impl PgDbx {
 }
 #[async_trait]
 impl DbExecutor for PgDbx {
-    async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>> {
-        self.begin().await
-    }
+    // async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>> {
+    //     self.begin().await
+    // }
 
     async fn fetch_one<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<O>
     where
@@ -147,8 +147,8 @@ impl DbExecutor for PgDbx {
 
 #[async_trait]
 pub trait DbExecutor: Send + Sync + Unpin {
-    /// Borrow the underlying pool (used when no transaction is active).
-    async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>>;
+    // /// Borrow the underlying pool (used when no transaction is active).
+    // async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>>;
 
     // --- Query Execution methods
 
@@ -182,12 +182,9 @@ pub trait DbExecutor: Send + Sync + Unpin {
     where
         A: IntoArguments<'q, Postgres> + 'q;
 }
+
 #[async_trait]
 impl<T: DbExecutor> DbExecutor for Arc<T> {
-    async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>> {
-        self.as_ref().begin().await
-    }
-
     async fn fetch_one<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<O>
     where
         O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,

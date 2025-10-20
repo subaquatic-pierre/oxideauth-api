@@ -13,7 +13,7 @@ use crate::store::{
 pub struct StoreManager {
     pub dbx: Arc<PgDbx>,
 
-    pub account: AccountStore,
+    pub account: AccountStore<PgDbx>,
     pub credential: CredentialStore,
     pub membership: MembershipStore,
     pub namespace: NamespaceStore,

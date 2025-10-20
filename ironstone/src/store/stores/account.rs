@@ -11,13 +11,13 @@ use crate::store::{
 };
 
 /// The struct for our Account store, holding the database connection wrapper.
-pub struct AccountStore {
-    dbx: Arc<PgDbx>,
+pub struct AccountStore<T: DbExecutor> {
+    dbx: Arc<T>,
 }
 
-impl AccountStore {
+impl<T: DbExecutor> AccountStore<T> {
     /// Creates a new `AccountStore`.
-    pub fn new(dbx: Arc<PgDbx>) -> Self {
+    pub fn new(dbx: Arc<T>) -> Self {
         Self { dbx }
     }
 }
@@ -27,7 +27,7 @@ impl AccountStore {
 // By implementing these meta traits, AccountStore implicitly gains all of the
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl Store for AccountStore {
+impl<T: DbExecutor> Store for AccountStore<T> {
     type Iden = AccountIden;
     type Row = AccountRow;
 
@@ -36,7 +36,7 @@ impl Store for AccountStore {
     }
 }
 
-impl ReadStore for AccountStore {
+impl<T: DbExecutor> ReadStore for AccountStore<T> {
     type FilterStoreParams = AccountFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -48,7 +48,7 @@ impl ReadStore for AccountStore {
     }
 }
 
-impl MutateStore for AccountStore {
+impl<T: DbExecutor> MutateStore for AccountStore<T> {
     type CreateStoreParams = AccountForCreate;
     type UpdateStoreParams = AccountForUpdate;
 
@@ -61,7 +61,7 @@ impl MutateStore for AccountStore {
     }
 }
 
-impl OneToManyStore for AccountStore {
+impl<T: DbExecutor> OneToManyStore for AccountStore<T> {
     type OneToManyRow = AccountWithCredentials;
 
     type FilterStoreParams = AccountFilter;
@@ -79,7 +79,7 @@ impl OneToManyStore for AccountStore {
     }
 }
 
-impl ContainsFilterStore for AccountStore {
+impl<T: DbExecutor> ContainsFilterStore for AccountStore<T> {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: AccountIden::Table,
