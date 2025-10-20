@@ -61,6 +61,7 @@ mod tests {
 
     use super::*;
     use crate::{
+        create_dbx_mock_unsafe,
         dev::init::init_test,
         store::{
             ctx::StoreCtx,
@@ -80,75 +81,70 @@ mod tests {
     use serial_test::serial;
     use uuid::Uuid;
 
-    struct MockDbxCreateAccountSuccess;
-
-    impl DbExecutor for MockDbxCreateAccountSuccess {
-        async fn fetch_one<'q, O, A>(
-            &self,
-            query: sqlx::query::QueryAs<'q, sqlx::Postgres, O, A>,
-        ) -> crate::store::error::StoreResult<O>
-        where
-            O: for<'r> sqlx::FromRow<'r, <sqlx::Postgres as sqlx::Database>::Row> + Send + Unpin,
-            A: sqlx::IntoArguments<'q, sqlx::Postgres> + 'q,
-        {
-            // We know O is AccountRow in this test, so we create it.
-            let acc = AccountRow::default();
-
-            // This is a type-to-type cast. It's unsafe because the compiler
-            // can't prove O and AccountRow are the same type.
-            // We are telling the compiler "trust me."
-            let result = unsafe { mem::transmute_copy::<AccountRow, O>(&acc) };
-
-            // We must "forget" the original `acc` to prevent Rust
-            // from dropping it, as its memory is now owned by `result`.
-            mem::forget(acc);
-
-            Ok(result)
-        }
-
-        async fn fetch_optional<'q, O, A>(
-            &self,
-            query: sqlx::query::QueryAs<'q, sqlx::Postgres, O, A>,
-        ) -> crate::store::error::StoreResult<Option<O>>
-        where
-            O: for<'r> sqlx::FromRow<'r, <sqlx::Postgres as sqlx::Database>::Row> + Send + Unpin,
-            A: sqlx::IntoArguments<'q, sqlx::Postgres> + 'q,
-        {
-            Ok(Some(self.fetch_one(query).await?))
-        }
-
-        async fn fetch_all<'q, O, A>(
-            &self,
-            query: sqlx::query::QueryAs<'q, sqlx::Postgres, O, A>,
-        ) -> crate::store::error::StoreResult<Vec<O>>
-        where
-            O: for<'r> sqlx::FromRow<'r, <sqlx::Postgres as sqlx::Database>::Row> + Send + Unpin,
-            A: sqlx::IntoArguments<'q, sqlx::Postgres> + 'q,
-        {
-            Ok(vec![])
-        }
-
-        async fn execute<'q, A>(
-            &self,
-            query: sqlx::query::Query<'q, sqlx::Postgres, A>,
-        ) -> crate::store::error::StoreResult<u64>
-        where
-            A: sqlx::IntoArguments<'q, sqlx::Postgres> + 'q,
-        {
-            Ok(0)
-        }
-    }
-
     #[tokio::test]
     #[serial]
-    async fn test_create_account() -> CoreResult<()> {
-        let dbx = Arc::new(MockDbxCreateAccountSuccess);
+    async fn test_create_account_success() -> CoreResult<()> {
+        create_dbx_mock_unsafe!(
+            MockDbxAccountRegister,
+            fetch_one: {
+                let acc = AccountRow::default();
+                let result = unsafe { mem::transmute_copy::<AccountRow, O>(&acc) };
+                mem::forget(acc);
+                Ok(result)
+            },
+            fetch_optional: { Ok(None) },
+            fetch_all: { Ok(vec![]) },
+            execute: { Ok(1) }
+        );
+
+        let dbx = Arc::new(MockDbxAccountRegister);
         let acc_store = AccountStore::new(dbx);
         let acc_svc = AccountService::new(&acc_store);
         let ctx = CoreCtx::new_test();
         let new_acc = acc_svc.register(&ctx, "user@user.com", "password").await?;
 
-        println!("{:#?}", new_acc);
+        let expected = Account::default();
+
+        assert_eq!(
+            new_acc.id, expected.id,
+            "incorrect account id returned from AccountService.register()"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_create_account_error() -> CoreResult<()> {
+        create_dbx_mock_unsafe!(
+            MockDbxAccountRegister,
+            fetch_one: {
+                let acc = AccountRow::default();
+                let result = unsafe { mem::transmute_copy::<AccountRow, O>(&acc) };
+                mem::forget(acc);
+                Ok(result)
+            },
+            fetch_optional: { Ok(None) },
+            fetch_all: {
+                let acc = AccountRow::default();
+                let result = unsafe { mem::transmute_copy::<AccountRow, O>(&acc) };
+                mem::forget(acc);
+                Ok(vec![result])
+            },
+            execute: { Ok(1) }
+        );
+        let dbx = Arc::new(MockDbxAccountRegister);
+        let acc_store = AccountStore::new(dbx);
+        let acc_svc = AccountService::new(&acc_store);
+        let ctx = CoreCtx::new_test();
+        let new_acc = acc_svc.register(&ctx, "user@user.com", "password").await;
+
+        assert!(
+            matches!(new_acc, Err(CoreError::AlreadyExists(..))),
+            "should be CoreError::AlreadyExists"
+        );
+        let expected = Account::default();
+        // assert!(matches!(new_acc, Ok(expected)), "should not be OK");
+
         Ok(())
     }
 }

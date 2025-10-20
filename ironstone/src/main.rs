@@ -12,6 +12,7 @@ mod app;
 mod config;
 mod core;
 mod dev;
+mod macros;
 mod store;
 mod utils;
 mod web;
