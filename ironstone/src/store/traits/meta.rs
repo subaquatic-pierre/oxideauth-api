@@ -11,7 +11,6 @@
 //!
 //! 3.  **Blanket Implementations:** By implementing a meta trait like `ReadStore`, a store struct **automatically** gains the capabilities of `Get`, `List`, `GetFirst`, and `GetCount` without any additional boilerplate. This file centralizes these blanket `impls` directly under the meta traits they depend on.
 
-use async_trait::async_trait;
 use modql::field::HasSeaFields;
 use modql::filter::{FilterGroups, ListOptions};
 use sea_query::Iden;
@@ -62,7 +61,6 @@ impl<T: 'static + Copy + Iden + Send + Sync> TableIden for T {}
 // region:    --- Store Meta Traits & Blanket Impls
 
 /// The base trait for all stores, providing access to the database connection.
-#[async_trait]
 pub trait Store: Sized + Send + Sync {
     /// The identifier enum for the store's table and columns.
     type Iden: TableIden;

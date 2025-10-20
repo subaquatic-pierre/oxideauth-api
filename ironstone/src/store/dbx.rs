@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-use mockall::{automock, mock};
 use sqlx::{
     query::{Query, QueryAs},
     Execute, FromRow, IntoArguments, Postgres, Transaction,

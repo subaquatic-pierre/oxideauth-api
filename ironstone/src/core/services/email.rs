@@ -120,7 +120,6 @@ mod tests {
     use crate::core::services::storage::MockStorageService;
 
     use super::*;
-    use async_trait::async_trait;
     use aws_sdk_ses::types::Body;
     use aws_sdk_ses::types::Content;
     use aws_sdk_ses::types::Destination;

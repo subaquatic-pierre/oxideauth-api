@@ -9,7 +9,6 @@ edition = "2021"
 # Runtime, Async, Utilities
 # ──────────────────────────────────────────────────────────────────────────────
 anyhow = "1"
-async-trait = "0.1.81"
 ctrlc = "3.2"
 dotenv = "0.15.0"
 rand = "0.7"
@@ -90,7 +89,6 @@ modql = { version = "0.4.1", features = ["with-sea-query"]}
 # ──────────────────────────────────────────────────────────────────────────────
 mockito = "1.5.0"
 derive_more = { version = "2.0.1", features = ["from", "display"] }
-mockall = "0.13.0"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Macros
@@ -108,6 +106,7 @@ ironauth-macros = { path = "../ironstone-macros" }
 
 [dev-dependencies]
 serial_test = "0.6"
+mockall = "0.13.0"
 
 [lints.rust]
 unused = "allow"

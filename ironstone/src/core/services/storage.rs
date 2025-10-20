@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use core::str;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -15,7 +14,6 @@ use aws_sdk_s3::Client as S3Client;
 
 use crate::config::Config;
 
-#[async_trait]
 pub trait StorageService {
     async fn get_file(&self, template_name: &str) -> Result<String, Box<dyn Error>>;
 }
@@ -33,7 +31,6 @@ impl LocalStorageService {
     }
 }
 
-#[async_trait]
 impl StorageService for LocalStorageService {
     async fn get_file(&self, filename: &str) -> Result<String, Box<dyn Error>> {
         let path = format!("{}/{filename}", self.base_dir);
@@ -76,7 +73,6 @@ impl S3StorageService {
     }
 }
 
-#[async_trait]
 impl StorageService for S3StorageService {
     async fn get_file(&self, filename: &str) -> Result<String, Box<dyn Error>> {
         let mut object = self
@@ -109,7 +105,6 @@ pub enum StorageServiceType {
 
 pub struct MockStorageService {}
 
-#[async_trait]
 impl StorageService for MockStorageService {
     async fn get_file(&self, filename: &str) -> Result<String, Box<dyn Error>> {
         Ok("contents".to_string())

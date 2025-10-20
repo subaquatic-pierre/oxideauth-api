@@ -5,7 +5,6 @@ use crate::store::queries::join::{
     get_one_to_many_opt, list_many_to_many, list_one_to_many, set_many_to_many_links,
 };
 use crate::store::traits::meta::{HasId, ManyToManyStore, OneToManyStore, ReadStore, StoreRow};
-use async_trait::async_trait;
 use modql::filter::ListOptions;
 
 // --- One to Many ---

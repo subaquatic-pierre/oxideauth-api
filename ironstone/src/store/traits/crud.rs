@@ -25,7 +25,6 @@ use crate::store::{
     traits::meta::{HasId, MutateStore, ReadStore, Store, StoreRow},
     utils::prepare_audit_fields,
 };
-use async_trait::async_trait;
 
 // region:    --- CRUD Traits
 // ---
