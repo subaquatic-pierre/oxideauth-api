@@ -8,15 +8,17 @@ use crate::store::{
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, ReadQueryMeta},
     traits::meta::{ContainsFilterStore, MutateStore, ReadStore, Store},
 };
-
 /// The struct for our Permission store, holding the database connection wrapper.
-pub struct PermissionStore {
-    dbx: Arc<PgDbx>,
+pub struct PermissionStore<Dbx: DbExecutor> {
+    // Added generic
+    dbx: Arc<Dbx>, // Use generic
 }
 
-impl PermissionStore {
+impl<Dbx: DbExecutor> PermissionStore<Dbx> {
+    // Added generic
     /// Creates a new `PermissionStore`.
-    pub fn new(dbx: Arc<PgDbx>) -> Self {
+    pub fn new(dbx: Arc<Dbx>) -> Self {
+        // Use generic
         Self { dbx }
     }
 }
@@ -26,7 +28,8 @@ impl PermissionStore {
 // By implementing these meta traits, PermissionStore implicitly gains all of the
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl Store for PermissionStore {
+impl<Dbx: DbExecutor> Store for PermissionStore<Dbx> {
+    // Added generic
     type Iden = PermissionIden;
     type Row = PermissionRow;
 
@@ -35,7 +38,8 @@ impl Store for PermissionStore {
     }
 }
 
-impl ReadStore for PermissionStore {
+impl<Dbx: DbExecutor> ReadStore for PermissionStore<Dbx> {
+    // Added generic
     type FilterStoreParams = PermissionFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -47,7 +51,8 @@ impl ReadStore for PermissionStore {
     }
 }
 
-impl MutateStore for PermissionStore {
+impl<Dbx: DbExecutor> MutateStore for PermissionStore<Dbx> {
+    // Added generic
     type CreateStoreParams = PermissionForCreate;
     type UpdateStoreParams = PermissionForUpdate;
 
@@ -60,7 +65,8 @@ impl MutateStore for PermissionStore {
     }
 }
 
-impl ContainsFilterStore for PermissionStore {
+impl<Dbx: DbExecutor> ContainsFilterStore for PermissionStore<Dbx> {
+    // Added generic
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: PermissionIden::Table,

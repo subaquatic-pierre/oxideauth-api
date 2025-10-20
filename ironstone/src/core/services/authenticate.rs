@@ -1,16 +1,16 @@
 use crate::{
     core::error::{CoreError, CoreResult},
-    store::manager::StoreManager,
+    store::{dbx::PgDbx, manager::StoreManager},
 };
 use std::sync::Arc;
 
 pub struct AuthenticateService {
-    sm: Arc<StoreManager>,
+    sm: Arc<StoreManager<PgDbx>>,
 }
 
 impl AuthenticateService {
     // The constructor takes the dependencies.
-    pub fn new(sm: Arc<StoreManager>) -> Self {
+    pub fn new(sm: Arc<StoreManager<PgDbx>>) -> Self {
         Self { sm }
     }
 

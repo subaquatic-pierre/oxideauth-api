@@ -11,13 +11,15 @@ use crate::store::{
 };
 use modql::field::HasSeaFields;
 
-pub struct TokenBlacklistStore {
-    dbx: Arc<PgDbx>,
+/// The struct for our TokenBlacklist store, holding the database connection wrapper.
+pub struct TokenBlacklistStore<Dbx: DbExecutor> {
+    dbx: Arc<Dbx>, // Use generic
 }
 
-impl TokenBlacklistStore {
+impl<Dbx: DbExecutor> TokenBlacklistStore<Dbx> {
     /// Creates a new `TokenBlacklistStore`.
-    pub fn new(dbx: Arc<PgDbx>) -> Self {
+    pub fn new(dbx: Arc<Dbx>) -> Self {
+        // Use generic
         Self { dbx }
     }
 }
@@ -27,7 +29,7 @@ impl TokenBlacklistStore {
 // By implementing these meta traits, TokenBlacklistStore implicitly gains
 // its capabilities from the blanket implementations.
 
-impl Store for TokenBlacklistStore {
+impl<Dbx: DbExecutor> Store for TokenBlacklistStore<Dbx> {
     type Iden = TokenBlacklistIden;
     type Row = TokenBlacklistRow;
 
@@ -36,7 +38,7 @@ impl Store for TokenBlacklistStore {
     }
 }
 
-impl ReadStore for TokenBlacklistStore {
+impl<Dbx: DbExecutor> ReadStore for TokenBlacklistStore<Dbx> {
     type FilterStoreParams = TokenBlacklistFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -48,7 +50,7 @@ impl ReadStore for TokenBlacklistStore {
     }
 }
 
-impl MutateStore for TokenBlacklistStore {
+impl<Dbx: DbExecutor> MutateStore for TokenBlacklistStore<Dbx> {
     type CreateStoreParams = TokenBlacklistForCreate;
     type UpdateStoreParams = TokenBlacklistForUpdate;
 

@@ -44,7 +44,7 @@ pub async fn init_test<'a>() -> &'a AppData {
             info!("{:<12} - init_test()", "FOR-DEV-ONLY");
 
             let app = new_test_app_data().await;
-            init_test_db(&app.db).await;
+            init_test_db(&app.dbx.pool()).await;
 
             // init_tracing_for_tests();
 

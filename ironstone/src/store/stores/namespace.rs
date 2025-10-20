@@ -9,15 +9,17 @@ use crate::store::{
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
     traits::meta::{ContainsFilterStore, MutateStore, OneToManyStore, ReadStore, Store},
 };
-
 /// The struct for our Namespace store, holding the database connection wrapper.
-pub struct NamespaceStore {
-    dbx: Arc<PgDbx>,
+pub struct NamespaceStore<Dbx: DbExecutor> {
+    // Added generic
+    dbx: Arc<Dbx>, // Use generic
 }
 
-impl NamespaceStore {
+impl<Dbx: DbExecutor> NamespaceStore<Dbx> {
+    // Added generic
     /// Creates a new `NamespaceStore`.
-    pub fn new(dbx: Arc<PgDbx>) -> Self {
+    pub fn new(dbx: Arc<Dbx>) -> Self {
+        // Use generic
         Self { dbx }
     }
 }
@@ -27,7 +29,8 @@ impl NamespaceStore {
 // By implementing these meta traits, NamespaceStore implicitly gains all of the
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl Store for NamespaceStore {
+impl<Dbx: DbExecutor> Store for NamespaceStore<Dbx> {
+    // Added generic
     type Iden = NamespaceIden;
     type Row = NamespaceRow;
 
@@ -36,7 +39,8 @@ impl Store for NamespaceStore {
     }
 }
 
-impl ReadStore for NamespaceStore {
+impl<Dbx: DbExecutor> ReadStore for NamespaceStore<Dbx> {
+    // Added generic
     type FilterStoreParams = NamespaceFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -48,7 +52,8 @@ impl ReadStore for NamespaceStore {
     }
 }
 
-impl MutateStore for NamespaceStore {
+impl<Dbx: DbExecutor> MutateStore for NamespaceStore<Dbx> {
+    // Added generic
     type CreateStoreParams = NamespaceForCreate;
     type UpdateStoreParams = NamespaceForUpdate;
 
@@ -61,7 +66,8 @@ impl MutateStore for NamespaceStore {
     }
 }
 
-impl OneToManyStore for NamespaceStore {
+impl<Dbx: DbExecutor> OneToManyStore for NamespaceStore<Dbx> {
+    // Added generic
     type OneToManyRow = NamespaceWithProjects;
 
     type FilterStoreParams = NamespaceFilter;
@@ -79,7 +85,8 @@ impl OneToManyStore for NamespaceStore {
     }
 }
 
-impl ContainsFilterStore for NamespaceStore {
+impl<Dbx: DbExecutor> ContainsFilterStore for NamespaceStore<Dbx> {
+    // Added generic
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: NamespaceIden::Table,

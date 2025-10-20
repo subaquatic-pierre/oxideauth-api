@@ -5,6 +5,7 @@ use tracing::{debug, info};
 use sqlx::Pool;
 
 use crate::dev::init::init_dev;
+use crate::store::dbx::PgDbx;
 use crate::store::manager::StoreManager;
 use crate::{
     config::Config,
@@ -30,8 +31,8 @@ impl AppEnv {
 
 pub struct AppData {
     pub config: Config,
-    pub db: PgPool,
-    pub sm: StoreManager,
+    pub dbx: Arc<PgDbx>,
+    pub sm: StoreManager<PgDbx>,
 }
 
 pub async fn new_app_data() -> AppData {
@@ -44,7 +45,7 @@ pub async fn new_app_data() -> AppData {
             );
 
             let app = new_dev_app_data().await;
-            init_dev(&app.db).await;
+            init_dev(&app.dbx.pool()).await;
             app
         }
         AppEnv::Production => {
@@ -63,26 +64,42 @@ pub async fn new_app_data() -> AppData {
 pub async fn new_prod_app_data() -> AppData {
     let config = Config::from_env();
     let db: PgPool = new_db_pool(&config.database_url, 5).await;
+    let dbx = Arc::new(PgDbx::new(db.clone()));
 
-    let sm = StoreManager::new(db.clone());
+    let sm = StoreManager::new(dbx.clone());
 
-    AppData { db, config, sm }
+    AppData {
+        dbx: dbx.clone(),
+        config,
+        sm,
+    }
 }
 
 pub async fn new_dev_app_data() -> AppData {
     let config = Config::dev_config();
 
     let db: PgPool = new_db_pool(&config.database_url, 5).await;
-    let sm = StoreManager::new(db.clone());
+    let dbx = Arc::new(PgDbx::new(db.clone()));
 
-    AppData { db, config, sm }
+    let sm = StoreManager::new(dbx.clone());
+
+    AppData {
+        dbx: dbx.clone(),
+        config,
+        sm,
+    }
 }
 
 pub async fn new_test_app_data() -> AppData {
     let config = Config::test_config();
 
     let db: PgPool = new_db_pool(&config.database_url, 1).await;
-    let sm = StoreManager::new(db.clone());
+    let dbx = Arc::new(PgDbx::new(db.clone()));
+    let sm = StoreManager::new(dbx.clone());
 
-    AppData { db, config, sm }
+    AppData {
+        dbx: dbx.clone(),
+        config,
+        sm,
+    }
 }

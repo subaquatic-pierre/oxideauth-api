@@ -11,13 +11,16 @@ use crate::store::{
 };
 
 /// The struct for our Membership store, holding the database connection wrapper.
-pub struct MembershipStore {
-    dbx: Arc<PgDbx>,
+pub struct MembershipStore<Dbx: DbExecutor> {
+    // Added generic
+    dbx: Arc<Dbx>, // Use generic
 }
 
-impl MembershipStore {
+impl<Dbx: DbExecutor> MembershipStore<Dbx> {
+    // Added generic
     /// Creates a new `MembershipStore`.
-    pub fn new(dbx: Arc<PgDbx>) -> Self {
+    pub fn new(dbx: Arc<Dbx>) -> Self {
+        // Use generic
         Self { dbx }
     }
 }
@@ -27,7 +30,8 @@ impl MembershipStore {
 // By implementing these meta traits, MembershipStore implicitly gains all of the
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl Store for MembershipStore {
+impl<Dbx: DbExecutor> Store for MembershipStore<Dbx> {
+    // Added generic
     type Iden = MembershipIden;
     type Row = MembershipRow;
 
@@ -36,7 +40,8 @@ impl Store for MembershipStore {
     }
 }
 
-impl ReadStore for MembershipStore {
+impl<Dbx: DbExecutor> ReadStore for MembershipStore<Dbx> {
+    // Added generic
     type FilterStoreParams = MembershipFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -48,7 +53,8 @@ impl ReadStore for MembershipStore {
     }
 }
 
-impl MutateStore for MembershipStore {
+impl<Dbx: DbExecutor> MutateStore for MembershipStore<Dbx> {
+    // Added generic
     type CreateStoreParams = MembershipForCreate;
     type UpdateStoreParams = MembershipForUpdate;
 
@@ -61,7 +67,8 @@ impl MutateStore for MembershipStore {
     }
 }
 
-impl ManyToManyStore for MembershipStore {
+impl<Dbx: DbExecutor> ManyToManyStore for MembershipStore<Dbx> {
+    // Added generic
     type ManyToManyRow = MembershipWithRoles;
 
     type FilterStoreParams = MembershipFilter;
@@ -81,7 +88,8 @@ impl ManyToManyStore for MembershipStore {
     }
 }
 
-impl ContainsFilterStore for MembershipStore {
+impl<Dbx: DbExecutor> ContainsFilterStore for MembershipStore<Dbx> {
+    // Added generic
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: MembershipIden::Table,

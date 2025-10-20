@@ -2,15 +2,15 @@ use std::{collections::HashSet, sync::Arc};
 
 use crate::{
     core::models::permission::{PermissionCheck, PermissionChecker},
-    store::manager::StoreManager,
+    store::{dbx::PgDbx, manager::StoreManager},
 };
 
 pub struct AuthorizeService {
-    sm: Arc<StoreManager>,
+    sm: Arc<StoreManager<PgDbx>>,
 }
 
 impl AuthorizeService {
-    pub fn new(sm: Arc<StoreManager>) -> Self {
+    pub fn new(sm: Arc<StoreManager<PgDbx>>) -> Self {
         Self { sm }
     }
 

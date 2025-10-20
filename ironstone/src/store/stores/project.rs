@@ -10,13 +10,16 @@ use crate::store::{
 };
 
 /// The struct for our Project store, holding the database connection wrapper.
-pub struct ProjectStore {
-    dbx: Arc<PgDbx>,
+pub struct ProjectStore<Dbx: DbExecutor> {
+    // Added generic
+    dbx: Arc<Dbx>, // Use generic
 }
 
-impl ProjectStore {
+impl<Dbx: DbExecutor> ProjectStore<Dbx> {
+    // Added generic
     /// Creates a new `ProjectStore`.
-    pub fn new(dbx: Arc<PgDbx>) -> Self {
+    pub fn new(dbx: Arc<Dbx>) -> Self {
+        // Use generic
         Self { dbx }
     }
 }
@@ -26,7 +29,8 @@ impl ProjectStore {
 // By implementing these meta traits, ProjectStore implicitly gains all of the
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl Store for ProjectStore {
+impl<Dbx: DbExecutor> Store for ProjectStore<Dbx> {
+    // Added generic
     type Iden = ProjectIden;
     type Row = ProjectRow;
 
@@ -35,7 +39,8 @@ impl Store for ProjectStore {
     }
 }
 
-impl ReadStore for ProjectStore {
+impl<Dbx: DbExecutor> ReadStore for ProjectStore<Dbx> {
+    // Added generic
     type FilterStoreParams = ProjectFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -47,7 +52,8 @@ impl ReadStore for ProjectStore {
     }
 }
 
-impl MutateStore for ProjectStore {
+impl<Dbx: DbExecutor> MutateStore for ProjectStore<Dbx> {
+    // Added generic
     type CreateStoreParams = ProjectForCreate;
     type UpdateStoreParams = ProjectForUpdate;
 
@@ -60,7 +66,8 @@ impl MutateStore for ProjectStore {
     }
 }
 
-impl ContainsFilterStore for ProjectStore {
+impl<Dbx: DbExecutor> ContainsFilterStore for ProjectStore<Dbx> {
+    // Added generic
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: ProjectIden::Table,

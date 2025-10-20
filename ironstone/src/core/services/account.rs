@@ -9,6 +9,7 @@ use crate::{
         models::account::Account,
     },
     store::{
+        dbx::PgDbx,
         entities::account::{AccountFilter, AccountForCreate},
         manager::StoreManager,
         traits::crud::*,
@@ -16,12 +17,12 @@ use crate::{
 };
 
 pub struct AccountService {
-    sm: Arc<StoreManager>,
+    sm: Arc<StoreManager<PgDbx>>,
     // password_hasher: Arc<dyn PasswordHasher>, // Dependency for hashing
 }
 
 impl AccountService {
-    pub fn new(sm: Arc<StoreManager>) -> Self {
+    pub fn new(sm: Arc<StoreManager<PgDbx>>) -> Self {
         Self { sm }
     }
 

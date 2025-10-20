@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::PgDbx,
+    dbx::{DbExecutor, PgDbx},
     init::PgPool,
     stores::{
         account::AccountStore, credential::CredentialStore, membership::MembershipStore,
@@ -10,34 +10,32 @@ use crate::store::{
     },
 };
 
-pub struct StoreManager {
-    pub dbx: Arc<PgDbx>,
+pub struct StoreManager<Dbx: DbExecutor> {
+    pub dbx: Arc<Dbx>,
 
-    pub account: AccountStore<PgDbx>,
-    pub credential: CredentialStore,
-    pub membership: MembershipStore,
-    pub namespace: NamespaceStore,
-    pub permission: PermissionStore,
-    pub project: ProjectStore,
-    pub role: RoleStore,
-    pub token_blacklist: TokenBlacklistStore,
+    pub account: AccountStore<Dbx>,
+    pub credential: CredentialStore<Dbx>,
+    pub membership: MembershipStore<Dbx>,
+    pub namespace: NamespaceStore<Dbx>,
+    pub permission: PermissionStore<Dbx>,
+    pub project: ProjectStore<Dbx>,
+    pub role: RoleStore<Dbx>,
+    pub token_blacklist: TokenBlacklistStore<Dbx>,
 }
 
-impl StoreManager {
-    pub fn new(db: PgPool) -> Self {
-        let dbx = PgDbx::new(db);
-        let dbx_c = Arc::new(dbx);
-        let account = AccountStore::new(dbx_c.clone());
-        let credential = CredentialStore::new(dbx_c.clone());
-        let membership = MembershipStore::new(dbx_c.clone());
-        let namespace = NamespaceStore::new(dbx_c.clone());
-        let permission = PermissionStore::new(dbx_c.clone());
-        let project = ProjectStore::new(dbx_c.clone());
-        let role = RoleStore::new(dbx_c.clone());
-        let token_blacklist = TokenBlacklistStore::new(dbx_c.clone());
+impl<Dbx: DbExecutor> StoreManager<Dbx> {
+    pub fn new(dbx: Arc<Dbx>) -> Self {
+        let account = AccountStore::new(dbx.clone());
+        let credential = CredentialStore::new(dbx.clone());
+        let membership = MembershipStore::new(dbx.clone());
+        let namespace = NamespaceStore::new(dbx.clone());
+        let permission = PermissionStore::new(dbx.clone());
+        let project = ProjectStore::new(dbx.clone());
+        let role = RoleStore::new(dbx.clone());
+        let token_blacklist = TokenBlacklistStore::new(dbx.clone());
 
         Self {
-            dbx: dbx_c.clone(),
+            dbx: dbx.clone(),
             account,
             credential,
             membership,
@@ -49,7 +47,11 @@ impl StoreManager {
         }
     }
 
-    pub fn dbx(&self) -> Arc<PgDbx> {
+    pub fn dbx(&self) -> Arc<Dbx> {
         self.dbx.clone()
     }
+}
+
+pub trait StoreManagerTrait<Dbx: DbExecutor> {
+    fn account(&self) -> &AccountStore<Dbx>;
 }

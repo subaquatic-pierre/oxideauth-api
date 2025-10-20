@@ -8,15 +8,15 @@ use crate::store::{
     queries::meta::{ContainsFilterQueryMeta, ManyToManyQueryMeta, MutateQueryMeta, ReadQueryMeta},
     traits::meta::{ContainsFilterStore, ManyToManyStore, MutateStore, ReadStore, Store},
 };
-
 /// The struct for our Role store, holding the database connection wrapper.
-pub struct RoleStore {
-    dbx: Arc<PgDbx>,
+pub struct RoleStore<Dbx: DbExecutor> {
+    dbx: Arc<Dbx>,
 }
 
-impl RoleStore {
+impl<Dbx: DbExecutor> RoleStore<Dbx> {
     /// Creates a new `RoleStore`.
-    pub fn new(dbx: Arc<PgDbx>) -> Self {
+    pub fn new(dbx: Arc<Dbx>) -> Self {
+        // Use generic
         Self { dbx }
     }
 }
@@ -26,7 +26,7 @@ impl RoleStore {
 // By implementing these meta traits, RoleStore implicitly gains all of the
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl Store for RoleStore {
+impl<Dbx: DbExecutor> Store for RoleStore<Dbx> {
     type Iden = RoleIden;
     type Row = RoleRow;
 
@@ -35,7 +35,7 @@ impl Store for RoleStore {
     }
 }
 
-impl ReadStore for RoleStore {
+impl<Dbx: DbExecutor> ReadStore for RoleStore<Dbx> {
     type FilterStoreParams = RoleFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -47,7 +47,7 @@ impl ReadStore for RoleStore {
     }
 }
 
-impl MutateStore for RoleStore {
+impl<Dbx: DbExecutor> MutateStore for RoleStore<Dbx> {
     type CreateStoreParams = RoleForCreate;
     type UpdateStoreParams = RoleForUpdate;
 
@@ -60,7 +60,7 @@ impl MutateStore for RoleStore {
     }
 }
 
-impl ManyToManyStore for RoleStore {
+impl<Dbx: DbExecutor> ManyToManyStore for RoleStore<Dbx> {
     type ManyToManyRow = RoleWithPermissions;
 
     type FilterStoreParams = RoleFilter;
@@ -80,7 +80,7 @@ impl ManyToManyStore for RoleStore {
     }
 }
 
-impl ContainsFilterStore for RoleStore {
+impl<Dbx: DbExecutor> ContainsFilterStore for RoleStore<Dbx> {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: RoleIden::Table,
@@ -95,7 +95,6 @@ impl ContainsFilterStore for RoleStore {
         }
     }
 }
-
 // -----------------------------------------------------------------------------
 // endregion: --- Base Trait Implementations
 
