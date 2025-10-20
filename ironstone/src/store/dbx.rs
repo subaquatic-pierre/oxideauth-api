@@ -106,9 +106,9 @@ impl Dbx {
 }
 #[async_trait]
 impl DbExecutor for Dbx {
-    fn db(&self) -> &DbPool {
-        self.db()
-    }
+    // fn db(&self) -> &DbPool {
+    //     self.db()
+    // }
 
     async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>> {
         self.begin().await
@@ -151,8 +151,8 @@ impl DbExecutor for Dbx {
 
 #[async_trait]
 pub trait DbExecutor: Send + Sync + Unpin {
-    /// Borrow the underlying pool (used when no transaction is active).
-    fn db(&self) -> &DbPool;
+    // /// Borrow the underlying pool (used when no transaction is active).
+    // fn db(&self) -> &DbPool;
 
     /// Borrow the underlying pool (used when no transaction is active).
     async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>>;
@@ -191,10 +191,10 @@ pub trait DbExecutor: Send + Sync + Unpin {
 }
 #[async_trait]
 impl<T: DbExecutor> DbExecutor for Arc<T> {
-    // <-- Make this generic
-    fn db(&self) -> &DbPool {
-        self.as_ref().db()
-    }
+    // // <-- Make this generic
+    // fn db(&self) -> &DbPool {
+    //     self.as_ref().db()
+    // }
 
     async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>> {
         self.as_ref().begin().await

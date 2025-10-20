@@ -36,13 +36,10 @@ pub async fn count<E: DbExecutor, F: Into<FilterGroups>, I: TableIden>(
     // build SQL and values
     let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
 
-    let q = query_with(&sql, vals);
+    let query = sqlx::query_as_with(&sql, vals);
+    let count: (i64,) = dbx.fetch_one(query).await?;
 
-    let row = q.fetch_one(dbx.db()).await?;
-
-    // Extract COUNT(*) as i64
-    let cnt: i64 = row.try_get("count")?;
-    Ok(cnt)
+    Ok(count.0)
 }
 
 /// Counts the number of related items for a given parent ID.
@@ -64,9 +61,8 @@ pub async fn count_many<E: DbExecutor, I: TableIden>(
 
     // Here we can't use `try_get("count")` as easily without an alias,
     // so we fetch into a tuple, which is very efficient.
-    let count: (i64,) = sqlx::query_as_with(&sql, values)
-        .fetch_one(dbx.db())
-        .await?;
+    let query = sqlx::query_as_with(&sql, values);
+    let count: (i64,) = dbx.fetch_one(query).await?;
 
     Ok(count.0)
 }

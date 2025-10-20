@@ -420,7 +420,9 @@ pub async fn attach_link<I: TableIden, ID: StoreId>(
         )
         .build_sqlx(PostgresQueryBuilder);
 
-    sqlx::query_with(&sql, vals).execute(dbx.db()).await?;
+    let query = sqlx::query_with(&sql, vals);
+
+    let _ = dbx.execute(query).await?;
 
     Ok(())
 }
@@ -441,7 +443,9 @@ pub async fn detach_link<I: TableIden, ID: StoreId>(
         .and_where(Expr::col(meta.many_fk).eq(other_id.clone()))
         .build_sqlx(PostgresQueryBuilder);
 
-    sqlx::query_with(&sql, vals).execute(dbx.db()).await?;
+    let query = sqlx::query_with(&sql, vals);
+
+    let _ = dbx.execute(query).await?;
 
     Ok(())
 }
