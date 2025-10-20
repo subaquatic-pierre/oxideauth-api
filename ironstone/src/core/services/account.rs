@@ -9,21 +9,22 @@ use crate::{
         models::account::Account,
     },
     store::{
-        dbx::PgDbx,
+        dbx::{DbExecutor, PgDbx},
         entities::account::{AccountFilter, AccountForCreate},
         manager::StoreManager,
+        stores::account::AccountStore,
         traits::crud::*,
     },
 };
 
-pub struct AccountService {
-    sm: Arc<StoreManager<PgDbx>>,
+pub struct AccountService<'a, Dbx: DbExecutor> {
+    acc_store: &'a AccountStore<Dbx>,
     // password_hasher: Arc<dyn PasswordHasher>, // Dependency for hashing
 }
 
-impl AccountService {
-    pub fn new(sm: Arc<StoreManager<PgDbx>>) -> Self {
-        Self { sm }
+impl<'a, Dbx: DbExecutor> AccountService<'a, Dbx> {
+    pub fn new(acc_store: &'a AccountStore<Dbx>) -> Self {
+        Self { acc_store }
     }
 
     pub async fn register(
@@ -38,8 +39,7 @@ impl AccountService {
         .try_into()?;
 
         if !self
-            .sm
-            .account
+            .acc_store
             .list(&ctx.into(), Some(filter), None)
             .await?
             .is_empty()
@@ -58,7 +58,7 @@ impl AccountService {
             meta: todo!(),
         };
 
-        let new_account = self.sm.account.create(&ctx.into(), n_acc).await?;
+        let new_account = self.acc_store.create(&ctx.into(), n_acc).await?;
 
         Ok(new_account.into())
     }

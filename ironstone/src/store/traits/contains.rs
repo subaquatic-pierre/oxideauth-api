@@ -8,7 +8,6 @@ use crate::store::queries::meta::ContainsFilter;
 use crate::store::traits::meta::{ContainsFilterStore, Store};
 
 /// Trait for filtering records where a JSONB column contains certain values.
-#[async_trait]
 pub trait FilterByContains: ContainsFilterStore {
     /// Finds all records where the designated tags column (a JSONB array)
     /// contains all of the specified tags.
@@ -17,10 +16,10 @@ pub trait FilterByContains: ContainsFilterStore {
         ctx: &StoreCtx,
         tags: Vec<String>,
     ) -> StoreResult<Vec<Self::Row>> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.contains_tags_meta();
         let value = ContainsFilter::Array(tags);
-        filter_by_value_contains(ctx, &db, value, &meta).await
+        filter_by_value_contains(ctx, &dbx, value, &meta).await
     }
 
     /// Finds all records where the designated JSONB column contains the
@@ -30,9 +29,9 @@ pub trait FilterByContains: ContainsFilterStore {
         ctx: &StoreCtx,
         json: JsonValue,
     ) -> StoreResult<Vec<Self::Row>> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.contains_json_meta();
         let value = ContainsFilter::Json(json);
-        filter_by_value_contains(ctx, &db, value, &meta).await
+        filter_by_value_contains(ctx, &dbx, value, &meta).await
     }
 }

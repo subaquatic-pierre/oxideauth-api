@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use mockall::{automock, mock};
 use sqlx::{
     query::{Query, QueryAs},
     Execute, FromRow, IntoArguments, Postgres, Transaction,
@@ -22,6 +23,12 @@ use crate::store::{
     error::{StoreError, StoreResult},
     init::PgPool,
 };
+
+pub trait TestAsync {
+    async fn this(&self) -> i32 {
+        42
+    }
+}
 
 /// PgDbx is a thin wrapper over a sqlx Pool that can (optionally) route all queries
 /// through a shared transaction. It also supports *nested* transactions via a
@@ -104,12 +111,8 @@ impl PgDbx {
         Ok(rows_affected)
     }
 }
-#[async_trait]
-impl DbExecutor for PgDbx {
-    // async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>> {
-    //     self.begin().await
-    // }
 
+impl DbExecutor for PgDbx {
     async fn fetch_one<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<O>
     where
         O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
@@ -145,13 +148,7 @@ impl DbExecutor for PgDbx {
     }
 }
 
-#[async_trait]
 pub trait DbExecutor: Send + Sync + Unpin {
-    // /// Borrow the underlying pool (used when no transaction is active).
-    // async fn begin(&self) -> StoreResult<Transaction<'static, Postgres>>;
-
-    // --- Query Execution methods
-
     /// Execute a `query_as` and fetch exactly one row.
     /// If a transaction is active, runs against it; otherwise uses the pool.
     async fn fetch_one<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<O>
@@ -183,7 +180,6 @@ pub trait DbExecutor: Send + Sync + Unpin {
         A: IntoArguments<'q, Postgres> + 'q;
 }
 
-#[async_trait]
 impl<T: DbExecutor> DbExecutor for Arc<T> {
     async fn fetch_one<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<O>
     where
@@ -217,5 +213,98 @@ impl<T: DbExecutor> DbExecutor for Arc<T> {
         A: IntoArguments<'q, Postgres> + 'q,
     {
         self.as_ref().execute(query).await
+    }
+}
+
+pub struct MockDbx {}
+
+impl DbExecutor for MockDbx {
+    async fn fetch_one<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<O>
+    where
+        O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
+        A: IntoArguments<'q, Postgres> + 'q,
+    {
+        Err(StoreError::MockReturn)
+    }
+
+    async fn fetch_optional<'q, O, A>(
+        &self,
+        query: QueryAs<'q, Postgres, O, A>,
+    ) -> StoreResult<Option<O>>
+    where
+        O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
+        A: IntoArguments<'q, Postgres> + 'q,
+    {
+        Ok(None)
+    }
+
+    async fn fetch_all<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<Vec<O>>
+    where
+        O: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin,
+        A: IntoArguments<'q, Postgres> + 'q,
+    {
+        Ok(vec![])
+    }
+
+    async fn execute<'q, A>(&self, query: Query<'q, Postgres, A>) -> StoreResult<u64>
+    where
+        A: IntoArguments<'q, Postgres> + 'q,
+    {
+        Ok(0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        dev::init::init_test,
+        store::{
+            ctx::StoreCtx,
+            entities::credential::{CredentialForCreate, CredentialProvider},
+            error::StoreError,
+            meta::StoreId,
+            stores::account::AccountStore,
+            traits::{contains::FilterByContains, crud::*, join::GetOneToMany},
+        },
+    };
+    use anyhow::Result;
+    use modql::filter::{ListOptions, OpValsString};
+    use serde_json::json;
+    use serial_test::serial;
+    use uuid::Uuid;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_mock_dbx() -> StoreResult<()> {
+        let mock_dbx = MockDbx {};
+
+        let sql = r#""#;
+
+        let query = sqlx::query(sql);
+
+        let res = mock_dbx.execute(query).await?;
+
+        assert_eq!(res, 0, "should be zero");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_mock_dbx_with_account_store() -> StoreResult<()> {
+        let mock_dbx = MockDbx {};
+        let dbx = Arc::new(mock_dbx);
+        let account_store = AccountStore::new(dbx);
+
+        let ctx = StoreCtx::new_root();
+
+        let id = Uuid::new_v4();
+
+        let res = account_store.get_opt(&ctx, &id.into()).await?;
+
+        assert!(res.is_none(), "should be None");
+
+        Ok(())
     }
 }

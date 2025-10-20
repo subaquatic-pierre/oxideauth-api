@@ -31,7 +31,6 @@ use async_trait::async_trait;
 // ---
 
 /// Trait for the "create" capability of a store.
-#[async_trait]
 pub trait Create
 where
     Self: MutateStore,
@@ -42,14 +41,13 @@ where
         ctx: &StoreCtx,
         data: Self::CreateStoreParams,
     ) -> StoreResult<Self::Row> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.mutate_meta();
-        create(&ctx, &db, data, &meta).await
+        create(&ctx, &dbx, data, &meta).await
     }
 }
 
 /// Trait for the "get by id" capability of a store.
-#[async_trait]
 pub trait Get
 where
     Self: ReadStore,
@@ -57,9 +55,9 @@ where
     /// Fetches a single row by its primary key.
     /// Returns an error if the row is not found.
     async fn get(&self, ctx: &StoreCtx, id: &<Self::Row as HasId>::Id) -> StoreResult<Self::Row> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.read_meta();
-        get(&ctx, &db, id, &meta).await
+        get(&ctx, &dbx, id, &meta).await
     }
 
     /// Fetches a single row by its primary key.
@@ -69,14 +67,13 @@ where
         ctx: &StoreCtx,
         id: &<Self::Row as HasId>::Id,
     ) -> StoreResult<Option<Self::Row>> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.read_meta();
-        get_opt(&ctx, &db, id, &meta).await
+        get_opt(&ctx, &dbx, id, &meta).await
     }
 }
 
 /// Trait for the "list/filter" capability of a store.
-#[async_trait]
 pub trait List
 where
     Self: ReadStore,
@@ -88,14 +85,13 @@ where
         filter: Option<Self::FilterStoreParams>,
         opts: Option<ListOptions>,
     ) -> StoreResult<Vec<Self::Row>> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.read_meta();
-        list(ctx, &db, filter, opts, &meta).await
+        list(ctx, &dbx, filter, opts, &meta).await
     }
 }
 
 /// Trait for the "update" capability of a store.
-#[async_trait]
 pub trait Update
 where
     Self: MutateStore,
@@ -108,9 +104,9 @@ where
         id: &<Self::Row as HasId>::Id,
         data: Self::UpdateStoreParams,
     ) -> StoreResult<Self::Row> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.mutate_meta();
-        update(ctx, &db, id, data, &meta).await
+        update(ctx, &dbx, id, data, &meta).await
     }
 
     /// Updates a row by its ID and returns the updated record.
@@ -121,14 +117,13 @@ where
         id: &<Self::Row as HasId>::Id,
         data: Self::UpdateStoreParams,
     ) -> StoreResult<Option<Self::Row>> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.mutate_meta();
-        update_opt(ctx, &db, id, data, &meta).await
+        update_opt(ctx, &dbx, id, data, &meta).await
     }
 }
 
 /// Trait for the "delete" capability of a store.
-#[async_trait]
 pub trait Delete
 where
     Self: MutateStore,
@@ -140,9 +135,9 @@ where
         ctx: &StoreCtx,
         id: &<Self::Row as HasId>::Id,
     ) -> StoreResult<Self::Row> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.mutate_meta();
-        delete(ctx, &db, id, &meta).await
+        delete(ctx, &dbx, id, &meta).await
     }
 
     /// Deletes a row by its primary key and returns the deleted record.
@@ -152,9 +147,9 @@ where
         ctx: &StoreCtx,
         id: &<Self::Row as HasId>::Id,
     ) -> StoreResult<Option<Self::Row>> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.mutate_meta();
-        delete_opt(ctx, &db, id, &meta).await
+        delete_opt(ctx, &dbx, id, &meta).await
     }
 }
 
@@ -164,7 +159,6 @@ where
 // ---
 
 /// Trait for the bulk "create" capability of a store.
-#[async_trait]
 pub trait CreateMany
 where
     Self: MutateStore,
@@ -175,14 +169,13 @@ where
         ctx: &StoreCtx,
         data: Vec<Self::CreateStoreParams>,
     ) -> StoreResult<Vec<Self::Row>> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.mutate_meta();
-        create_many(ctx, &db, data, &meta).await
+        create_many(ctx, &dbx, data, &meta).await
     }
 }
 
 /// Trait for the bulk "update" capability of a store.
-#[async_trait]
 pub trait UpdateMany
 where
     Self: MutateStore,
@@ -194,14 +187,13 @@ where
         ctx: &StoreCtx,
         data: Vec<(<Self::Row as HasId>::Id, Self::UpdateStoreParams)>,
     ) -> StoreResult<Vec<Self::Row>> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.mutate_meta();
-        update_many(ctx, &db, data, &meta).await
+        update_many(ctx, &dbx, data, &meta).await
     }
 }
 
 /// Trait for the bulk "delete" capability of a store.
-#[async_trait]
 pub trait DeleteMany
 where
     Self: MutateStore,
@@ -212,9 +204,9 @@ where
         ctx: &StoreCtx,
         ids: Vec<<Self::Row as HasId>::Id>,
     ) -> StoreResult<Vec<Self::Row>> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.mutate_meta();
-        delete_many(ctx, &db, ids, &meta).await
+        delete_many(ctx, &dbx, ids, &meta).await
     }
 }
 
@@ -224,7 +216,6 @@ where
 // ---
 
 /// Trait for fetching the first record matching a filter.
-#[async_trait]
 pub trait GetFirst
 where
     Self: ReadStore,
@@ -237,9 +228,9 @@ where
         filter: Option<Self::FilterStoreParams>,
         opts: Option<ListOptions>,
     ) -> StoreResult<Self::Row> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.read_meta();
-        first(ctx, &db, filter, opts, &meta).await
+        first(ctx, &dbx, filter, opts, &meta).await
     }
 
     /// Fetches the first row matching the filter and list options.
@@ -250,14 +241,13 @@ where
         filter: Option<Self::FilterStoreParams>,
         opts: Option<ListOptions>,
     ) -> StoreResult<Option<Self::Row>> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.read_meta();
-        first_opt(ctx, &db, filter, opts, &meta).await
+        first_opt(ctx, &dbx, filter, opts, &meta).await
     }
 }
 
 /// Trait for counting records matching a filter.
-#[async_trait]
 pub trait GetCount
 where
     Self: ReadStore,
@@ -268,9 +258,9 @@ where
         ctx: &StoreCtx,
         filter: Option<Self::FilterStoreParams>,
     ) -> StoreResult<i64> {
-        let db = self.dbx();
+        let dbx = self.dbx();
         let meta = self.read_meta();
-        count(ctx, &db, filter, &meta).await
+        count(ctx, &dbx, filter, &meta).await
     }
 }
 

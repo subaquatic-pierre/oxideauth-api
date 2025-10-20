@@ -27,6 +27,8 @@ pub enum StoreError {
     WithTxnFalse,
     NoTxn,
 
+    MockReturn,
+
     // --- Externals
     #[from]
     BincodeError(#[serde_as(as = "DisplayFromStr")] bincode::Error),
