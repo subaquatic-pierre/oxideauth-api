@@ -31,7 +31,7 @@ impl<'a, Dbx: DbExecutor> AccountService<'a, Dbx> {
         email: &str,
         password: &str,
     ) -> CoreResult<Account> {
-        if !self
+        if self
             .acc_store
             .get_by_email(&ctx.into(), email)
             .await?
