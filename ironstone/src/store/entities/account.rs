@@ -173,7 +173,7 @@ impl TryFrom<JsonValue> for AccountFilter {
     }
 }
 
-// #[cfg(test)]
+#[cfg(test)]
 impl Default for AccountForCreate {
     fn default() -> Self {
         use crate::store::utils::gen_rand_str;

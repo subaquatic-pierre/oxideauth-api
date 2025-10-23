@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use serde_json::json;
 
 use crate::{
@@ -10,7 +8,7 @@ use crate::{
     },
     store::{
         dbx::{DbExecutor, PgDbx},
-        entities::account::{AccountFilter, AccountForCreate},
+        entities::account::{AccountFilter, AccountForCreate, AccountMeta},
         manager::StoreManager,
         stores::account::AccountStore,
         traits::crud::*,
@@ -27,27 +25,33 @@ impl<'a, Dbx: DbExecutor> AccountService<'a, Dbx> {
         Self { acc_store }
     }
 
-    pub async fn register(
+    pub async fn create_account(
         &self,
         ctx: &CoreCtx,
         email: &str,
         password: &str,
     ) -> CoreResult<Account> {
-        let filter: AccountFilter = json!({
-            "email": email.to_string()
-        })
-        .try_into()?;
-
         if !self
             .acc_store
-            .list(&ctx.into(), Some(filter), None)
+            .get_by_email(&ctx.into(), email)
             .await?
-            .is_empty()
+            .is_some()
         {
             return Err(CoreError::AlreadyExists("email already exists".to_string()));
         }
 
-        let n_acc = AccountForCreate::default();
+        let n_acc = AccountForCreate {
+            email: email.to_string(),
+            name: "name".to_string(),
+            description: None,
+            avatar_url: None,
+            enabled: false,
+            verified: false,
+            tags: vec![],
+            meta: AccountMeta {
+                schema_version: "1".to_string(),
+            },
+        };
 
         let new_account = self.acc_store.create(&ctx.into(), n_acc).await?;
 
@@ -58,6 +62,7 @@ impl<'a, Dbx: DbExecutor> AccountService<'a, Dbx> {
 #[cfg(test)]
 mod tests {
     use std::mem;
+    use std::sync::Arc;
 
     use super::*;
     use crate::{
@@ -101,14 +106,17 @@ mod tests {
         let acc_store = AccountStore::new(dbx);
         let acc_svc = AccountService::new(&acc_store);
         let ctx = CoreCtx::new_test();
-        let new_acc = acc_svc.register(&ctx, "user@user.com", "password").await?;
+        let new_acc = acc_svc
+            .create_account(&ctx, "user@user.com", "password")
+            .await?;
 
         let expected = Account::default();
 
         assert_eq!(
             new_acc.id, expected.id,
-            "incorrect account id returned from AccountService.register()"
+            "incorrect account id returned from AccountService.create_account()"
         );
+
         Ok(())
     }
 
@@ -136,14 +144,14 @@ mod tests {
         let acc_store = AccountStore::new(dbx);
         let acc_svc = AccountService::new(&acc_store);
         let ctx = CoreCtx::new_test();
-        let new_acc = acc_svc.register(&ctx, "user@user.com", "password").await;
+        let new_acc = acc_svc
+            .create_account(&ctx, "user@user.com", "password")
+            .await;
 
         assert!(
             matches!(new_acc, Err(CoreError::AlreadyExists(..))),
             "should be CoreError::AlreadyExists"
         );
-        let expected = Account::default();
-        // assert!(matches!(new_acc, Ok(expected)), "should not be OK");
 
         Ok(())
     }

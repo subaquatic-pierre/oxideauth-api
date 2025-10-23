@@ -1,4 +1,4 @@
-/// **NOT RECOMMENDED**: Creates a mock implementation of `DbExecutor` using `unsafe` code.
+/// Creates a mock implementation of `DbExecutor` using `unsafe` code.
 ///
 /// This macro generates the exact code from your template, which uses an `unsafe`
 /// block with `mem::transmute_copy`. This will be forbidden by your project's
@@ -25,6 +25,7 @@
 /// );
 /// ```
 #[macro_export]
+#[cfg(test)]
 macro_rules! create_dbx_mock_unsafe {
     (
         $name:ident,

@@ -1,11 +1,16 @@
 use std::sync::Arc;
 
+use serde_json::json;
+
 use crate::store::{
+    crud::List,
+    ctx::StoreCtx,
     dbx::{DbExecutor, PgDbx},
     entities::account::{
         AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountRow,
         AccountWithCredentials,
     },
+    error::StoreResult,
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
     traits::meta::{ContainsFilterStore, MutateStore, OneToManyStore, ReadStore, Store},
 };
@@ -19,6 +24,19 @@ impl<Dbx: DbExecutor> AccountStore<Dbx> {
     /// Creates a new `AccountStore`.
     pub fn new(dbx: Arc<Dbx>) -> Self {
         Self { dbx }
+    }
+
+    pub async fn get_by_email(
+        &self,
+        ctx: &StoreCtx,
+        email: &str,
+    ) -> StoreResult<Option<AccountRow>> {
+        let filter: AccountFilter = json!({
+            "email": email.to_string()
+        })
+        .try_into()?;
+
+        Ok(self.list(ctx, Some(filter), None).await?.into_iter().next())
     }
 }
 
