@@ -24,7 +24,7 @@ Table "account" {
   "audit" jsonb [not null, default: `{}`]
 }
 
-Table "namespace" {
+Table "workspace" {
   "id" uuid [pk, not null, default: `gen_random_uuid()`]
   "name" text [unique, not null]
   "slug" text [unique, not null]
@@ -39,13 +39,13 @@ Table "namespace" {
   "audit" jsonb [not null, default: `{}`]
 
   Indexes {
-    slug [type: btree, name: "idx_namespace_slug"]
+    slug [type: btree, name: "idx_workspace_slug"]
   }
 }
 
 Table "project" {
   "id" uuid [pk, not null, default: `gen_random_uuid()`]
-  "namespace_id" uuid [not null]
+  "workspace_id" uuid [not null]
   "name" text [not null]
   "code" text
   "description" text
@@ -59,14 +59,14 @@ Table "project" {
   "audit" jsonb [not null, default: `{}`]
 
   Indexes {
-    (namespace_id, name) [type: btree, name: "project_namespace_name_key"]
+    (workspace_id, name) [type: btree, name: "project_workspace_name_key"]
   }
 }
 
 Table "credential" {
   "id" uuid [pk, not null, default: `gen_random_uuid()`]
   "account_id" uuid [not null]
-  "namespace_id" uuid [unique, not null]
+  "workspace_id" uuid [unique, not null]
   "kind" text [not null]
   "provider" text
   "provider_id" text
@@ -83,15 +83,15 @@ Table "credential" {
   "audit" jsonb [not null, default: `{}`]
 
   Indexes {
-    (namespace_id, provider, provider_id) [type: btree, name: "cred_oauth_unique_ns"]
-    (namespace_id, provider, provider_id) [type: btree, name: "cred_oauth_lookup_idx"]
-    (namespace_id, `lower(email)`) [type: btree, name: "cred_password_lookup_idx"]
+    (workspace_id, provider, provider_id) [type: btree, name: "cred_oauth_unique_ns"]
+    (workspace_id, provider, provider_id) [type: btree, name: "cred_oauth_lookup_idx"]
+    (workspace_id, `lower(email)`) [type: btree, name: "cred_password_lookup_idx"]
   }
 }
 
 Table "role" {
   "id" uuid [pk, not null, default: `gen_random_uuid()`]
-  "namespace_id" uuid [not null]
+  "workspace_id" uuid [not null]
   "name" text [not null]
   "description" text
   "tags" "text[]" [not null, default: 'ARRAY[text[]']
@@ -103,13 +103,13 @@ Table "role" {
   "audit" jsonb [not null, default: `{}`]
 
   Indexes {
-    (namespace_id, name) [type: btree, name: "role_namespace_name_key"]
+    (workspace_id, name) [type: btree, name: "role_workspace_name_key"]
   }
 }
 
 Table "permission" {
   "id" uuid [pk, not null, default: `gen_random_uuid()`]
-  "namespace_id" uuid [not null]
+  "workspace_id" uuid [not null]
   "name" text [not null]
   "code" text
   "description" text
@@ -122,7 +122,7 @@ Table "permission" {
   "audit" jsonb [not null, default: `{}`]
 
   Indexes {
-    (namespace_id, name) [type: btree, name: "permission_namespace_name_key"]
+    (workspace_id, name) [type: btree, name: "permission_workspace_name_key"]
   }
 }
 
@@ -140,7 +140,7 @@ Table "role_permission" {
 Table "membership" {
   "id" uuid [pk, not null, default: `gen_random_uuid()`]
   "account_id" uuid [not null]
-  "namespace_id" uuid [not null]
+  "workspace_id" uuid [not null]
   "scope" text [not null]
   "project_id" uuid
   "status" text [not null, default: 'active']
@@ -153,9 +153,9 @@ Table "membership" {
   "audit" jsonb [not null, default: `{}`]
 
   Indexes {
-    (account_id, namespace_id) [type: btree, name: "membership_ns_unique"]
+    (account_id, workspace_id) [type: btree, name: "membership_ns_unique"]
     (account_id, project_id) [type: btree, name: "membership_proj_unique"]
-    (namespace_id, account_id) [type: btree, name: "membership_by_ns"]
+    (workspace_id, account_id) [type: btree, name: "membership_by_ns"]
     (project_id, account_id) [type: btree, name: "membership_by_proj"]
   }
 }
@@ -173,11 +173,11 @@ Table "membership_role" {
 
 Ref "cred_account_fk":"account"."id" < "credential"."account_id" [update: cascade, delete: cascade]
 
-Ref "cred_namespace_fk":"namespace"."id" < "credential"."namespace_id" [update: cascade, delete: cascade]
+Ref "cred_workspace_fk":"workspace"."id" < "credential"."workspace_id" [update: cascade, delete: cascade]
 
 Ref "mem_account_fk":"account"."id" < "membership"."account_id" [update: cascade, delete: cascade]
 
-Ref "mem_namespace_fk":"namespace"."id" < "membership"."namespace_id" [update: cascade, delete: cascade]
+Ref "mem_workspace_fk":"workspace"."id" < "membership"."workspace_id" [update: cascade, delete: cascade]
 
 Ref "mem_project_fk":"project"."id" < "membership"."project_id" [update: cascade, delete: cascade]
 
@@ -185,11 +185,11 @@ Ref "mr_membership_fk":"membership"."id" < "membership_role"."membership_id" [up
 
 Ref "mr_role_fk":"role"."id" < "membership_role"."role_id" [update: cascade, delete: restrict]
 
-Ref "perm_namespace_fk":"namespace"."id" < "permission"."namespace_id" [update: cascade, delete: cascade]
+Ref "perm_workspace_fk":"workspace"."id" < "permission"."workspace_id" [update: cascade, delete: cascade]
 
-Ref "project_namespace_id_fkey":"namespace"."id" < "project"."namespace_id" [update: cascade, delete: cascade]
+Ref "project_workspace_id_fkey":"workspace"."id" < "project"."workspace_id" [update: cascade, delete: cascade]
 
-Ref "role_namespace_fk":"namespace"."id" < "role"."namespace_id" [update: cascade, delete: cascade]
+Ref "role_workspace_fk":"workspace"."id" < "role"."workspace_id" [update: cascade, delete: cascade]
 
 Ref "rp_permission_fk":"permission"."id" < "role_permission"."permission_id" [update: cascade, delete: restrict]
 

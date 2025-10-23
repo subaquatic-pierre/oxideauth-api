@@ -36,7 +36,7 @@ pub enum RoleIden {
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct RoleRow {
     pub id: DbId,
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
 
     // Role identity
     pub name: String,
@@ -63,7 +63,7 @@ pub struct RoleWithPermissions {
 #[derive(FromRow, Debug, Deserialize, HasId)]
 pub struct JoinedPermissionOnRole {
     pub id: DbId,
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
 
     // Permission identity
     pub name: String,
@@ -83,7 +83,7 @@ pub struct JoinedPermissionOnRole {
 /// Input for creating a new `role`.
 #[derive(Debug, Fields)]
 pub struct RoleForCreate {
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
     pub name: String,
     pub description: Option<String>,
     pub tags: Vec<String>,
@@ -124,7 +124,7 @@ pub struct RoleFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<OpValsString>,
+    pub workspace_id: Option<OpValsString>,
     #[modql(rel = "role")]
     pub name: Option<OpValsString>,
     pub description: Option<OpValsString>,
@@ -158,7 +158,7 @@ impl TryFrom<JsonValue> for RoleFilter {
 impl Default for RoleForCreate {
     fn default() -> Self {
         Self {
-            namespace_id: Uuid::new_v4(),
+            workspace_id: Uuid::new_v4(),
             name: "default-role".to_string(),
             description: Some("A default role for testing.".to_string()),
             tags: vec![],

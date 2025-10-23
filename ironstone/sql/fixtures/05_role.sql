@@ -1,11 +1,11 @@
 -- fixtures/05_role.sql
--- Purpose: Seed initial roles for namespaces and projects.
+-- Purpose: Seed initial roles for workspaces and projects.
 -- Notes:
 --   - Roles are reusable permission bundles.
 --   - Linked later to memberships via membership_role.
 --   - Keep role names unique and human-readable.
 INSERT INTO
-  role (id, name, description, created_by, namespace_id)
+  role (id, name, description, created_by, workspace_id)
 VALUES
   -- Global/system roles
   (
@@ -18,7 +18,7 @@ VALUES
   (
     '40000000-0000-0000-0000-000000000002',
     'owner',
-    'Namespace/project owner with management privileges',
+    'Workspace/project owner with management privileges',
     '00000000-0000-0000-0000-000000000001',
     '10000000-0000-0000-0000-000000000001'
   ),

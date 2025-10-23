@@ -133,7 +133,8 @@ mod tests {
             },
             fetch_optional: { Ok(None) },
             fetch_all: {
-                let acc = AccountRow::default();
+                let mut acc = AccountRow::default();
+                acc.email = "user@user.com".to_string();
                 let result = unsafe { mem::transmute_copy::<AccountRow, O>(&acc) };
                 mem::forget(acc);
                 Ok(vec![result])

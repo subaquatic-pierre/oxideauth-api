@@ -44,7 +44,7 @@ pub struct MembershipRow {
     pub id: DbId,
 
     pub account_id: Uuid,
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
     pub scope: MembershipScope,
     pub status: MembershipStatus,
     pub project_id: Option<Uuid>,
@@ -58,7 +58,7 @@ pub struct MembershipRow {
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct JoinedRoleOnMembership {
     pub id: DbId,
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
 
     // Role identity
     pub name: String,
@@ -88,7 +88,7 @@ pub struct MembershipWithRoles {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, EnumTextType)]
 #[serde(rename_all = "lowercase")]
 pub enum MembershipScope {
-    Namespace,
+    Workspace,
     Project,
 }
 
@@ -131,7 +131,7 @@ impl Nullable for MembershipStatus {
 #[derive(Debug, Fields)]
 pub struct MembershipForCreate {
     pub account_id: Uuid,
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
     pub scope: MembershipScope,
     pub status: MembershipStatus,
     pub project_id: Option<Uuid>,
@@ -176,7 +176,7 @@ pub struct MembershipFilter {
     #[modql(cast_as = "uuid")]
     pub account_id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<OpValsString>,
+    pub workspace_id: Option<OpValsString>,
     pub scope: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
     pub project_id: Option<OpValsString>,
@@ -212,8 +212,8 @@ impl Default for MembershipForCreate {
     fn default() -> Self {
         Self {
             account_id: Uuid::new_v4(),
-            namespace_id: Uuid::new_v4(),
-            scope: MembershipScope::Namespace,
+            workspace_id: Uuid::new_v4(),
+            scope: MembershipScope::Workspace,
             project_id: None,
             status: MembershipStatus::Active,
             tags: vec![],

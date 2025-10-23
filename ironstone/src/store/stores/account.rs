@@ -273,13 +273,13 @@ mod tests {
         // Manually insert related credentials
         let mut n_cred = CredentialForCreate::default();
         n_cred.account_id = account.id.into();
-        n_cred.namespace_id = ctx.ns_id;
+        n_cred.workspace_id = ctx.ns_id;
         n_cred.provider = CredentialProvider::Google;
         app.sm.credential.create(&ctx, n_cred).await?;
 
         let mut n_cred = CredentialForCreate::default();
         n_cred.account_id = account.id.into();
-        n_cred.namespace_id = ctx.ns_id;
+        n_cred.workspace_id = ctx.ns_id;
         n_cred.provider = CredentialProvider::Local;
         app.sm.credential.create(&ctx, n_cred).await?;
 

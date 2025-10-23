@@ -7,7 +7,7 @@
 --     to avoid bootstrap problems (see TODOs).
 CREATE TABLE IF NOT EXISTS
   account (
-    -- Primary identity key for users (globally unique across all namespaces/projects)
+    -- Primary identity key for users (globally unique across all workspaces/projects)
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
     -- Canonical login/email address (enforce uniqueness via the partial index below).
     -- Keep raw-cased input; queries should use lower(email) to ensure case-insensitivity.

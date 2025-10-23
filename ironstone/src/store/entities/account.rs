@@ -70,7 +70,7 @@ pub struct JoinedCredentialOnAccount {
     pub id: DbId,
 
     pub account_id: DbId,
-    pub namespace_id: DbId,
+    pub workspace_id: DbId,
     pub kind: CredentialKind,
     pub provider: CredentialProvider,
     pub status: CredentialStatus,

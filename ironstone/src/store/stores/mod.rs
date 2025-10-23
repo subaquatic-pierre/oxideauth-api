@@ -1,7 +1,7 @@
 pub mod account;
 pub mod credential;
 pub mod membership;
-pub mod namespace;
+pub mod workspace;
 pub mod permission;
 pub mod project;
 pub mod role;

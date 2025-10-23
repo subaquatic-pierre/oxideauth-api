@@ -1,17 +1,17 @@
 -- migrations/05_role.sql
--- Purpose: Define roles (permission bundles) within a namespace. Roles serve as
+-- Purpose: Define roles (permission bundles) within a workspace. Roles serve as
 --   reusable collections of capabilities that can be attached to memberships.
 -- Notes:
---   - Each role belongs to exactly one namespace (including the global namespace).
---   - `name` is human-readable (e.g. 'owner','editor','viewer') and unique within a namespace.
+--   - Each role belongs to exactly one workspace (including the global workspace).
+--   - `name` is human-readable (e.g. 'owner','editor','viewer') and unique within a workspace.
 --   - `meta` and `tags` support lightweight extension and search.
 --   - `created_by` / `updated_by` are audit fields; FKs can be added later if bootstrap-safe.
 CREATE TABLE IF NOT EXISTS
   role (
     -- Primary key
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
-    -- Scope: roles are defined per-namespace (global or tenant-specific)
-    namespace_id UUID NOT NULL,
+    -- Scope: roles are defined per-workspace (global or tenant-specific)
+    workspace_id UUID NOT NULL,
     -- Role identity
     name TEXT NOT NULL, -- short identifier like 'owner','editor','viewer'
     description TEXT, -- optional human-friendly description
@@ -27,12 +27,12 @@ CREATE TABLE IF NOT EXISTS
     audit JSONB NOT NULL DEFAULT '{}'::jsonb, -- flexible audit payload (IP/UA/etc.)
     -- END Audit
     -- ---------- Constraints ----------
-    CONSTRAINT role_namespace_fk FOREIGN KEY (namespace_id) REFERENCES namespace (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT role_workspace_fk FOREIGN KEY (workspace_id) REFERENCES workspace (id) ON UPDATE CASCADE ON DELETE CASCADE,
     -- Enforce JSON object shape
     CONSTRAINT role_meta_is_object CHECK (jsonb_typeof(meta) = 'object'),
     CONSTRAINT role_audit_is_object CHECK (jsonb_typeof(audit) = 'object'),
-    -- Ensure role name uniqueness within a namespace
-    CONSTRAINT role_namespace_name_key UNIQUE (namespace_id, name)
+    -- Ensure role name uniqueness within a workspace
+    CONSTRAINT role_workspace_name_key UNIQUE (workspace_id, name)
     -- (FKs for created_by/updated_by → account(id) can be added in later migration
     --  once bootstrap order is established.)
   );
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS
 -- =========================
 -- Indexes
 -- =========================
--- The UNIQUE(namespace_id, name) constraint already provides fast lookups.
+-- The UNIQUE(workspace_id, name) constraint already provides fast lookups.
 -- Optionally add GIN indexes if tags/meta will be queried often.
 -- CREATE INDEX IF NOT EXISTS idx_role_tags_gin ON role USING GIN(tags);
 -- CREATE INDEX IF NOT EXISTS idx_role_meta_gin ON role USING GIN(meta);

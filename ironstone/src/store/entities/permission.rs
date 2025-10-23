@@ -28,7 +28,7 @@ pub enum PermissionIden {
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct PermissionRow {
     pub id: DbId,
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
 
     // Permission identity
     pub name: String,
@@ -47,7 +47,7 @@ pub struct PermissionRow {
 /// Input for creating a new `permission`.
 #[derive(Debug, Fields)]
 pub struct PermissionForCreate {
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
     pub name: String,
     pub code: Option<String>,
     pub description: Option<String>,
@@ -90,7 +90,7 @@ pub struct PermissionFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<OpValsString>,
+    pub workspace_id: Option<OpValsString>,
     #[modql(rel = "permission")]
     pub name: Option<OpValsString>,
     pub code: Option<OpValsString>,
@@ -127,7 +127,7 @@ impl Default for PermissionForCreate {
         use crate::store::utils::gen_rand_str;
 
         Self {
-            namespace_id: Uuid::new_v4(),
+            workspace_id: Uuid::new_v4(),
             name: gen_rand_str(10),
             code: Some("default-perm".to_string()),
             description: Some("A default permission for testing.".to_string()),

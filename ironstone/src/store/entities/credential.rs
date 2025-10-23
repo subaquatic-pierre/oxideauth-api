@@ -34,7 +34,7 @@ pub struct CredentialRow {
     pub id: DbId,
 
     pub account_id: DbId,
-    pub namespace_id: DbId,
+    pub workspace_id: DbId,
     pub kind: CredentialKind,
     pub provider: CredentialProvider,
     pub status: CredentialStatus,
@@ -124,7 +124,7 @@ pub struct CredentialForCreate {
     pub provider: CredentialProvider,
     pub status: CredentialStatus,
     pub account_id: Uuid,
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
     pub provider_id: Option<String>,
     pub email: Option<String>,
     pub secret: Option<String>,
@@ -174,7 +174,7 @@ pub struct CredentialFilter {
     #[modql(cast_as = "uuid")]
     pub account_id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<OpValsString>,
+    pub workspace_id: Option<OpValsString>,
     pub kind: Option<OpValsString>,
     pub provider: Option<OpValsString>,
     pub secret: Option<OpValsString>,
@@ -215,7 +215,7 @@ impl Default for CredentialForCreate {
         let email = format!("{}@{}.com", gen_rand_str(5), gen_rand_str(5));
         Self {
             account_id: Uuid::new_v4(),
-            namespace_id: Uuid::new_v4(),
+            workspace_id: Uuid::new_v4(),
             kind: CredentialKind::Password,
             provider: CredentialProvider::Local,
             status: CredentialStatus::Active,

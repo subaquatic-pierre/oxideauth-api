@@ -9,7 +9,7 @@ Each account can:
 
 Have multiple Credentials (passwords, OAuth logins, API keys).
 
-Hold multiple Memberships (which define their access inside different Namespaces or Projects).
+Hold multiple Memberships (which define their access inside different Workspaces or Projects).
 
 ## Schema Improvements
 
@@ -127,7 +127,7 @@ ALTER TABLE account
 -- -- Then define a function + CHECK using jsonschema_validation(meta, '<schema>')
 ```
 
-### Namespace
+### Workspace
 
 1. Slug hygiene & canonicalization:
 
@@ -138,12 +138,12 @@ ALTER TABLE account
 ```sql
 -- [1] Slug canonicalization (lower+trim), plus optional CHECK
 -- Optional: enforce regex for slug (lowercase letters, numbers, dash only)
-ALTER TABLE namespace
-  ADD CONSTRAINT namespace_slug_format
+ALTER TABLE workspace
+  ADD CONSTRAINT workspace_slug_format
   CHECK (slug ~ '^[a-z0-9-]+$');
 
 -- BEFORE triggers to normalize slug
-CREATE OR REPLACE FUNCTION namespace_slug_canonicalize()
+CREATE OR REPLACE FUNCTION workspace_slug_canonicalize()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF NEW.slug IS NULL THEN
@@ -154,17 +154,17 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_namespace_slug_canonicalize_ins ON namespace;
-CREATE TRIGGER trg_namespace_slug_canonicalize_ins
-BEFORE INSERT ON namespace
+DROP TRIGGER IF EXISTS trg_workspace_slug_canonicalize_ins ON workspace;
+CREATE TRIGGER trg_workspace_slug_canonicalize_ins
+BEFORE INSERT ON workspace
 FOR EACH ROW
-EXECUTE FUNCTION namespace_slug_canonicalize();
+EXECUTE FUNCTION workspace_slug_canonicalize();
 
-DROP TRIGGER IF EXISTS trg_namespace_slug_canonicalize_upd ON namespace;
-CREATE TRIGGER trg_namespace_slug_canonicalize_upd
-BEFORE UPDATE OF slug ON namespace
+DROP TRIGGER IF EXISTS trg_workspace_slug_canonicalize_upd ON workspace;
+CREATE TRIGGER trg_workspace_slug_canonicalize_upd
+BEFORE UPDATE OF slug ON workspace
 FOR EACH ROW
-EXECUTE FUNCTION namespace_slug_canonicalize();
+EXECUTE FUNCTION workspace_slug_canonicalize();
 ```
 
 2. Indexes for common lookups:
@@ -173,13 +173,13 @@ EXECUTE FUNCTION namespace_slug_canonicalize();
 - Add GIN indexes for tags/meta if filtering or searching by them is frequent.
 
 ```sql
--- [2] Indexes for namespace
+-- [2] Indexes for workspace
 -- Ensure fast lookups by slug
-CREATE INDEX IF NOT EXISTS idx_namespace_slug ON namespace(slug);
+CREATE INDEX IF NOT EXISTS idx_workspace_slug ON workspace(slug);
 
 -- Optional: enable search/filtering by tags and meta
-CREATE INDEX IF NOT EXISTS idx_namespace_tags_gin ON namespace USING GIN(tags);
-CREATE INDEX IF NOT EXISTS idx_namespace_meta_gin ON namespace USING GIN(meta);
+CREATE INDEX IF NOT EXISTS idx_workspace_tags_gin ON workspace USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_workspace_meta_gin ON workspace USING GIN(meta);
 ```
 
 3. Audit triggers:
@@ -197,9 +197,9 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_namespace_set_updated_at ON namespace;
-CREATE TRIGGER trg_namespace_set_updated_at
-BEFORE UPDATE ON namespace
+DROP TRIGGER IF EXISTS trg_workspace_set_updated_at ON workspace;
+CREATE TRIGGER trg_workspace_set_updated_at
+BEFORE UPDATE ON workspace
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 ```
@@ -207,17 +207,17 @@ EXECUTE FUNCTION set_updated_at();
 4. Security scaffolding:
 
 - Enable Row-Level Security (RLS) for tenant isolation.
-- Default SELECT policies to restrict access by namespace membership.
+- Default SELECT policies to restrict access by workspace membership.
 
 ```sql
 -- [4] Security scaffolding
-ALTER TABLE namespace ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workspace ENABLE ROW LEVEL SECURITY;
 
--- Example: allow row access only if current user is in the namespace
+-- Example: allow row access only if current user is in the workspace
 -- (replace with actual membership check function/policy)
--- CREATE POLICY namespace_tenant_isolation
---   ON namespace FOR SELECT
---   USING (auth_namespace_id() = id);
+-- CREATE POLICY workspace_tenant_isolation
+--   ON workspace FOR SELECT
+--   USING (auth_workspace_id() = id);
 ```
 
 5. Data hygiene:
@@ -229,8 +229,8 @@ ALTER TABLE namespace ENABLE ROW LEVEL SECURITY;
 -- [5] Data hygiene
 -- Already enforced: config and meta are JSON objects.
 -- Optional stricter schema validation (requires pg_jsonschema extension):
--- ALTER TABLE namespace
---   ADD CONSTRAINT namespace_config_schema
+-- ALTER TABLE workspace
+--   ADD CONSTRAINT workspace_config_schema
 --   CHECK (jsonb_matches_schema(config, '<json schema>'));
 ```
 
@@ -240,7 +240,7 @@ ALTER TABLE namespace ENABLE ROW LEVEL SECURITY;
 
 - If `code` is standardized (slug-like), enforce lowercase + trimmed values via BEFORE INSERT/UPDATE trigger.
 - Optional CHECK: restrict to alphanumeric and dashes only.
-- Enforce per-namespace uniqueness once usage is consistent.
+- Enforce per-workspace uniqueness once usage is consistent.
 
 ```sql
 -- [1] Code canonicalization (lower+trim), plus optional CHECK
@@ -273,15 +273,15 @@ EXECUTE FUNCTION project_code_canonicalize();
 
 2. Indexes for common lookups:
 
-- Uniqueness on `(namespace_id, name)` already enforced.
-- Optional: uniqueness on `(namespace_id, code)` if adopted.
+- Uniqueness on `(workspace_id, name)` already enforced.
+- Optional: uniqueness on `(workspace_id, code)` if adopted.
 - Add GIN indexes for tags/meta if filtering/searching is frequent.
 
 ```sql
 -- [2] Indexes for project
--- Enforce per-namespace uniqueness of code
-CREATE UNIQUE INDEX IF NOT EXISTS project_namespace_code_key
-  ON project (namespace_id, code);
+-- Enforce per-workspace uniqueness of code
+CREATE UNIQUE INDEX IF NOT EXISTS project_workspace_code_key
+  ON project (workspace_id, code);
 
 -- Optional: indexes for tags/meta
 CREATE INDEX IF NOT EXISTS idx_project_tags_gin ON project USING GIN(tags);
@@ -312,17 +312,17 @@ EXECUTE FUNCTION set_project_updated_at();
 
 4. Security scaffolding:
 
-- Enable Row-Level Security (RLS) for tenant isolation by namespace_id.
-- Add SELECT policies to restrict access to projects only within the user’s namespace(s).
+- Enable Row-Level Security (RLS) for tenant isolation by workspace_id.
+- Add SELECT policies to restrict access to projects only within the user’s workspace(s).
 
 ```sql
 -- [4] Security scaffolding
 ALTER TABLE project ENABLE ROW LEVEL SECURITY;
 
--- Example: restrict to projects inside the current namespace
+-- Example: restrict to projects inside the current workspace
 -- CREATE POLICY project_tenant_isolation
 --   ON project FOR SELECT
---   USING (auth_namespace_id() = namespace_id);
+--   USING (auth_workspace_id() = workspace_id);
 ```
 
 5. Data hygiene:
@@ -408,36 +408,36 @@ ALTER TABLE credential
   );
 ```
 
-5. Uniqueness & lookup indexes (per namespace):
+5. Uniqueness & lookup indexes (per workspace):
 
-- Keep **one active password credential per (namespace, login_email)**.
-- Keep **one oauth/sso credential per (namespace, provider, provider_id)**.
+- Keep **one active password credential per (workspace, login_email)**.
+- Keep **one oauth/sso credential per (workspace, provider, provider_id)**.
 - Add supporting non-unique filtered indexes for fast auth-path lookups.
 
 ```sql
 -- [5] Lookup/uniqueness (already in your migration, included for completeness)
 -- Active password uniqueness
 CREATE UNIQUE INDEX IF NOT EXISTS cred_pw_unique_ns_email
-  ON credential (namespace_id, lower(login_email))
+  ON credential (workspace_id, lower(login_email))
   WHERE kind = 'password'
     AND status = 'active'
     AND login_email IS NOT NULL;
 
 -- OAuth/SSO uniqueness
 CREATE UNIQUE INDEX IF NOT EXISTS cred_oauth_unique_ns
-  ON credential (namespace_id, provider, provider_id)
+  ON credential (workspace_id, provider, provider_id)
   WHERE kind IN ('oauth','sso')
     AND provider_id IS NOT NULL;
 
 -- Lookup helpers
 CREATE INDEX IF NOT EXISTS cred_password_lookup_idx
-  ON credential (namespace_id, lower(login_email))
+  ON credential (workspace_id, lower(login_email))
   WHERE kind = 'password'
     AND status = 'active'
     AND login_email IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS cred_oauth_lookup_idx
-  ON credential (namespace_id, provider, provider_id)
+  ON credential (workspace_id, provider, provider_id)
   WHERE kind IN ('oauth','sso')
     AND status = 'active'
     AND provider_id IS NOT NULL;
@@ -445,8 +445,8 @@ CREATE INDEX IF NOT EXISTS cred_oauth_lookup_idx
 
 7. RLS scaffolding (per-tenant isolation):
 
-- Enable RLS; restrict SELECT/UPDATE/DELETE to users operating within their `namespace_id`.
-- Replace `auth_namespace_id()` with your session-resolved function/view for current tenant.
+- Enable RLS; restrict SELECT/UPDATE/DELETE to users operating within their `workspace_id`.
+- Replace `auth_workspace_id()` with your session-resolved function/view for current tenant.
 
 ```sql
 -- [7] Row-Level Security (RLS) scaffolding
@@ -455,12 +455,12 @@ ALTER TABLE credential ENABLE ROW LEVEL SECURITY;
 -- Example SELECT policy by tenant
 -- CREATE POLICY credential_tenant_select
 --   ON credential FOR SELECT
---   USING (namespace_id = auth_namespace_id());
+--   USING (workspace_id = auth_workspace_id());
 
 -- Example UPDATE/DELETE policy by tenant (and optionally by owner account)
 -- CREATE POLICY credential_tenant_write
---   ON credential FOR UPDATE USING (namespace_id = auth_namespace_id())
---   WITH CHECK (namespace_id = auth_namespace_id());
+--   ON credential FOR UPDATE USING (workspace_id = auth_workspace_id())
+--   WITH CHECK (workspace_id = auth_workspace_id());
 ```
 
 8. Sensitive data hygiene:
@@ -537,8 +537,8 @@ EXECUTE FUNCTION role_name_canonicalize();
 
 2. Reserved names guard (optional):
 
-- Prevent overriding core/system roles in non-global namespaces (e.g., `owner`, `editor`, `viewer`).
-- Replace `is_global_namespace(id)` with your actual function/flag.
+- Prevent overriding core/system roles in non-global workspaces (e.g., `owner`, `editor`, `viewer`).
+- Replace `is_global_workspace(id)` with your actual function/flag.
 
 ```sql
 -- [2] Reserved names (example)
@@ -547,8 +547,8 @@ RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE
   v_reserved text[] := ARRAY['owner','editor','viewer'];
 BEGIN
-  IF lower(NEW.name) = ANY (v_reserved) AND NOT is_global_namespace(NEW.namespace_id) THEN
-    RAISE EXCEPTION 'Reserved role "%" may only exist in global namespace', NEW.name;
+  IF lower(NEW.name) = ANY (v_reserved) AND NOT is_global_workspace(NEW.workspace_id) THEN
+    RAISE EXCEPTION 'Reserved role "%" may only exist in global workspace', NEW.name;
   END IF;
   RETURN NEW;
 END;
@@ -562,14 +562,14 @@ EXECUTE FUNCTION role_reserved_name_guard();
 
 DROP TRIGGER IF EXISTS trg_role_reserved_guard_upd ON role;
 CREATE TRIGGER trg_role_reserved_guard_upd
-BEFORE UPDATE OF name, namespace_id ON role
+BEFORE UPDATE OF name, workspace_id ON role
 FOR EACH ROW
 EXECUTE FUNCTION role_reserved_name_guard();
 ```
 
 3. Indexes for common lookups:
 
-- Uniqueness `(namespace_id, name)` already ensures fast equality lookups.
+- Uniqueness `(workspace_id, name)` already ensures fast equality lookups.
 - Add GIN indexes for tags/meta if used in filters or search.
 
 ```sql
@@ -602,8 +602,8 @@ EXECUTE FUNCTION set_role_updated_at();
 
 5. RLS scaffolding:
 
-- Enable RLS; restrict access by `namespace_id`.
-- Replace `auth_namespace_id()` with your actual tenant resolver.
+- Enable RLS; restrict access by `workspace_id`.
+- Replace `auth_workspace_id()` with your actual tenant resolver.
 
 ```sql
 -- [5] Row-Level Security
@@ -612,16 +612,16 @@ ALTER TABLE role ENABLE ROW LEVEL SECURITY;
 -- Example: allow select within tenant
 -- CREATE POLICY role_tenant_select
 --   ON role FOR SELECT
---   USING (namespace_id = auth_namespace_id());
+--   USING (workspace_id = auth_workspace_id());
 
 -- Example: allow write only within tenant
 -- CREATE POLICY role_tenant_write
---   ON role FOR INSERT WITH CHECK (namespace_id = auth_namespace_id());
+--   ON role FOR INSERT WITH CHECK (workspace_id = auth_workspace_id());
 -- CREATE POLICY role_tenant_update
---   ON role FOR UPDATE USING (namespace_id = auth_namespace_id())
---   WITH CHECK (namespace_id = auth_namespace_id());
+--   ON role FOR UPDATE USING (workspace_id = auth_workspace_id())
+--   WITH CHECK (workspace_id = auth_workspace_id());
 -- CREATE POLICY role_tenant_delete
---   ON role FOR DELETE USING (namespace_id = auth_namespace_id());
+--   ON role FOR DELETE USING (workspace_id = auth_workspace_id());
 ```
 
 6. Data hygiene:
@@ -637,14 +637,14 @@ ALTER TABLE role
 
 7. Migration helpers & seeding:
 
-- Seed baseline roles in the global namespace, then allow tenant-level overrides.
+- Seed baseline roles in the global workspace, then allow tenant-level overrides.
 - Provide idempotent upserts for standard roles.
 
 ```sql
 -- [7] Seeding helpers (example; adapt to your bootstrap approach)
--- INSERT INTO role (namespace_id, name, description, created_by)
--- VALUES (global_namespace_id(), 'owner', 'Full control', system_account_id())
--- ON CONFLICT (namespace_id, name) DO UPDATE SET description = EXCLUDED.description;
+-- INSERT INTO role (workspace_id, name, description, created_by)
+-- VALUES (global_workspace_id(), 'owner', 'Full control', system_account_id())
+-- ON CONFLICT (workspace_id, name) DO UPDATE SET description = EXCLUDED.description;
 ```
 
 8. Future: role immutability flags (optional):
@@ -663,7 +663,7 @@ ALTER TABLE role
 CREATE OR REPLACE FUNCTION role_block_mutation_if_locked()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF OLD.locked AND (TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND (OLD.name IS DISTINCT FROM NEW.name OR OLD.namespace_id IS DISTINCT FROM NEW.namespace_id))) THEN
+  IF OLD.locked AND (TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND (OLD.name IS DISTINCT FROM NEW.name OR OLD.workspace_id IS DISTINCT FROM NEW.workspace_id))) THEN
     RAISE EXCEPTION 'System role "%" is locked', OLD.name;
   END IF;
   RETURN NEW;
@@ -718,7 +718,7 @@ EXECUTE FUNCTION permission_name_canonicalize();
 2. Code field hygiene:
 
 - If `code` is used, normalize to lowercase + trim as well.
-- Optional uniqueness `(namespace_id, code)` if treated as alternative identifier.
+- Optional uniqueness `(workspace_id, code)` if treated as alternative identifier.
 
 ```sql
 -- [2] Code hygiene
@@ -748,15 +748,15 @@ BEFORE UPDATE OF code ON permission
 FOR EACH ROW
 EXECUTE FUNCTION permission_code_canonicalize();
 
--- Optional: enforce uniqueness per namespace
--- CREATE UNIQUE INDEX IF NOT EXISTS permission_namespace_code_key
---   ON permission (namespace_id, code);
+-- Optional: enforce uniqueness per workspace
+-- CREATE UNIQUE INDEX IF NOT EXISTS permission_workspace_code_key
+--   ON permission (workspace_id, code);
 ```
 
 3. Indexes for common lookups:
 
-- `(namespace_id, name)` uniqueness already ensures fast lookups.
-- Add `(namespace_id, code)` if used.
+- `(workspace_id, name)` uniqueness already ensures fast lookups.
+- Add `(workspace_id, code)` if used.
 - Add GIN indexes for tags/meta if filtered frequently.
 
 ```sql
@@ -767,8 +767,8 @@ CREATE INDEX IF NOT EXISTS idx_permission_meta_gin ON permission USING GIN(meta)
 
 5. RLS scaffolding:
 
-- Enable Row-Level Security to isolate by `namespace_id`.
-- Replace `auth_namespace_id()` with your tenant resolver.
+- Enable Row-Level Security to isolate by `workspace_id`.
+- Replace `auth_workspace_id()` with your tenant resolver.
 
 ```sql
 -- [5] Row-Level Security
@@ -777,16 +777,16 @@ ALTER TABLE permission ENABLE ROW LEVEL SECURITY;
 -- Example: allow tenant-scoped reads
 -- CREATE POLICY permission_tenant_select
 --   ON permission FOR SELECT
---   USING (namespace_id = auth_namespace_id());
+--   USING (workspace_id = auth_workspace_id());
 
 -- Example: allow tenant writes
 -- CREATE POLICY permission_tenant_write
---   ON permission FOR INSERT WITH CHECK (namespace_id = auth_namespace_id());
+--   ON permission FOR INSERT WITH CHECK (workspace_id = auth_workspace_id());
 -- CREATE POLICY permission_tenant_update
---   ON permission FOR UPDATE USING (namespace_id = auth_namespace_id())
---   WITH CHECK (namespace_id = auth_namespace_id());
+--   ON permission FOR UPDATE USING (workspace_id = auth_workspace_id())
+--   WITH CHECK (workspace_id = auth_workspace_id());
 -- CREATE POLICY permission_tenant_delete
---   ON permission FOR DELETE USING (namespace_id = auth_namespace_id());
+--   ON permission FOR DELETE USING (workspace_id = auth_workspace_id());
 ```
 
 6. Reserved names guard (optional):
@@ -800,8 +800,8 @@ RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE
   v_reserved text[] := ARRAY['system.admin','auth.login'];
 BEGIN
-  IF lower(NEW.name) = ANY (v_reserved) AND NOT is_global_namespace(NEW.namespace_id) THEN
-    RAISE EXCEPTION 'Reserved permission "%" may only exist in global namespace', NEW.name;
+  IF lower(NEW.name) = ANY (v_reserved) AND NOT is_global_workspace(NEW.workspace_id) THEN
+    RAISE EXCEPTION 'Reserved permission "%" may only exist in global workspace', NEW.name;
   END IF;
   RETURN NEW;
 END;
@@ -815,7 +815,7 @@ EXECUTE FUNCTION permission_reserved_guard();
 
 DROP TRIGGER IF EXISTS trg_permission_reserved_upd ON permission;
 CREATE TRIGGER trg_permission_reserved_upd
-BEFORE UPDATE OF name, namespace_id ON permission
+BEFORE UPDATE OF name, workspace_id ON permission
 FOR EACH ROW
 EXECUTE FUNCTION permission_reserved_guard();
 ```
@@ -834,78 +834,78 @@ ALTER TABLE permission
 
 8. Seeding & migrations:
 
-- Seed baseline permissions in global namespace for core features.
+- Seed baseline permissions in global workspace for core features.
 - Provide idempotent upsert patterns.
 
 ```sql
 -- [8] Seeding helpers (example)
--- INSERT INTO permission (namespace_id, name, description, created_by)
--- VALUES (global_namespace_id(), 'project.read', 'Read project data', system_account_id())
--- ON CONFLICT (namespace_id, name) DO UPDATE SET description = EXCLUDED.description;
+-- INSERT INTO permission (workspace_id, name, description, created_by)
+-- VALUES (global_workspace_id(), 'project.read', 'Read project data', system_account_id())
+-- ON CONFLICT (workspace_id, name) DO UPDATE SET description = EXCLUDED.description;
 ```
 
 ### Role ↔ Permission (Join Table)
 
-1. Enforce namespace consistency (`role.namespace_id = permission.namespace_id`):
+1. Enforce workspace consistency (`role.workspace_id = permission.workspace_id`):
 
-- Prevent cross-namespace bindings by validating during INSERT/UPDATE.
+- Prevent cross-workspace bindings by validating during INSERT/UPDATE.
 - Use a BEFORE trigger for immediate feedback (simple and fast). Optionally add a CONSTRAINT TRIGGER DEFERRABLE INITIALLY DEFERRED if bulk loads need deferred checks.
 
 SQL:
 
-    -- [1] Namespace consistency guard
-    CREATE OR REPLACE FUNCTION rp_namespace_guard()
+    -- [1] Workspace consistency guard
+    CREATE OR REPLACE FUNCTION rp_workspace_guard()
     RETURNS trigger LANGUAGE plpgsql AS $$
     DECLARE
       v_role_ns uuid;
       v_perm_ns uuid;
     BEGIN
-      SELECT namespace_id INTO v_role_ns FROM role WHERE id = NEW.role_id;
+      SELECT workspace_id INTO v_role_ns FROM role WHERE id = NEW.role_id;
       IF v_role_ns IS NULL THEN
         RAISE EXCEPTION 'role "%" not found', NEW.role_id;
       END IF;
 
-      SELECT namespace_id INTO v_perm_ns FROM permission WHERE id = NEW.permission_id;
+      SELECT workspace_id INTO v_perm_ns FROM permission WHERE id = NEW.permission_id;
       IF v_perm_ns IS NULL THEN
         RAISE EXCEPTION 'permission "%" not found', NEW.permission_id;
       END IF;
 
       IF v_role_ns <> v_perm_ns THEN
-        RAISE EXCEPTION 'Namespace mismatch: role(%) and permission(%)', v_role_ns, v_perm_ns;
+        RAISE EXCEPTION 'Workspace mismatch: role(%) and permission(%)', v_role_ns, v_perm_ns;
       END IF;
       RETURN NEW;
     END;
     $$;
 
-    DROP TRIGGER IF EXISTS trg_rp_namespace_guard_ins ON role_permission;
-    CREATE TRIGGER trg_rp_namespace_guard_ins
+    DROP TRIGGER IF EXISTS trg_rp_workspace_guard_ins ON role_permission;
+    CREATE TRIGGER trg_rp_workspace_guard_ins
     BEFORE INSERT ON role_permission
     FOR EACH ROW
-    EXECUTE FUNCTION rp_namespace_guard();
+    EXECUTE FUNCTION rp_workspace_guard();
 
-    DROP TRIGGER IF EXISTS trg_rp_namespace_guard_upd ON role_permission;
-    CREATE TRIGGER trg_rp_namespace_guard_upd
+    DROP TRIGGER IF EXISTS trg_rp_workspace_guard_upd ON role_permission;
+    CREATE TRIGGER trg_rp_workspace_guard_upd
     BEFORE UPDATE OF role_id, permission_id ON role_permission
     FOR EACH ROW
-    EXECUTE FUNCTION rp_namespace_guard();
+    EXECUTE FUNCTION rp_workspace_guard();
 
     -- Alternative (deferred, uncomment to use instead of BEFORE triggers):
-    -- CREATE CONSTRAINT TRIGGER rp_namespace_guard_def
+    -- CREATE CONSTRAINT TRIGGER rp_workspace_guard_def
     -- AFTER INSERT OR UPDATE OF role_id, permission_id ON role_permission
     -- DEFERRABLE INITIALLY DEFERRED
-    -- FOR EACH ROW EXECUTE FUNCTION rp_namespace_guard();
+    -- FOR EACH ROW EXECUTE FUNCTION rp_workspace_guard();
 
-2. RLS scaffolding (tenant isolation by namespace via role/permission join):
+2. RLS scaffolding (tenant isolation by workspace via role/permission join):
 
-- Enable RLS on the join table and use subqueries to tie rows to a tenant namespace.
-- Replace auth_namespace_id() with your resolver.
+- Enable RLS on the join table and use subqueries to tie rows to a tenant workspace.
+- Replace auth_workspace_id() with your resolver.
 
 SQL:
 
     -- [2] Row-Level Security
     ALTER TABLE role_permission ENABLE ROW LEVEL SECURITY;
 
-    -- SELECT allowed if the linked role (or permission) is in the current namespace
+    -- SELECT allowed if the linked role (or permission) is in the current workspace
     -- (pick one predicate style; role-based is typical)
     -- CREATE POLICY rp_tenant_select
     --   ON role_permission FOR SELECT
@@ -913,7 +913,7 @@ SQL:
     --     EXISTS (
     --       SELECT 1 FROM role r
     --       WHERE r.id = role_permission.role_id
-    --         AND r.namespace_id = auth_namespace_id()
+    --         AND r.workspace_id = auth_workspace_id()
     --     )
     --   );
 
@@ -924,19 +924,19 @@ SQL:
     --     EXISTS (
     --       SELECT 1 FROM role r
     --       WHERE r.id = role_permission.role_id
-    --         AND r.namespace_id = auth_namespace_id()
+    --         AND r.workspace_id = auth_workspace_id()
     --     )
     --   );
 
     -- UPDATE/DELETE similarly constrained
     -- CREATE POLICY rp_tenant_update
     --   ON role_permission FOR UPDATE
-    --   USING (EXISTS (SELECT 1 FROM role r WHERE r.id = role_permission.role_id AND r.namespace_id = auth_namespace_id()))
-    --   WITH CHECK (EXISTS (SELECT 1 FROM role r WHERE r.id = role_permission.role_id AND r.namespace_id = auth_namespace_id()));
+    --   USING (EXISTS (SELECT 1 FROM role r WHERE r.id = role_permission.role_id AND r.workspace_id = auth_workspace_id()))
+    --   WITH CHECK (EXISTS (SELECT 1 FROM role r WHERE r.id = role_permission.role_id AND r.workspace_id = auth_workspace_id()));
 
     -- CREATE POLICY rp_tenant_delete
     --   ON role_permission FOR DELETE
-    --   USING (EXISTS (SELECT 1 FROM role r WHERE r.id = role_permission.role_id AND r.namespace_id = auth_namespace_id()));
+    --   USING (EXISTS (SELECT 1 FROM role r WHERE r.id = role_permission.role_id AND r.workspace_id = auth_workspace_id()));
 
 3. Auditability (optional lightweight history):
 
@@ -993,16 +993,16 @@ SQL:
 
 5. Seeding patterns:
 
-- Seed baseline role/permission bindings in the global namespace.
+- Seed baseline role/permission bindings in the global workspace.
 - Use idempotent upserts to avoid duplicates on re-run.
 
 SQL:
 
     -- [5] Seeding example (adjust to your bootstrap helpers)
     -- WITH perm AS (
-    --   SELECT id FROM permission WHERE namespace_id = global_namespace_id() AND name = 'project.read'
+    --   SELECT id FROM permission WHERE workspace_id = global_workspace_id() AND name = 'project.read'
     -- ), role_row AS (
-    --   SELECT id FROM role WHERE namespace_id = global_namespace_id() AND name = 'viewer'
+    --   SELECT id FROM role WHERE workspace_id = global_workspace_id() AND name = 'viewer'
     -- )
     -- INSERT INTO role_permission (role_id, permission_id)
     -- SELECT role_row.id, perm.id FROM role_row, perm
@@ -1044,10 +1044,10 @@ These indexes are optimized for the most frequent queries on this table: checkin
 
 ```sql
 -- [2] Indexes for common lookups
--- The primary index for fast lookup of a token hash within a specific namespace.
--- This is used for the most common check: is this token blacklisted for this user/namespace?
-CREATE INDEX IF NOT EXISTS token_blacklist_namespace_hash_idx
-  ON token_blacklist (namespace_id, token_hash);
+-- The primary index for fast lookup of a token hash within a specific workspace.
+-- This is used for the most common check: is this token blacklisted for this user/workspace?
+CREATE INDEX IF NOT EXISTS token_blacklist_workspace_hash_idx
+  ON token_blacklist (workspace_id, token_hash);
 
 -- Index to optimize the application-level sweep function.
 -- This allows the scheduled job to quickly find and delete all expired tokens.
@@ -1072,9 +1072,9 @@ WHERE
 -- 1. Enable RLS on the table.
 ALTER TABLE token_blacklist ENABLE ROW LEVEL SECURITY;
 
--- 2. Define a policy to allow tenants to only see rows in their own namespace.
+-- 2. Define a policy to allow tenants to only see rows in their own workspace.
 CREATE POLICY token_blacklist_tenant_isolation ON token_blacklist
   FOR ALL
-  USING (namespace_id = current_setting('app.namespace_id', TRUE)::uuid)
-  WITH CHECK (namespace_id = current_setting('app.namespace_id', TRUE)::uuid);
+  USING (workspace_id = current_setting('app.workspace_id', TRUE)::uuid)
+  WITH CHECK (workspace_id = current_setting('app.workspace_id', TRUE)::uuid);
 ```

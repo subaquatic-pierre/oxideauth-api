@@ -1,5 +1,6 @@
 use crate::{
     core::{
+        ctx::CoreCtx,
         error::{CoreError, CoreResult},
         services::account::AccountService,
     },
@@ -29,24 +30,23 @@ impl<'a, Dbx: DbExecutor> AuthenticateService<'a, Dbx> {
         }
     }
 
-    // Methods use the stored dependency via `self`.
-    pub async fn register_account(&self, email: &str, password: &str) -> CoreResult<()> {
-        // The method signature is clean and focused on its own logic.
+    pub async fn register_account(&self, ctx: &CoreCtx) -> CoreResult<()> {
         Ok(())
     }
 
-    pub async fn black_list_token(&self, email: &str, password: &str) -> CoreResult<()> {
-        // The method signature is clean and focused on its own logic.
+    pub async fn black_list_token(&self, ctx: &CoreCtx) -> CoreResult<()> {
         Ok(())
     }
 
-    pub async fn revoke_token(&self, email: &str, password: &str) -> CoreResult<()> {
-        // The method signature is clean and focused on its own logic.
+    pub async fn revoke_token(&self, ctx: &CoreCtx) -> CoreResult<()> {
         Ok(())
     }
 
-    pub async fn refresh_token(&self, email: &str, password: &str) -> CoreResult<()> {
-        // The method signature is clean and focused on its own logic.
+    pub async fn refresh_token(&self, ctx: &CoreCtx) -> CoreResult<()> {
+        Ok(())
+    }
+
+    pub async fn request_token(&self, ctx: &CoreCtx) -> CoreResult<()> {
         Ok(())
     }
 }

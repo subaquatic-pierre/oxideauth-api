@@ -5,7 +5,7 @@
 - **Role = named bundle of permissions**  
   Example: `Editor` → `["task:create", "task:update"]`
 - **Membership = account + role assignment**  
-  Applied at the namespace or project level.
+  Applied at the workspace or project level.
 - This forms the baseline RBAC everyone understands.
 
 ## Policy as a Filter/Overlay
@@ -20,7 +20,7 @@ Allowed? = (Role grants permission) AND (Policy doesn’t block it)
 
 ## Explicit Scope
 
-- **Namespace policies** apply to all projects in the namespace.
+- **Workspace policies** apply to all projects in the workspace.
 - **Project policies** apply only to that project.
 - **Membership policies** apply only to a single member.
 

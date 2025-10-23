@@ -1,10 +1,10 @@
 -- migrations/08_membership.sql
--- Purpose: Define memberships linking accounts to namespaces or projects.
+-- Purpose: Define memberships linking accounts to workspaces or projects.
 -- Notes:
---   - Each membership ties an account to a namespace, with optional project-level scope.
---   - `scope` distinguishes namespace vs. project membership.
+--   - Each membership ties an account to a workspace, with optional project-level scope.
+--   - `scope` distinguishes workspace vs. project membership.
 --   - `status` reflects lifecycle (invited, active, suspended).
---   - Partial unique indexes enforce one membership per account per namespace/project.
+--   - Partial unique indexes enforce one membership per account per workspace/project.
 --   - Active memberships are indexed for fast auth lookups.
 --   - `created_by` / `updated_by` are audit fields; FKs can be added later if bootstrap-safe.
 CREATE TABLE IF NOT EXISTS
@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
     -- Identity: who and where
     account_id UUID NOT NULL,
-    namespace_id UUID NOT NULL,
-    scope TEXT NOT NULL, -- 'namespace' | 'project'
+    workspace_id UUID NOT NULL,
+    scope TEXT NOT NULL, -- 'workspace' | 'project'
     project_id UUID, -- set only when scope='project'
     -- Lifecycle state
     status TEXT NOT NULL DEFAULT 'active', -- 'invited'|'active'|'suspended'
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS
     -- END Audit
     -- ---------- Constraints ----------
     CONSTRAINT mem_account_fk FOREIGN KEY (account_id) REFERENCES account (id) ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT mem_namespace_fk FOREIGN KEY (namespace_id) REFERENCES namespace (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT mem_workspace_fk FOREIGN KEY (workspace_id) REFERENCES workspace (id) ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT mem_project_fk FOREIGN KEY (project_id) REFERENCES project (id) ON UPDATE CASCADE ON DELETE CASCADE,
     -- Enforce JSON object shape
     CONSTRAINT membership_meta_is_object CHECK (jsonb_typeof(meta) = 'object'),
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS
     -- Shape guard: project_id required only for project-scoped memberships
     CONSTRAINT membership_scope_shape_chk CHECK (
       (
-        scope = 'namespace'
+        scope = 'workspace'
         AND project_id IS NULL
       )
       OR (
@@ -52,19 +52,19 @@ CREATE TABLE IF NOT EXISTS
 -- =========================
 -- Indexes
 -- =========================
--- Intent-expressing partial uniques: only one membership per account per namespace/project
-CREATE UNIQUE INDEX IF NOT EXISTS membership_ns_unique ON membership (account_id, namespace_id)
+-- Intent-expressing partial uniques: only one membership per account per workspace/project
+CREATE UNIQUE INDEX IF NOT EXISTS membership_ns_unique ON membership (account_id, workspace_id)
 WHERE
-  scope = 'namespace';
+  scope = 'workspace';
 
 CREATE UNIQUE INDEX IF NOT EXISTS membership_proj_unique ON membership (account_id, project_id)
 WHERE
   scope = 'project';
 
 -- Lookups used in auth for fast active membership checks
-CREATE INDEX IF NOT EXISTS membership_by_ns ON membership (namespace_id, account_id)
+CREATE INDEX IF NOT EXISTS membership_by_ns ON membership (workspace_id, account_id)
 WHERE
-  scope = 'namespace'
+  scope = 'workspace'
   AND status = 'active';
 
 CREATE INDEX IF NOT EXISTS membership_by_proj ON membership (project_id, account_id)

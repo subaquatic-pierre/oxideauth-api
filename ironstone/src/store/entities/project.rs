@@ -29,7 +29,7 @@ pub enum ProjectIden {
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct ProjectRow {
     pub id: DbId,
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
 
     // Project identity
     pub name: String,
@@ -52,7 +52,7 @@ pub struct ProjectRow {
 /// Input for creating a new `project`.
 #[derive(Debug, Fields)]
 pub struct ProjectForCreate {
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
     pub name: String,
     pub code: Option<String>,
     pub description: Option<String>,
@@ -115,7 +115,7 @@ pub struct ProjectFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<OpValsString>,
+    pub workspace_id: Option<OpValsString>,
     pub name: Option<OpValsString>,
     pub code: Option<OpValsString>,
     pub description: Option<OpValsString>,
@@ -150,7 +150,7 @@ impl TryFrom<JsonValue> for ProjectFilter {
 impl Default for ProjectForCreate {
     fn default() -> Self {
         Self {
-            namespace_id: Uuid::new_v4(),
+            workspace_id: Uuid::new_v4(),
             name: "Default Project".into(),
             code: Some("default-project".into()),
             description: Some("A default project for testing.".into()),

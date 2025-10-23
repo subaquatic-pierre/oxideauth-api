@@ -90,7 +90,7 @@ mod tests {
         dev::init::init_test,
         store::{
             ctx::StoreCtx,
-            entities::{namespace::NamespaceForCreate, project::ProjectForCreate},
+            entities::{project::ProjectForCreate, workspace::WorkspaceForCreate},
             error::StoreError,
             traits::{contains::FilterByContains, crud::*},
         },
@@ -100,14 +100,14 @@ mod tests {
     use serial_test::serial;
     use uuid::Uuid;
 
-    /// Helper function to seed the necessary Namespace for a Project.
+    /// Helper function to seed the necessary Workspace for a Project.
     async fn seed_prerequisite(ctx: &StoreCtx, app: &crate::app::AppData) -> Result<Uuid> {
-        let namespace = app
+        let workspace = app
             .sm
-            .namespace
-            .create(ctx, NamespaceForCreate::default())
+            .workspace
+            .create(ctx, WorkspaceForCreate::default())
             .await?;
-        Ok(namespace.id.into())
+        Ok(workspace.id.into())
     }
 
     #[tokio::test]
@@ -118,10 +118,10 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = ProjectStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let namespace_id = seed_prerequisite(&ctx, &app).await?;
+        let workspace_id = seed_prerequisite(&ctx, &app).await?;
 
         let data = ProjectForCreate {
-            namespace_id,
+            workspace_id,
             name: "test-project-create".to_string(),
             ..Default::default()
         };
@@ -132,7 +132,7 @@ mod tests {
 
         // -- Assert
         assert_eq!(created_project.name, "test-project-create");
-        assert_eq!(created_project.namespace_id, namespace_id);
+        assert_eq!(created_project.workspace_id, workspace_id);
         assert_eq!(fetched_project.id, created_project.id);
         assert_eq!(fetched_project.name, created_project.name);
 
@@ -147,13 +147,13 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = ProjectStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let namespace_id = seed_prerequisite(&ctx, &app).await?;
+        let workspace_id = seed_prerequisite(&ctx, &app).await?;
 
         let created_project = store
             .create(
                 &ctx,
                 ProjectForCreate {
-                    namespace_id,
+                    workspace_id,
                     ..Default::default()
                 },
             )
@@ -183,13 +183,13 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = ProjectStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let namespace_id = seed_prerequisite(&ctx, &app).await?;
+        let workspace_id = seed_prerequisite(&ctx, &app).await?;
 
         let created_project = store
             .create(
                 &ctx,
                 ProjectForCreate {
-                    namespace_id,
+                    workspace_id,
                     ..Default::default()
                 },
             )
@@ -217,16 +217,16 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = ProjectStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let namespace_id = seed_prerequisite(&ctx, &app).await?;
+        let workspace_id = seed_prerequisite(&ctx, &app).await?;
 
         let projects_to_create = vec![
             ProjectForCreate {
-                namespace_id,
+                workspace_id,
                 name: "list-proj-a".to_string(),
                 ..Default::default()
             },
             ProjectForCreate {
-                namespace_id,
+                workspace_id,
                 name: "list-proj-b".to_string(),
                 ..Default::default()
             },
@@ -252,14 +252,14 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = ProjectStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let namespace_id = seed_prerequisite(&ctx, &app).await?;
+        let workspace_id = seed_prerequisite(&ctx, &app).await?;
 
         // -- Create test data with different tags
         store
             .create(
                 &ctx,
                 ProjectForCreate {
-                    namespace_id,
+                    workspace_id,
                     name: "tags-proj-a".into(),
                     tags: vec!["frontend".into(), "critical".into()],
                     ..Default::default()
@@ -270,7 +270,7 @@ mod tests {
             .create(
                 &ctx,
                 ProjectForCreate {
-                    namespace_id,
+                    workspace_id,
                     name: "tags-proj-b".into(),
                     tags: vec!["backend".into(), "api".into()],
                     ..Default::default()

@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS
     token_hash BYTEA NOT NULL,
     -- Optional scoping for faster purges/analytics
     account_id UUID,
-    namespace_id UUID,
+    workspace_id UUID,
     -- Expiry time of the token (when it naturally becomes invalid).
     expires_at TIMESTAMPTZ NOT NULL,
     -- Optional reason/context for auditing (e.g., "manual-revoke", "password-rotate").
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS
     CONSTRAINT token_blacklist_token_hash_len CHECK (octet_length(token_hash) = 32),
     -- FKs (ON DELETE SET NULL to retain historical context)
     CONSTRAINT token_blacklist_account_fk FOREIGN KEY (account_id) REFERENCES account (id) ON UPDATE CASCADE ON DELETE SET NULL,
-    CONSTRAINT token_blacklist_namespace_fk FOREIGN KEY (namespace_id) REFERENCES namespace (id) ON UPDATE CASCADE ON DELETE SET NULL
+    CONSTRAINT token_blacklist_workspace_fk FOREIGN KEY (workspace_id) REFERENCES workspace (id) ON UPDATE CASCADE ON DELETE SET NULL
   );
 
 -- Disallow duplicate entries for the exact same token hash.
@@ -47,4 +47,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS token_blacklist_token_hash_key ON token_blackl
 -- Speed up expiry sweeps.
 CREATE INDEX IF NOT EXISTS token_blacklist_expires_at_idx ON token_blacklist (expires_at);
 
-CREATE INDEX IF NOT EXISTS token_blacklist_namespace_hash_idx ON token_blacklist (namespace_id, token_hash);
+CREATE INDEX IF NOT EXISTS token_blacklist_workspace_hash_idx ON token_blacklist (workspace_id, token_hash);

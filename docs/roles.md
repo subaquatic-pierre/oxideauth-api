@@ -11,13 +11,13 @@ Instead of assigning dozens of specific permissions to each user one by one, you
 
 If you need to change what all Members can do, you just update the `Member` role, and the change applies to everyone with that role instantly.
 
-## Default Roles in a New Namespace
+## Default Roles in a New Workspace
 
-When you create a new namespace, four default roles are automatically set up. These provide a secure and logical starting point for managing access.
+When you create a new workspace, four default roles are automatically set up. These provide a secure and logical starting point for managing access.
 
 | Role Name      | Description                                                                                                                                                                                                                                          |
 | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 👑 **Owner**   | The highest-level role with **unrestricted access**. Owners can manage all resources, invite and manage members, configure billing, and are the only ones who can **delete the namespace**. This role should be assigned sparingly.                  |
-| 🛠️ **Admin**   | A highly privileged role for technical administrators. Admins can manage all namespace settings, projects, and members, but **cannot** manage billing or delete the namespace.                                                                       |
-| 👤 **Member**  | The standard role for most users. Members can view projects and other resources and can create new projects. Their permissions are focused on contributing to projects without being able to change critical namespace settings.                     |
-| 💳 **Billing** | A specialized, limited role. Users with this role can only view the member list and manage the namespace's subscription and payment information. They **cannot** access any project data, making it a safe role for an accounting or finance person. |
+| 👑 **Owner**   | The highest-level role with **unrestricted access**. Owners can manage all resources, invite and manage members, configure billing, and are the only ones who can **delete the workspace**. This role should be assigned sparingly.                  |
+| 🛠️ **Admin**   | A highly privileged role for technical administrators. Admins can manage all workspace settings, projects, and members, but **cannot** manage billing or delete the workspace.                                                                       |
+| 👤 **Member**  | The standard role for most users. Members can view projects and other resources and can create new projects. Their permissions are focused on contributing to projects without being able to change critical workspace settings.                     |
+| 💳 **Billing** | A specialized, limited role. Users with this role can only view the member list and manage the workspace's subscription and payment information. They **cannot** access any project data, making it a safe role for an accounting or finance person. |

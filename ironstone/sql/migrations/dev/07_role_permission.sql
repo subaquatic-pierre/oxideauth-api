@@ -4,7 +4,7 @@
 --   - Each role can have multiple permissions; each permission can belong to multiple roles.
 --   - Primary key is composite (role_id, permission_id) to prevent duplicates.
 --   - Cascading: deleting a role cascades its bindings; deleting a permission is restricted.
---   - Namespace consistency (role.namespace_id = permission.namespace_id) should be enforced
+--   - Workspace consistency (role.workspace_id = permission.workspace_id) should be enforced
 --     via a trigger or deferred check (see TODOs).
 CREATE TABLE IF NOT EXISTS
   role_permission (

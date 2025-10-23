@@ -5,7 +5,7 @@
 --   - They are human-readable (name is PK).
 --   - Will be linked to roles in fixtures/07_role_permission.sql.
 INSERT INTO
-  permission (name, id, description, created_by, namespace_id)
+  permission (name, id, description, created_by, workspace_id)
 VALUES
   -- Account management
   (
@@ -29,18 +29,18 @@ VALUES
     '00000000-0000-0000-0000-000000000001',
     '10000000-0000-0000-0000-000000000001'
   ),
-  -- Namespace/project management
+  -- Workspace/project management
   (
-    'namespace:create',
+    'workspace:create',
     '50000000-0000-0000-0000-000000000004',
-    'Create namespaces',
+    'Create workspaces',
     '00000000-0000-0000-0000-000000000001',
     '10000000-0000-0000-0000-000000000002'
   ),
   (
     'project:create',
     '50000000-0000-0000-0000-000000000005',
-    'Create projects under a namespace',
+    'Create projects under a workspace',
     '00000000-0000-0000-0000-000000000001',
     '10000000-0000-0000-0000-000000000002'
   ),
@@ -48,7 +48,7 @@ VALUES
   (
     'membership:invite',
     '50000000-0000-0000-0000-000000000006',
-    'Invite accounts into a namespace/project',
+    'Invite accounts into a workspace/project',
     '00000000-0000-0000-0000-000000000001',
     '10000000-0000-0000-0000-000000000003'
   ),

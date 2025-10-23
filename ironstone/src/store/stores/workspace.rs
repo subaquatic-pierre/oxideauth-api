@@ -2,21 +2,21 @@ use std::sync::Arc;
 
 use crate::store::{
     dbx::{DbExecutor, PgDbx},
-    entities::namespace::{
-        NamespaceFilter, NamespaceForCreate, NamespaceForUpdate, NamespaceIden, NamespaceRow,
-        NamespaceWithProjects,
+    entities::workspace::{
+        WorkspaceFilter, WorkspaceForCreate, WorkspaceForUpdate, WorkspaceIden, WorkspaceRow,
+        WorkspaceWithProjects,
     },
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
     traits::meta::{ContainsFilterStore, MutateStore, OneToManyStore, ReadStore, Store},
 };
 
-/// The struct for our Namespace store, holding the database connection wrapper.
-pub struct NamespaceStore<Dbx: DbExecutor> {
+/// The struct for our Workspace store, holding the database connection wrapper.
+pub struct WorkspaceStore<Dbx: DbExecutor> {
     dbx: Arc<Dbx>,
 }
 
-impl<Dbx: DbExecutor> NamespaceStore<Dbx> {
-    /// Creates a new `NamespaceStore`.
+impl<Dbx: DbExecutor> WorkspaceStore<Dbx> {
+    /// Creates a new `WorkspaceStore`.
     pub fn new(dbx: Arc<Dbx>) -> Self {
         // Use generic
         Self { dbx }
@@ -25,73 +25,73 @@ impl<Dbx: DbExecutor> NamespaceStore<Dbx> {
 
 // region:    --- Base Trait Implementations
 // -----------------------------------------------------------------------------
-// By implementing these meta traits, NamespaceStore implicitly gains all of the
+// By implementing these meta traits, WorkspaceStore implicitly gains all of the
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl<Dbx: DbExecutor> Store for NamespaceStore<Dbx> {
-    type Iden = NamespaceIden;
-    type Row = NamespaceRow;
+impl<Dbx: DbExecutor> Store for WorkspaceStore<Dbx> {
+    type Iden = WorkspaceIden;
+    type Row = WorkspaceRow;
 
     fn dbx(&self) -> impl DbExecutor {
         self.dbx.clone()
     }
 }
 
-impl<Dbx: DbExecutor> ReadStore for NamespaceStore<Dbx> {
-    type FilterStoreParams = NamespaceFilter;
+impl<Dbx: DbExecutor> ReadStore for WorkspaceStore<Dbx> {
+    type FilterStoreParams = WorkspaceFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
-            table: NamespaceIden::Table,
-            pk: NamespaceIden::Id,
+            table: WorkspaceIden::Table,
+            pk: WorkspaceIden::Id,
             has_audit: true,
         }
     }
 }
 
-impl<Dbx: DbExecutor> MutateStore for NamespaceStore<Dbx> {
-    type CreateStoreParams = NamespaceForCreate;
-    type UpdateStoreParams = NamespaceForUpdate;
+impl<Dbx: DbExecutor> MutateStore for WorkspaceStore<Dbx> {
+    type CreateStoreParams = WorkspaceForCreate;
+    type UpdateStoreParams = WorkspaceForUpdate;
 
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
-            table: NamespaceIden::Table,
-            pk: NamespaceIden::Id,
+            table: WorkspaceIden::Table,
+            pk: WorkspaceIden::Id,
             has_audit: true,
         }
     }
 }
 
-impl<Dbx: DbExecutor> OneToManyStore for NamespaceStore<Dbx> {
-    type OneToManyRow = NamespaceWithProjects;
+impl<Dbx: DbExecutor> OneToManyStore for WorkspaceStore<Dbx> {
+    type OneToManyRow = WorkspaceWithProjects;
 
-    type FilterStoreParams = NamespaceFilter;
+    type FilterStoreParams = WorkspaceFilter;
 
     fn one_to_many_meta(&self) -> OneToManyQueryMeta<Self::Iden> {
         OneToManyQueryMeta {
-            single_table: NamespaceIden::Table,
-            many_table: NamespaceIden::Project,
-            single_pk: NamespaceIden::Id,
-            many_pk: NamespaceIden::Id,
-            many_fk: NamespaceIden::NamespaceId,
-            agg_alias: NamespaceIden::Projects,
+            single_table: WorkspaceIden::Table,
+            many_table: WorkspaceIden::Project,
+            single_pk: WorkspaceIden::Id,
+            many_pk: WorkspaceIden::Id,
+            many_fk: WorkspaceIden::WorkspaceId,
+            agg_alias: WorkspaceIden::Projects,
             has_audit: true,
         }
     }
 }
 
-impl<Dbx: DbExecutor> ContainsFilterStore for NamespaceStore<Dbx> {
+impl<Dbx: DbExecutor> ContainsFilterStore for WorkspaceStore<Dbx> {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
-            table: NamespaceIden::Table,
-            col: NamespaceIden::Tags,
+            table: WorkspaceIden::Table,
+            col: WorkspaceIden::Tags,
         }
     }
 
     fn contains_json_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
-            table: NamespaceIden::Table,
-            col: NamespaceIden::Meta,
+            table: WorkspaceIden::Table,
+            col: WorkspaceIden::Meta,
         }
     }
 }
@@ -108,7 +108,7 @@ mod tests {
         dev::init::init_test,
         store::{
             ctx::StoreCtx,
-            entities::{namespace::NamespaceForCreate, project::ProjectForCreate},
+            entities::{workspace::WorkspaceForCreate, project::ProjectForCreate},
             error::StoreError,
             traits::{contains::FilterByContains, crud::*, join::GetOneToMany},
         },
@@ -123,22 +123,22 @@ mod tests {
         // -- Setup
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
-        let store = NamespaceStore::new(dbx);
+        let store = WorkspaceStore::new(dbx);
         let ctx = StoreCtx::new_root();
 
-        let data = NamespaceForCreate {
-            name: "test-namespace-create".to_string(),
+        let data = WorkspaceForCreate {
+            name: "test-workspace-create".to_string(),
             ..Default::default()
         };
 
         // -- Execute
-        let created_namespace = store.create(&ctx, data).await?;
-        let fetched_namespace = store.get(&ctx, &created_namespace.id).await?;
+        let created_workspace = store.create(&ctx, data).await?;
+        let fetched_workspace = store.get(&ctx, &created_workspace.id).await?;
 
         // -- Assert
-        assert_eq!(created_namespace.name, "test-namespace-create");
-        assert_eq!(fetched_namespace.id, created_namespace.id);
-        assert_eq!(fetched_namespace.name, created_namespace.name);
+        assert_eq!(created_workspace.name, "test-workspace-create");
+        assert_eq!(fetched_workspace.id, created_workspace.id);
+        assert_eq!(fetched_workspace.name, created_workspace.name);
 
         Ok(())
     }
@@ -149,25 +149,25 @@ mod tests {
         // -- Setup
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
-        let store = NamespaceStore::new(dbx);
+        let store = WorkspaceStore::new(dbx);
         let ctx = StoreCtx::new_root();
 
-        let created_namespace = store.create(&ctx, NamespaceForCreate::default()).await?;
+        let created_workspace = store.create(&ctx, WorkspaceForCreate::default()).await?;
 
-        let update_data = NamespaceForUpdate {
-            name: Some("updated-namespace-name".to_string()),
+        let update_data = WorkspaceForUpdate {
+            name: Some("updated-workspace-name".to_string()),
             ..Default::default()
         };
 
         // -- Execute
-        let updated_namespace = store
-            .update(&ctx, &created_namespace.id, update_data)
+        let updated_workspace = store
+            .update(&ctx, &created_workspace.id, update_data)
             .await?;
-        let fetched_namespace = store.get(&ctx, &created_namespace.id).await?;
+        let fetched_workspace = store.get(&ctx, &created_workspace.id).await?;
 
         // -- Assert
-        assert_eq!(updated_namespace.name, "updated-namespace-name");
-        assert_eq!(fetched_namespace.name, "updated-namespace-name");
+        assert_eq!(updated_workspace.name, "updated-workspace-name");
+        assert_eq!(fetched_workspace.name, "updated-workspace-name");
 
         Ok(())
     }
@@ -178,20 +178,20 @@ mod tests {
         // -- Setup
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
-        let store = NamespaceStore::new(dbx);
+        let store = WorkspaceStore::new(dbx);
         let ctx = StoreCtx::new_root();
 
-        let created_namespace = store.create(&ctx, NamespaceForCreate::default()).await?;
+        let created_workspace = store.create(&ctx, WorkspaceForCreate::default()).await?;
 
         // -- Execute
-        let deleted_namespace = store.delete(&ctx, &created_namespace.id).await?;
-        let get_result = store.get(&ctx, &created_namespace.id).await;
+        let deleted_workspace = store.delete(&ctx, &created_workspace.id).await?;
+        let get_result = store.get(&ctx, &created_workspace.id).await;
 
         // -- Assert
-        assert_eq!(deleted_namespace.id, created_namespace.id);
+        assert_eq!(deleted_workspace.id, created_workspace.id);
         assert!(
             matches!(get_result, Err(StoreError::EntityNotFound { .. })),
-            "Getting the namespace after deletion should fail"
+            "Getting the workspace after deletion should fail"
         );
 
         Ok(())
@@ -203,15 +203,15 @@ mod tests {
         // -- Setup
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
-        let store = NamespaceStore::new(dbx);
+        let store = WorkspaceStore::new(dbx);
         let ctx = StoreCtx::new_root();
 
         let ns_to_create = vec![
-            NamespaceForCreate {
+            WorkspaceForCreate {
                 name: "list-ns-a".to_string(),
                 ..Default::default()
             },
-            NamespaceForCreate {
+            WorkspaceForCreate {
                 name: "list-ns-b".to_string(),
                 ..Default::default()
             },
@@ -219,12 +219,12 @@ mod tests {
         store.create_many(&ctx, ns_to_create).await?;
 
         // -- Execute
-        let filter: NamespaceFilter = json!({ "name": "list-ns-b" }).try_into()?;
-        let namespaces = store.list(&ctx, Some(filter), None).await?;
+        let filter: WorkspaceFilter = json!({ "name": "list-ns-b" }).try_into()?;
+        let workspaces = store.list(&ctx, Some(filter), None).await?;
 
         // -- Assert
-        assert_eq!(namespaces.len(), 1);
-        assert_eq!(namespaces[0].name, "list-ns-b");
+        assert_eq!(workspaces.len(), 1);
+        assert_eq!(workspaces[0].name, "list-ns-b");
 
         Ok(())
     }
@@ -235,13 +235,13 @@ mod tests {
         // -- Setup
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
-        let store = NamespaceStore::new(dbx);
+        let store = WorkspaceStore::new(dbx);
         let ctx = StoreCtx::new_root();
 
-        let namespace = store
+        let workspace = store
             .create(
                 &ctx,
-                NamespaceForCreate {
+                WorkspaceForCreate {
                     name: "one-to-many-ns".into(),
                     ..Default::default()
                 },
@@ -254,7 +254,7 @@ mod tests {
             .create(
                 &ctx,
                 ProjectForCreate {
-                    namespace_id: namespace.id.into(),
+                    workspace_id: workspace.id.into(),
                     name: "project-a".into(),
                     ..Default::default()
                 },
@@ -265,7 +265,7 @@ mod tests {
             .create(
                 &ctx,
                 ProjectForCreate {
-                    namespace_id: namespace.id.into(),
+                    workspace_id: workspace.id.into(),
                     name: "project-b".into(),
                     ..Default::default()
                 },
@@ -273,10 +273,10 @@ mod tests {
             .await?;
 
         // -- Execute
-        let ns_with_projects = store.get_one_to_many(&ctx, &namespace.id).await?;
+        let ns_with_projects = store.get_one_to_many(&ctx, &workspace.id).await?;
 
         // -- Assert
-        assert_eq!(ns_with_projects.id, namespace.id);
+        assert_eq!(ns_with_projects.id, workspace.id);
         assert_eq!(
             ns_with_projects.projects.len(),
             2,
@@ -303,14 +303,14 @@ mod tests {
         // -- Setup
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
-        let store = NamespaceStore::new(dbx);
+        let store = WorkspaceStore::new(dbx);
         let ctx = StoreCtx::new_root();
 
         // -- Create test data with different tags
         store
             .create(
                 &ctx,
-                NamespaceForCreate {
+                WorkspaceForCreate {
                     name: "tags-ns-a".into(),
                     tags: vec!["org".into(), "production".into()],
                     ..Default::default()
@@ -320,7 +320,7 @@ mod tests {
         store
             .create(
                 &ctx,
-                NamespaceForCreate {
+                WorkspaceForCreate {
                     name: "tags-ns-b".into(),
                     tags: vec!["user".into(), "personal".into()],
                     ..Default::default()
@@ -329,25 +329,25 @@ mod tests {
             .await?;
 
         // -- Execute & Assert
-        let org_namespaces = store
+        let org_workspaces = store
             .filter_by_tags_contain(&ctx, vec!["org".into()])
             .await?;
         assert_eq!(
-            org_namespaces.len(),
+            org_workspaces.len(),
             1,
-            "Should find 1 namespace with 'org' tag"
+            "Should find 1 workspace with 'org' tag"
         );
-        assert_eq!(org_namespaces[0].name, "tags-ns-a");
+        assert_eq!(org_workspaces[0].name, "tags-ns-a");
 
-        let personal_namespaces = store
+        let personal_workspaces = store
             .filter_by_tags_contain(&ctx, vec!["personal".into()])
             .await?;
         assert_eq!(
-            personal_namespaces.len(),
+            personal_workspaces.len(),
             1,
-            "Should find 1 namespace with 'personal' tag"
+            "Should find 1 workspace with 'personal' tag"
         );
-        assert_eq!(personal_namespaces[0].name, "tags-ns-b");
+        assert_eq!(personal_workspaces[0].name, "tags-ns-b");
 
         Ok(())
     }

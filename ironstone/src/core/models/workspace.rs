@@ -3,14 +3,14 @@ use uuid::Uuid;
 use crate::core::models::oath::AuthProvider;
 
 #[derive(Default)]
-pub struct Namespace {
+pub struct Workspace {
     pub id: Uuid,
     pub name: String,
     pub slug: String,
-    pub config: NamespaceConfig,
+    pub config: WorkspaceConfig,
 }
 
 #[derive(Default)]
-pub struct NamespaceConfig {
+pub struct WorkspaceConfig {
     allowed_auth_providers: Vec<AuthProvider>,
 }

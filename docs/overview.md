@@ -8,9 +8,9 @@ Ironstone is a **centralized, multi-tenant Identity and Access Management (IAM) 
 
 ## Core Architectural Principles
 
-- **Multi-Tenancy via Namespaces:** The entire system is built around the concept of a `Namespace`. A `Namespace` is the top-level, isolated container for a single organization (tenant), ensuring that one tenant's users, roles, and configurations are completely segregated from another's.
+- **Multi-Tenancy via Workspaces:** The entire system is built around the concept of a `Workspace`. A `Workspace` is the top-level, isolated container for a single organization (tenant), ensuring that one tenant's users, roles, and configurations are completely segregated from another's.
 
-- **Configuration Scoped to Namespaces:** Each tenant has full control over their own namespace and can configure:
+- **Configuration Scoped to Workspaces:** Each tenant has full control over their own workspace and can configure:
 
   - External OIDC Providers (e.g., Google, Azure AD).
   - Security policies like token lifetimes and MFA rules.
@@ -57,7 +57,7 @@ This is the primary interaction model and the core of the service. It uses a **D
 
 ## Management and Administration
 
-Ironstone provides two interfaces for its users (the developers building the microservices) to manage their namespaces:
+Ironstone provides two interfaces for its users (the developers building the microservices) to manage their workspaces:
 
-- **Ironstone Dashboard (UI):** A web-based interface where developers can manually configure their namespace, create roles, invite team members, and manage their end-users.
+- **Ironstone Dashboard (UI):** A web-based interface where developers can manually configure their workspace, create roles, invite team members, and manage their end-users.
 - **Ironstone Web API:** A programmatic REST API that allows developers to automate user management, role assignment, and other administrative tasks directly from their own backend services, using a `Service JWT` for authentication.

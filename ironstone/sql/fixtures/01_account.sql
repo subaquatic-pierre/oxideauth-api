@@ -1,7 +1,7 @@
 -- fixtures/01_account.sql
 -- Purpose: Seed initial system accounts for development, testing, and bootstrap.
 -- Notes:
---   - These accounts are referenced by fixtures in later files (e.g., namespaces, roles).
+--   - These accounts are referenced by fixtures in later files (e.g., workspaces, roles).
 --   - Passwords should be handled securely in production; for fixtures we use placeholders.
 INSERT INTO
   account (id, email, name, verified, enabled, created_by)

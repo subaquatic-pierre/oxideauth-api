@@ -16,21 +16,21 @@ use crate::store::traits::meta::HasId;
 use crate::store::utils::{json_to_sea_value, time_to_sea_value};
 
 #[derive(Iden, Copy, Clone)]
-pub enum NamespaceIden {
-    #[iden = "namespace"]
+pub enum WorkspaceIden {
+    #[iden = "workspace"]
     Table, // TABLE_NAME
     Id, // TABLE_PK
     Tags,
     Meta,
     Project,
     Projects,
-    NamespaceId,
+    WorkspaceId,
 }
 
 // --- Row (DB-facing) ---
-/// Maps to the `namespace` SQL table.
+/// Maps to the `workspace` SQL table.
 #[derive(Debug, FromRow, Deserialize, HasId)]
-pub struct NamespaceRow {
+pub struct WorkspaceRow {
     pub id: DbId,
 
     // Identity
@@ -40,11 +40,11 @@ pub struct NamespaceRow {
 
     // Config
     #[sqlx(json)]
-    pub config: NamespaceConfig,
+    pub config: WorkspaceConfig,
 
     pub tags: Vec<String>,
     #[sqlx(json)]
-    pub meta: NamespaceMeta,
+    pub meta: WorkspaceMeta,
 
     #[sqlx(flatten)]
     pub audit: AuditFields,
@@ -53,9 +53,9 @@ pub struct NamespaceRow {
 // --- Row (DB-facing) ---
 /// Maps to the `project` SQL table.
 #[derive(Debug, FromRow, Deserialize, HasId)]
-pub struct JoinedProjectOnNamespace {
+pub struct JoinedProjectOnWorkspace {
     pub id: DbId,
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
 
     // Project identity
     pub name: String,
@@ -79,77 +79,77 @@ pub struct JoinedProjectOnNamespace {
 }
 
 #[derive(Debug, FromRow, Deserialize, HasId)]
-pub struct NamespaceWithProjects {
+pub struct WorkspaceWithProjects {
     pub id: DbId,
     #[sqlx(flatten)]
-    pub namespace: NamespaceRow,
+    pub workspace: WorkspaceRow,
     #[sqlx(json)]
-    pub projects: Vec<JoinedProjectOnNamespace>,
+    pub projects: Vec<JoinedProjectOnWorkspace>,
 }
 
 // --- Create (store input) ---
-/// Input for creating a new `namespace`.
+/// Input for creating a new `workspace`.
 #[derive(Debug, Fields)]
-pub struct NamespaceForCreate {
+pub struct WorkspaceForCreate {
     pub name: String,
     pub slug: String,
     pub description: Option<String>,
-    pub config: NamespaceConfig,
+    pub config: WorkspaceConfig,
     pub tags: Vec<String>,
-    pub meta: NamespaceMeta,
+    pub meta: WorkspaceMeta,
 }
 
 // --- Update (store input) ---
-/// Input for updating an existing `namespace`.
+/// Input for updating an existing `workspace`.
 #[derive(Debug, Fields, Clone)]
-pub struct NamespaceForUpdate {
+pub struct WorkspaceForUpdate {
     pub name: Option<String>,
     pub slug: Option<String>,
     pub description: Option<String>,
-    pub config: Option<NamespaceConfig>,
+    pub config: Option<WorkspaceConfig>,
     pub tags: Option<Vec<String>>,
-    pub meta: Option<NamespaceMeta>,
+    pub meta: Option<WorkspaceMeta>,
 }
 
 #[derive(Debug, Default, Fields, Serialize, Deserialize, Clone)]
 #[serde(default)]
-pub struct NamespaceConfig {
+pub struct WorkspaceConfig {
     pub schema_version: String,
 }
 
-impl Nullable for NamespaceConfig {
+impl Nullable for WorkspaceConfig {
     fn null() -> SeaValue {
         SeaValue::Json(None)
     }
 }
 
-impl From<NamespaceConfig> for SeaValue {
-    fn from(value: NamespaceConfig) -> Self {
+impl From<WorkspaceConfig> for SeaValue {
+    fn from(value: WorkspaceConfig) -> Self {
         json_to_sea_value(serde_json::to_value(value).unwrap()).unwrap()
     }
 }
 
 #[derive(Debug, Default, Fields, Serialize, Deserialize, Clone)]
 #[serde(default)]
-pub struct NamespaceMeta {
+pub struct WorkspaceMeta {
     pub schema_version: String,
 }
 
-impl Nullable for NamespaceMeta {
+impl Nullable for WorkspaceMeta {
     fn null() -> SeaValue {
         SeaValue::Json(None)
     }
 }
 
-impl From<NamespaceMeta> for SeaValue {
-    fn from(value: NamespaceMeta) -> Self {
+impl From<WorkspaceMeta> for SeaValue {
+    fn from(value: WorkspaceMeta) -> Self {
         json_to_sea_value(serde_json::to_value(value).unwrap()).unwrap()
     }
 }
 
-/// Filtering options for `namespace` queries.
+/// Filtering options for `workspace` queries.
 #[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
-pub struct NamespaceFilter {
+pub struct WorkspaceFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<OpValsString>,
     pub name: Option<OpValsString>,
@@ -172,7 +172,7 @@ pub struct NamespaceFilter {
     pub updated_at: Option<OpValsValue>,
 }
 
-impl TryFrom<JsonValue> for NamespaceFilter {
+impl TryFrom<JsonValue> for WorkspaceFilter {
     type Error = StoreError;
 
     fn try_from(value: JsonValue) -> StoreResult<Self> {
@@ -183,19 +183,19 @@ impl TryFrom<JsonValue> for NamespaceFilter {
 
 // --- Defaults for testing ---
 #[cfg(test)]
-impl Default for NamespaceForCreate {
+impl Default for WorkspaceForCreate {
     fn default() -> Self {
         use crate::store::utils::gen_rand_str;
 
         Self {
             name: gen_rand_str(10),
             slug: gen_rand_str(10),
-            description: Some("A default namespace for testing.".into()),
-            config: NamespaceConfig {
+            description: Some("A default workspace for testing.".into()),
+            config: WorkspaceConfig {
                 schema_version: "1".into(),
             },
             tags: vec![],
-            meta: NamespaceMeta {
+            meta: WorkspaceMeta {
                 schema_version: "1".into(),
             },
         }
@@ -203,7 +203,7 @@ impl Default for NamespaceForCreate {
 }
 
 #[cfg(test)]
-impl Default for NamespaceForUpdate {
+impl Default for WorkspaceForUpdate {
     fn default() -> Self {
         Self {
             name: None,

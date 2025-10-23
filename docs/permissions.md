@@ -31,49 +31,49 @@ Our authorization model is built on three core entities:
 
 1.  **Permission**: A single, granular permission that grants the ability to perform one specific action on one type of resource (e.g., `projects:create`).
 2.  **Role**: A named collection of permissions. Roles are used to group permissions into logical sets that can be assigned to users (e.g., the "Administrator" role).
-3.  **Membership**: The link that connects an `Account` to a `Namespace`. A user is granted `Roles` through their `Membership`.
+3.  **Membership**: The link that connects an `Account` to a `Workspace`. A user is granted `Roles` through their `Membership`.
 
-A user's total set of abilities within a namespace is the sum of all permissions granted by all the roles they are assigned.
+A user's total set of abilities within a workspace is the sum of all permissions granted by all the roles they are assigned.
 
 ## Default Roles
 
-When a new namespace is created, four default roles are automatically generated. These provide a sensible starting point for access control.
+When a new workspace is created, four default roles are automatically generated. These provide a sensible starting point for access control.
 
 | Role Name   | Description                                                                                                     |
 | :---------- | :-------------------------------------------------------------------------------------------------------------- |
-| **Owner**   | Has full, unrestricted access to all resources. The only role that can delete the namespace and manage billing. |
-| **Admin**   | Can manage all resources _except_ for namespace deletion and billing. Intended for technical administrators.    |
+| **Owner**   | Has full, unrestricted access to all resources. The only role that can delete the workspace and manage billing. |
+| **Admin**   | Can manage all resources _except_ for workspace deletion and billing. Intended for technical administrators.    |
 | **Member**  | A standard user role. Can view resources and manage the projects they are assigned to.                          |
 | **Billing** | A specialized role that can only view members and manage billing settings. Cannot access project data.          |
 
 ## Default Permissions List
 
-The following is a comprehensive list of all default permissions created for a new namespace. They are grouped by their `resource`.
+The following is a comprehensive list of all default permissions created for a new workspace. They are grouped by their `resource`.
 
-### Namespace (`namespace`)
+### Workspace (`workspace`)
 
-Permissions related to the management of the namespace itself.
+Permissions related to the management of the workspace itself.
 
 | Permission Name    | Granted to (Default Roles)    | Description                                               |
 | :----------------- | :---------------------------- | :-------------------------------------------------------- |
-| `namespace:read`   | Owner, Admin, Member, Billing | Allows viewing the namespace's name and settings.         |
-| `namespace:update` | Owner, Admin                  | Allows updating the namespace's name and settings.        |
-| `namespace:delete` | Owner                         | **DANGEROUS**: Allows permanently deleting the namespace. |
+| `workspace:read`   | Owner, Admin, Member, Billing | Allows viewing the workspace's name and settings.         |
+| `workspace:update` | Owner, Admin                  | Allows updating the workspace's name and settings.        |
+| `workspace:delete` | Owner                         | **DANGEROUS**: Allows permanently deleting the workspace. |
 
 ### Members & Invitations (`members`)
 
-Permissions for managing user membership and inviting new people to the namespace.
+Permissions for managing user membership and inviting new people to the workspace.
 
 | Permission Name  | Granted to (Default Roles)    | Description                                          |
 | :--------------- | :---------------------------- | :--------------------------------------------------- |
-| `members:read`   | Owner, Admin, Member, Billing | Allows viewing the list of members in the namespace. |
-| `members:invite` | Owner, Admin                  | Allows inviting new members to the namespace.        |
+| `members:read`   | Owner, Admin, Member, Billing | Allows viewing the list of members in the workspace. |
+| `members:invite` | Owner, Admin                  | Allows inviting new members to the workspace.        |
 | `members:update` | Owner, Admin                  | Allows changing a member's roles.                    |
-| `members:delete` | Owner, Admin                  | Allows removing a member from the namespace.         |
+| `members:delete` | Owner, Admin                  | Allows removing a member from the workspace.         |
 
 ### Projects (`projects`)
 
-Permissions for managing projects within the namespace.
+Permissions for managing projects within the workspace.
 
 | Permission Name   | Granted to (Default Roles) | Description                                              |
 | :---------------- | :------------------------- | :------------------------------------------------------- |
@@ -96,7 +96,7 @@ Permissions for managing the RBAC system itself. These are highly privileged.
 
 ### Billing (`billing`)
 
-Permissions for managing the namespace's subscription and payment details.
+Permissions for managing the workspace's subscription and payment details.
 
 | Permission Name  | Granted to (Default Roles) | Description                                                 |
 | :--------------- | :------------------------- | :---------------------------------------------------------- |
@@ -105,7 +105,7 @@ Permissions for managing the namespace's subscription and payment details.
 
 ### Audit Logs (`audit-logs`)
 
-Permissions for viewing the audit trail of activities within the namespace.
+Permissions for viewing the audit trail of activities within the workspace.
 
 | Permission Name   | Granted to (Default Roles) | Description                                           |
 | :---------------- | :------------------------- | :---------------------------------------------------- |

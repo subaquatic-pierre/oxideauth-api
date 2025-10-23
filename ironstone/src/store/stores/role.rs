@@ -107,7 +107,7 @@ mod tests {
         store::{
             ctx::StoreCtx,
             entities::{
-                namespace::NamespaceForCreate, permission::PermissionForCreate, role::RoleForCreate,
+                workspace::WorkspaceForCreate, permission::PermissionForCreate, role::RoleForCreate,
             },
             error::StoreError,
             traits::{
@@ -122,14 +122,14 @@ mod tests {
     use serial_test::serial;
     use uuid::Uuid;
 
-    /// Helper function to seed the necessary Namespace for a Role.
+    /// Helper function to seed the necessary Workspace for a Role.
     async fn seed_prerequisite(ctx: &StoreCtx, app: &crate::app::AppData) -> Result<Uuid> {
-        let namespace = app
+        let workspace = app
             .sm
-            .namespace
-            .create(ctx, NamespaceForCreate::default())
+            .workspace
+            .create(ctx, WorkspaceForCreate::default())
             .await?;
-        Ok(namespace.id.into())
+        Ok(workspace.id.into())
     }
 
     #[tokio::test]
@@ -140,10 +140,10 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = RoleStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let namespace_id = seed_prerequisite(&ctx, &app).await?;
+        let workspace_id = seed_prerequisite(&ctx, &app).await?;
 
         let data = RoleForCreate {
-            namespace_id,
+            workspace_id,
             name: "test-role-create".to_string(),
             ..Default::default()
         };
@@ -154,7 +154,7 @@ mod tests {
 
         // -- Assert
         assert_eq!(created_role.name, "test-role-create");
-        assert_eq!(created_role.namespace_id, namespace_id);
+        assert_eq!(created_role.workspace_id, workspace_id);
         assert_eq!(fetched_role.id, created_role.id);
         assert_eq!(fetched_role.name, created_role.name);
 
@@ -169,13 +169,13 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = RoleStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let namespace_id = seed_prerequisite(&ctx, &app).await?;
+        let workspace_id = seed_prerequisite(&ctx, &app).await?;
 
         let created_role = store
             .create(
                 &ctx,
                 RoleForCreate {
-                    namespace_id,
+                    workspace_id,
                     ..Default::default()
                 },
             )
@@ -205,13 +205,13 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = RoleStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let namespace_id = seed_prerequisite(&ctx, &app).await?;
+        let workspace_id = seed_prerequisite(&ctx, &app).await?;
 
         let created_role = store
             .create(
                 &ctx,
                 RoleForCreate {
-                    namespace_id,
+                    workspace_id,
                     ..Default::default()
                 },
             )
@@ -239,16 +239,16 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = RoleStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let namespace_id = seed_prerequisite(&ctx, &app).await?;
+        let workspace_id = seed_prerequisite(&ctx, &app).await?;
 
         let roles_to_create = vec![
             RoleForCreate {
-                namespace_id,
+                workspace_id,
                 name: "list-role-a".to_string(),
                 ..Default::default()
             },
             RoleForCreate {
-                namespace_id,
+                workspace_id,
                 name: "list-role-b".to_string(),
                 ..Default::default()
             },
@@ -274,13 +274,13 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = RoleStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let namespace_id = seed_prerequisite(&ctx, &app).await?;
+        let workspace_id = seed_prerequisite(&ctx, &app).await?;
 
         let role = store
             .create(
                 &ctx,
                 RoleForCreate {
-                    namespace_id,
+                    workspace_id,
                     name: "role-with-perms".into(),
                     ..Default::default()
                 },
@@ -295,7 +295,7 @@ mod tests {
                 &ctx,
                 PermissionForCreate {
                     name: "entity:read".into(),
-                    namespace_id,
+                    workspace_id,
                     ..Default::default()
                 },
             )
@@ -307,7 +307,7 @@ mod tests {
                 &ctx,
                 PermissionForCreate {
                     name: "entity:write".into(),
-                    namespace_id,
+                    workspace_id,
                     ..Default::default()
                 },
             )
@@ -355,14 +355,14 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = RoleStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let namespace_id = seed_prerequisite(&ctx, &app).await?;
+        let workspace_id = seed_prerequisite(&ctx, &app).await?;
 
         // -- Create test data with different tags
         store
             .create(
                 &ctx,
                 RoleForCreate {
-                    namespace_id,
+                    workspace_id,
                     name: "tags-role-a".into(),
                     tags: vec!["billing".into(), "admin".into()],
                     ..Default::default()
@@ -373,7 +373,7 @@ mod tests {
             .create(
                 &ctx,
                 RoleForCreate {
-                    namespace_id,
+                    workspace_id,
                     name: "tags-role-b".into(),
                     tags: vec!["technical".into(), "editor".into()],
                     ..Default::default()

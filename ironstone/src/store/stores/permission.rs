@@ -108,7 +108,7 @@ mod tests {
 
         let data = PermissionForCreate {
             name: "project:create".to_string(),
-            namespace_id: ctx.ns_id,
+            workspace_id: ctx.ns_id,
             ..Default::default()
         };
 
@@ -137,7 +137,7 @@ mod tests {
             .create(
                 &ctx,
                 PermissionForCreate {
-                    namespace_id: ctx.ns_id,
+                    workspace_id: ctx.ns_id,
                     ..Default::default()
                 },
             )
@@ -174,7 +174,7 @@ mod tests {
             .create(
                 &ctx,
                 PermissionForCreate {
-                    namespace_id: ctx.ns_id,
+                    workspace_id: ctx.ns_id,
                     ..Default::default()
                 },
             )
@@ -206,12 +206,12 @@ mod tests {
         let perms_to_create = vec![
             PermissionForCreate {
                 name: "perm:list:a".to_string(),
-                namespace_id: ctx.ns_id,
+                workspace_id: ctx.ns_id,
                 ..Default::default()
             },
             PermissionForCreate {
                 name: "perm:list:b".to_string(),
-                namespace_id: ctx.ns_id,
+                workspace_id: ctx.ns_id,
                 ..Default::default()
             },
         ];
@@ -244,7 +244,7 @@ mod tests {
                 PermissionForCreate {
                     name: "tags-perm-a".into(),
                     tags: vec!["resource".into(), "project".into()],
-                    namespace_id: ctx.ns_id,
+                    workspace_id: ctx.ns_id,
                     ..Default::default()
                 },
             )
@@ -255,7 +255,7 @@ mod tests {
                 PermissionForCreate {
                     name: "tags-perm-b".into(),
                     tags: vec!["action".into(), "delete".into()],
-                    namespace_id: ctx.ns_id,
+                    workspace_id: ctx.ns_id,
                     ..Default::default()
                 },
             )

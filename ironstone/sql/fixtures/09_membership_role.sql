@@ -8,17 +8,17 @@
 INSERT INTO
   membership_role (membership_id, role_id)
 VALUES
-  -- Root membership in global namespace → sysadmin
+  -- Root membership in global workspace → sysadmin
   (
     '60000000-0000-0000-0000-000000000001', -- root/global
     '40000000-0000-0000-0000-000000000001'
   ), -- sysadmin
-  -- Owner membership in global namespace → owner
+  -- Owner membership in global workspace → owner
   (
     '60000000-0000-0000-0000-000000000002', -- owner/global
     '40000000-0000-0000-0000-000000000002'
   ), -- owner
-  -- Owner membership in acme namespace → owner
+  -- Owner membership in acme workspace → owner
   (
     '60000000-0000-0000-0000-000000000003', -- owner/acme
     '40000000-0000-0000-0000-000000000002'

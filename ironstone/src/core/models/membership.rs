@@ -1,10 +1,10 @@
 use uuid::Uuid;
 
-use crate::core::models::{account::Account, namespace::Namespace, role::Role};
+use crate::core::models::{account::Account, role::Role, workspace::Workspace};
 
 pub struct Membership {
     account: Account,
-    namespace: Namespace,
+    workspace: Workspace,
     roles: Vec<Role>,
 }
 

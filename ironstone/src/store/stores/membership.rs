@@ -113,7 +113,7 @@ mod tests {
                 account::AccountForCreate,
                 id::DbId,
                 membership::{MembershipForCreate, MembershipMeta},
-                namespace::NamespaceForCreate,
+                workspace::WorkspaceForCreate,
                 role::RoleForCreate,
             },
             error::StoreError,
@@ -138,12 +138,12 @@ mod tests {
             .account
             .create(ctx, AccountForCreate::default())
             .await?;
-        let namespace = app
+        let workspace = app
             .sm
-            .namespace
-            .create(ctx, NamespaceForCreate::default())
+            .workspace
+            .create(ctx, WorkspaceForCreate::default())
             .await?;
-        Ok((account.id.into(), namespace.id.into()))
+        Ok((account.id.into(), workspace.id.into()))
     }
 
     #[tokio::test]
@@ -154,11 +154,11 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = MembershipStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let (account_id, namespace_id) = seed_prerequisites(&ctx, &app).await?;
+        let (account_id, workspace_id) = seed_prerequisites(&ctx, &app).await?;
 
         let data = MembershipForCreate {
             account_id,
-            namespace_id,
+            workspace_id,
             ..Default::default()
         };
 
@@ -168,7 +168,7 @@ mod tests {
 
         // -- Assert
         assert_eq!(created_membership.account_id, account_id);
-        assert_eq!(created_membership.namespace_id, namespace_id);
+        assert_eq!(created_membership.workspace_id, workspace_id);
         assert_eq!(fetched_membership.id, created_membership.id);
         assert_eq!(fetched_membership.account_id, created_membership.account_id);
 
@@ -183,14 +183,14 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = MembershipStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let (account_id, namespace_id) = seed_prerequisites(&ctx, &app).await?;
+        let (account_id, workspace_id) = seed_prerequisites(&ctx, &app).await?;
 
         let created_membership = store
             .create(
                 &ctx,
                 MembershipForCreate {
                     account_id,
-                    namespace_id,
+                    workspace_id,
                     ..Default::default()
                 },
             )
@@ -224,14 +224,14 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = MembershipStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let (account_id, namespace_id) = seed_prerequisites(&ctx, &app).await?;
+        let (account_id, workspace_id) = seed_prerequisites(&ctx, &app).await?;
 
         let created_membership = store
             .create(
                 &ctx,
                 MembershipForCreate {
                     account_id,
-                    namespace_id,
+                    workspace_id,
                     ..Default::default()
                 },
             )
@@ -266,12 +266,12 @@ mod tests {
         let memberships_to_create = vec![
             MembershipForCreate {
                 account_id: account_id_1,
-                namespace_id: space_id_1,
+                workspace_id: space_id_1,
                 ..Default::default()
             },
             MembershipForCreate {
                 account_id: account_id_2,
-                namespace_id: space_id_2,
+                workspace_id: space_id_2,
                 ..Default::default()
             },
         ];
@@ -297,13 +297,13 @@ mod tests {
         let store = MembershipStore::new(dbx);
         let ctx = StoreCtx::new_root();
 
-        let (account_id, namespace_id) = seed_prerequisites(&ctx, &app).await?;
+        let (account_id, workspace_id) = seed_prerequisites(&ctx, &app).await?;
         let membership = store
             .create(
                 &ctx,
                 MembershipForCreate {
                     account_id,
-                    namespace_id,
+                    workspace_id,
                     ..Default::default()
                 },
             )
@@ -317,7 +317,7 @@ mod tests {
                 &ctx,
                 RoleForCreate {
                     name: "admin".into(),
-                    namespace_id,
+                    workspace_id,
                     ..Default::default()
                 },
             )
@@ -329,7 +329,7 @@ mod tests {
                 &ctx,
                 RoleForCreate {
                     name: "editor".into(),
-                    namespace_id,
+                    workspace_id,
                     ..Default::default()
                 },
             )
@@ -377,7 +377,7 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = MembershipStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let (account_id, namespace_id) = seed_prerequisites(&ctx, &app).await?;
+        let (account_id, workspace_id) = seed_prerequisites(&ctx, &app).await?;
 
         // -- Create test data with different tags
         store
@@ -385,20 +385,20 @@ mod tests {
                 &ctx,
                 MembershipForCreate {
                     account_id,
-                    namespace_id,
+                    workspace_id,
                     tags: vec!["system".into(), "critical".into()],
                     ..Default::default()
                 },
             )
             .await?;
 
-        let (account_id, namespace_id) = seed_prerequisites(&ctx, &app).await?;
+        let (account_id, workspace_id) = seed_prerequisites(&ctx, &app).await?;
         store
             .create(
                 &ctx,
                 MembershipForCreate {
                     account_id,
-                    namespace_id,
+                    workspace_id,
                     tags: vec!["user".into(), "general".into()],
                     ..Default::default()
                 },

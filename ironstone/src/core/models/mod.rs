@@ -1,7 +1,7 @@
 pub mod account;
 pub mod hash;
 pub mod membership;
-pub mod namespace;
+pub mod workspace;
 pub mod oath;
 pub mod permission;
 pub mod project;

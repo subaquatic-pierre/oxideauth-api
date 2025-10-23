@@ -1,11 +1,11 @@
 -- migrations/03_project.sql
--- Purpose: Define projects as child entities within a namespace. Projects act as
---   logical containers for resources, tasks, memberships, and roles scoped below a namespace.
+-- Purpose: Define projects as child entities within a workspace. Projects act as
+--   logical containers for resources, tasks, memberships, and roles scoped below a workspace.
 -- Notes:
---   - Each project belongs to exactly one namespace (`namespace_id` FK).
---   - `name` is human-readable; uniqueness is enforced per namespace.
+--   - Each project belongs to exactly one workspace (`workspace_id` FK).
+--   - `name` is human-readable; uniqueness is enforced per workspace.
 --   - `code` is an optional short identifier (slug-like) and can be made unique within
---     a namespace if standardized (see TODOs).
+--     a workspace if standardized (see TODOs).
 --   - `config` is a JSONB object for per-project settings (feature flags, metadata).
 --   - `created_by` / `updated_by` are audit fields; FK constraints can be added later
 --     to avoid bootstrap issues (see TODOs).
@@ -13,11 +13,11 @@ CREATE TABLE IF NOT EXISTS
   project (
     -- Primary key
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
-    -- Parent namespace (cascades on delete to clean up child projects automatically)
-    namespace_id UUID NOT NULL,
+    -- Parent workspace (cascades on delete to clean up child projects automatically)
+    workspace_id UUID NOT NULL,
     -- Project identity
     name TEXT NOT NULL,
-    -- Optional short identifier (slug/code). Uniqueness per-namespace can be enforced separately.
+    -- Optional short identifier (slug/code). Uniqueness per-workspace can be enforced separately.
     code TEXT,
     description TEXT,
     -- Config blob for project-specific structured settings (validated below as JSON object)
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS
     audit JSONB NOT NULL DEFAULT '{}'::jsonb,
     -- END Audit
     -- ---------- Constraints ----------
-    CONSTRAINT project_namespace_id_fkey FOREIGN KEY (namespace_id) REFERENCES namespace (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT project_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES workspace (id) ON UPDATE CASCADE ON DELETE CASCADE,
     -- Enforce JSON object shape
     CONSTRAINT project_audit_is_object CHECK (jsonb_typeof(audit) = 'object'),
     CONSTRAINT project_config_is_object CHECK (jsonb_typeof(config) = 'object')
@@ -50,9 +50,9 @@ CREATE TABLE IF NOT EXISTS
 -- =========================
 -- Indexes
 -- =========================
--- Ensure per-namespace uniqueness of project names
-CREATE UNIQUE INDEX IF NOT EXISTS project_namespace_name_key ON project (namespace_id, name);
+-- Ensure per-workspace uniqueness of project names
+CREATE UNIQUE INDEX IF NOT EXISTS project_workspace_name_key ON project (workspace_id, name);
 
--- Optional: enforce per-namespace uniqueness of code
--- CREATE UNIQUE INDEX IF NOT EXISTS project_namespace_code_key
---   ON project (namespace_id, code);
+-- Optional: enforce per-workspace uniqueness of code
+-- CREATE UNIQUE INDEX IF NOT EXISTS project_workspace_code_key
+--   ON project (workspace_id, code);

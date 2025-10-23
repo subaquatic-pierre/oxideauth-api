@@ -32,7 +32,7 @@ pub struct TokenBlacklistRow {
     pub id: DbId,
     pub token_hash: Sha256Hash,
     pub account_id: Option<Uuid>,
-    pub namespace_id: Option<Uuid>,
+    pub workspace_id: Option<Uuid>,
     pub expires_at: OffsetDateTime,
     pub reason: Option<String>,
     // pub tags: Vec<String>,
@@ -48,7 +48,7 @@ pub struct TokenBlacklistRow {
 pub struct TokenBlacklistForCreate {
     pub token_hash: Sha256Hash,
     pub account_id: Option<Uuid>,
-    pub namespace_id: Option<Uuid>,
+    pub workspace_id: Option<Uuid>,
     pub expires_at: OffsetDateTime,
     pub reason: Option<String>,
     // pub tags: Vec<String>,
@@ -60,7 +60,7 @@ pub struct TokenBlacklistForCreate {
 #[derive(Debug, Fields, Clone)]
 pub struct TokenBlacklistForUpdate {
     pub account_id: Option<Uuid>,
-    pub namespace_id: Option<Uuid>,
+    pub workspace_id: Option<Uuid>,
     pub expires_at: Option<OffsetDateTime>,
     pub reason: Option<String>,
     // pub tags: Option<Vec<String>>,
@@ -94,7 +94,7 @@ pub struct TokenBlacklistFilter {
     #[modql(cast_as = "uuid")]
     pub account_id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
-    pub namespace_id: Option<OpValsString>,
+    pub workspace_id: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub expires_at: Option<OpValsValue>,
     pub reason: Option<OpValsString>,
@@ -126,7 +126,7 @@ impl Default for TokenBlacklistForCreate {
         Self {
             token_hash: Sha256Hash::gen_rand(),
             account_id: None,
-            namespace_id: None,
+            workspace_id: None,
             expires_at: OffsetDateTime::now_utc(),
             reason: Some("test_revoke".into()),
             // tags: vec![],
@@ -142,7 +142,7 @@ impl Default for TokenBlacklistForUpdate {
     fn default() -> Self {
         Self {
             account_id: None,
-            namespace_id: None,
+            workspace_id: None,
             expires_at: None,
             reason: None,
             // tags: None,
