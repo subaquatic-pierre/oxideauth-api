@@ -1,4 +1,4 @@
-use http::Method;
+use axum::http::Method;
 use tower_http::cors::{Any, CorsLayer}; // Be sure to import http::Method
 
 pub fn build_cors() -> CorsLayer {

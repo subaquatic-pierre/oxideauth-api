@@ -29,13 +29,13 @@ impl AppEnv {
     }
 }
 
-pub struct AppData {
+pub struct AppState {
     pub config: Config,
     pub dbx: Arc<PgDbx>,
     pub sm: Arc<StoreManager<PgDbx>>,
 }
 
-pub async fn new_app_data() -> AppData {
+pub async fn new_app_data() -> AppState {
     let app_env = AppEnv::from_env();
     let app = match app_env {
         AppEnv::Development => {
@@ -61,21 +61,21 @@ pub async fn new_app_data() -> AppData {
     app
 }
 
-pub async fn new_prod_app_data() -> AppData {
+pub async fn new_prod_app_data() -> AppState {
     let config = Config::from_env();
     let db: PgPool = new_db_pool(&config.database_url, 5).await;
     let dbx = Arc::new(PgDbx::new(db.clone()));
 
     let sm = Arc::new(StoreManager::new(dbx.clone()));
 
-    AppData {
+    AppState {
         dbx: dbx.clone(),
         config,
         sm,
     }
 }
 
-pub async fn new_dev_app_data() -> AppData {
+pub async fn new_dev_app_data() -> AppState {
     let config = Config::dev_config();
 
     let db: PgPool = new_db_pool(&config.database_url, 5).await;
@@ -83,21 +83,21 @@ pub async fn new_dev_app_data() -> AppData {
 
     let sm = Arc::new(StoreManager::new(dbx.clone()));
 
-    AppData {
+    AppState {
         dbx: dbx.clone(),
         config,
         sm,
     }
 }
 
-pub async fn new_test_app_data() -> AppData {
+pub async fn new_test_app_data() -> AppState {
     let config = Config::test_config();
 
     let db: PgPool = new_db_pool(&config.database_url, 1).await;
     let dbx = Arc::new(PgDbx::new(db.clone()));
     let sm = Arc::new(StoreManager::new(dbx.clone()));
 
-    AppData {
+    AppState {
         dbx: dbx.clone(),
         config,
         sm,

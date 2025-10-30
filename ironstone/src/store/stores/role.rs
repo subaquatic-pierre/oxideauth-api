@@ -107,7 +107,7 @@ mod tests {
         store::{
             ctx::StoreCtx,
             entities::{
-                workspace::WorkspaceForCreate, permission::PermissionForCreate, role::RoleForCreate,
+                permission::PermissionForCreate, role::RoleForCreate, workspace::WorkspaceForCreate,
             },
             error::StoreError,
             traits::{
@@ -123,7 +123,7 @@ mod tests {
     use uuid::Uuid;
 
     /// Helper function to seed the necessary Workspace for a Role.
-    async fn seed_prerequisite(ctx: &StoreCtx, app: &crate::app::AppData) -> Result<Uuid> {
+    async fn seed_prerequisite(ctx: &StoreCtx, app: &crate::app::AppState) -> Result<Uuid> {
         let workspace = app
             .sm
             .workspace

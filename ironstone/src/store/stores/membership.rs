@@ -113,8 +113,8 @@ mod tests {
                 account::AccountForCreate,
                 id::DbId,
                 membership::{MembershipForCreate, MembershipMeta},
-                workspace::WorkspaceForCreate,
                 role::RoleForCreate,
+                workspace::WorkspaceForCreate,
             },
             error::StoreError,
             traits::{
@@ -131,7 +131,7 @@ mod tests {
     /// Helper function to seed the necessary Account and Space for a Membership.
     async fn seed_prerequisites(
         ctx: &StoreCtx,
-        app: &crate::app::AppData,
+        app: &crate::app::AppState,
     ) -> Result<(uuid::Uuid, uuid::Uuid)> {
         let account = app
             .sm

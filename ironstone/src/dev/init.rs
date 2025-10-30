@@ -10,7 +10,7 @@ use tokio::sync::OnceCell;
 use tracing::info;
 
 use crate::{
-    app::{new_test_app_data, AppData},
+    app::{new_test_app_data, AppState},
     dev::db::{init_dev_db, init_test_db},
     store::{manager::StoreManager, PgPool},
 };
@@ -36,8 +36,8 @@ pub fn init_tracing_for_tests() {
     });
 }
 
-pub async fn init_test<'a>() -> &'a AppData {
-    static INIT: OnceCell<AppData> = OnceCell::const_new();
+pub async fn init_test<'a>() -> &'a AppState {
+    static INIT: OnceCell<AppState> = OnceCell::const_new();
 
     let ds = INIT
         .get_or_init(|| async {

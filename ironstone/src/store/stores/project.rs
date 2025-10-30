@@ -101,7 +101,7 @@ mod tests {
     use uuid::Uuid;
 
     /// Helper function to seed the necessary Workspace for a Project.
-    async fn seed_prerequisite(ctx: &StoreCtx, app: &crate::app::AppData) -> Result<Uuid> {
+    async fn seed_prerequisite(ctx: &StoreCtx, app: &crate::app::AppState) -> Result<Uuid> {
         let workspace = app
             .sm
             .workspace

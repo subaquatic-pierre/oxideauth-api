@@ -1,9 +1,14 @@
-use axum::body::Body;
-use axum::extract::FromRequest;
-use axum_extra::headers::{authorization::Bearer, Authorization};
-use axum_extra::TypedHeader;
-use http::HeaderMap;
-use http::{Request, Response, StatusCode};
+use axum::{
+    body::Body,
+    extract::{FromRequest, Request},
+    http::{HeaderMap, StatusCode},
+    response::Response,
+    RequestExt,
+};
+use axum_extra::{
+    headers::{authorization::Bearer, Authorization},
+    TypedHeader,
+};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -43,7 +48,7 @@ pub struct AuthMiddleware<S> {
 
 impl<S> Service<Request<Body>> for AuthMiddleware<S>
 where
-    S: Service<Request<Body>, Response = Response<Body>> + Clone + Send + 'static,
+    S: Service<Request, Response = Response> + Send + 'static + Clone,
     S::Future: Send + 'static,
 {
     type Response = S::Response;
@@ -61,23 +66,19 @@ where
 
         Box::pin(async move {
             // Extract the Authorization header
-            let auth_header: Option<TypedHeader<Authorization<Bearer>>> =
-                TypedHeader::from_request(req);
+            let headers = req.headers();
+            let auth_header = headers.get("Authorization");
 
             let token = match auth_header {
-                Some(TypedHeader(Authorization(bearer))) => bearer.token().to_string(),
-                None => {
-                    // No token provided. Return 401.
-                    let res = Response::builder()
-                        .status(StatusCode::UNAUTHORIZED)
-                        .body(Body::from("Missing credentials"))
-                        .unwrap();
-                    return Ok(res);
+                Some(str) => {
+                    let str = str.to_str().unwrap().to_string();
+                    Some("token")
                 }
+                None => None,
             };
 
             // Call your auth service
-            match auth_service.resolve_ctx(&token).await {
+            match auth_service.resolve_ctx(token).await {
                 Ok(ctx) => {
                     // SUCCESS!
                     // 1. (Optional) Inject user info into the request

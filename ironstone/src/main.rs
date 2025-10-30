@@ -1,5 +1,5 @@
 #![deny(unused_must_use)]
-use std::{env, io, str::FromStr};
+use std::{env, io, str::FromStr, sync::Arc};
 
 use dotenv::dotenv;
 use tracing::info;
@@ -18,7 +18,9 @@ mod utils;
 mod web;
 
 use app::new_app_data;
-use web::routes::root::root_handler;
+use web::handlers::root::root_handler;
+
+use crate::web::router::RootRouter;
 
 #[tokio::main]
 async fn main() {
@@ -30,17 +32,19 @@ async fn main() {
         .init();
 
     let app = new_app_data().await;
-    let bind_addr = format!("{}:{}", app.config.host, app.config.port);
-
-    // Define the application's routes.
-    let app = Router::new().route("/", get(root_handler));
 
     // Define the address to run the server on.
-    let addr = SocketAddr::from_str(&bind_addr);
+    let bind_addr = format!("{}:{}", app.config.host, app.config.port);
     info!("Server listening at {bind_addr} ... ",);
+    let addr = SocketAddr::from_str(&bind_addr);
 
     // Create a TCP listener and serve the application.
     let listener = tokio::net::TcpListener::bind(bind_addr).await.unwrap();
 
-    axum::serve(listener, app).await.unwrap();
+    let state = Arc::new(app);
+
+    // Define the application's routes.
+    let router = RootRouter::build_routes_with_state(state);
+
+    axum::serve(listener, router).await.unwrap();
 }

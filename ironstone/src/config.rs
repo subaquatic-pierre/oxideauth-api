@@ -137,7 +137,7 @@ impl Config {
         Self {
             host: "127.0.0.1".to_string(),
             app_env: "dev".to_string(),
-            port: 8080,
+            port: 8000,
             client_origin: "http://localhost:3000".to_string(),
             database_url: "postgres://test_user:password@localhost:5432/dev_db".to_string(),
             jwt_secret: "supersecretkey".to_string(),
