@@ -7,7 +7,7 @@ use crate::{
     store::ctx::StoreCtx,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CoreCtx {
     pub account: Account,
     pub workspace: Workspace,

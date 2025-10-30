@@ -1,7 +1,7 @@
 use axum::{
     body::Body,
     extract::{FromRequest, Request},
-    http::{HeaderMap, StatusCode},
+    http::{header::AUTHORIZATION, HeaderMap, StatusCode},
     response::Response,
     RequestExt,
 };
@@ -15,8 +15,8 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
-use crate::core::services::authenticate::AuthenticateService;
-use crate::store::dbx::{DbExecutor, PgDbx}; // Use Axum's body type
+use crate::store::dbx::{DbExecutor, PgDbx};
+use crate::{app::AppState, core::services::authenticate::AuthenticateService}; // Use Axum's body type
 
 #[derive(Clone)]
 pub struct AuthLayer {
@@ -24,7 +24,8 @@ pub struct AuthLayer {
 }
 
 impl AuthLayer {
-    pub fn new(auth_service: Arc<AuthenticateService<PgDbx>>) -> Self {
+    pub fn new(app_state: &Arc<AppState>) -> Self {
+        let auth_service = Arc::new(AuthenticateService::new(app_state.sm.clone()));
         Self { auth_service }
     }
 }
@@ -67,12 +68,15 @@ where
         Box::pin(async move {
             // Extract the Authorization header
             let headers = req.headers();
-            let auth_header = headers.get("Authorization");
+            let auth_header = headers.get(AUTHORIZATION).and_then(|h| h.to_str().ok());
 
             let token = match auth_header {
                 Some(str) => {
-                    let str = str.to_str().unwrap().to_string();
-                    Some("token")
+                    let mut iter = str.split(" ").into_iter();
+
+                    let start = iter.next();
+                    let token = iter.next();
+                    token
                 }
                 None => None,
             };
@@ -80,9 +84,6 @@ where
             // Call your auth service
             match auth_service.resolve_ctx(token).await {
                 Ok(ctx) => {
-                    // SUCCESS!
-                    // 1. (Optional) Inject user info into the request
-                    //    so the RPC handler can access it.
                     req.extensions_mut().insert(ctx);
 
                     // 2. Pass the request to the inner service (the RPC handler)
