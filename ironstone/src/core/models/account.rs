@@ -5,12 +5,14 @@ use crate::store::entities::account::AccountRow;
 #[derive(Default, Debug, Clone)]
 pub struct Account {
     pub id: Uuid,
+    pub email: String,
 }
 
 impl From<AccountRow> for Account {
     fn from(value: AccountRow) -> Self {
         Self {
             id: value.id.into(),
+            email: value.email.into(),
         }
     }
 }

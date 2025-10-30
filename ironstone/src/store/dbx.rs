@@ -1,3 +1,4 @@
+use axum::async_trait;
 use sqlx::{
     query::{Query, QueryAs},
     Execute, FromRow, IntoArguments, Postgres, Transaction,
@@ -110,6 +111,7 @@ impl PgDbx {
     }
 }
 
+#[async_trait]
 impl DbExecutor for PgDbx {
     async fn fetch_one<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<O>
     where
@@ -146,6 +148,7 @@ impl DbExecutor for PgDbx {
     }
 }
 
+#[async_trait]
 pub trait DbExecutor: Send + Sync + Unpin {
     /// Execute a `query_as` and fetch exactly one row.
     /// If a transaction is active, runs against it; otherwise uses the pool.
@@ -178,6 +181,7 @@ pub trait DbExecutor: Send + Sync + Unpin {
         A: IntoArguments<'q, Postgres> + 'q;
 }
 
+#[async_trait]
 impl<T: DbExecutor> DbExecutor for Arc<T> {
     async fn fetch_one<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<O>
     where
@@ -216,6 +220,7 @@ impl<T: DbExecutor> DbExecutor for Arc<T> {
 
 pub struct MockDbx {}
 
+#[async_trait]
 impl DbExecutor for MockDbx {
     async fn fetch_one<'q, O, A>(&self, query: QueryAs<'q, Postgres, O, A>) -> StoreResult<O>
     where

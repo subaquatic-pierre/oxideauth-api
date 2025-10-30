@@ -14,7 +14,7 @@ use crate::{
 
 pub async fn root_handler(
     ctx: Extension<CoreCtx>,
-    state: Extension<Arc<AppState>>,
+    app: Extension<Arc<AppState>>,
 ) -> WebResult<WebResponse<String>> {
     info!("root_handler - CTX: {ctx:#?}");
     WebResponse::from_json("Hello, World".to_string())
@@ -22,7 +22,7 @@ pub async fn root_handler(
 
 pub async fn health_check_handler(
     ctx: Extension<CoreCtx>,
-    state: Extension<Arc<AppState>>,
+    app: Extension<Arc<AppState>>,
 ) -> WebResult<WebResponse<String>> {
     info!("health_check_handler - CTX: {ctx:#?}");
     WebResponse::from_json("Healthy".to_string())

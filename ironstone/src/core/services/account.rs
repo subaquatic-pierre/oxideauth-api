@@ -3,6 +3,7 @@ use serde_json::json;
 use crate::{
     core::{
         ctx::CoreCtx,
+        dto::account::{AccountCreateParams, AccountDescribeParams},
         error::{CoreError, CoreResult},
         models::account::Account,
     },
@@ -28,12 +29,11 @@ impl<'a, Dbx: DbExecutor> AccountService<'a, Dbx> {
     pub async fn create_account(
         &self,
         ctx: &CoreCtx,
-        email: &str,
-        password: &str,
+        params: AccountCreateParams,
     ) -> CoreResult<Account> {
         if self
             .acc_store
-            .get_by_email(&ctx.into(), email)
+            .get_by_email(&ctx.into(), &params.email)
             .await?
             .is_some()
         {
@@ -41,7 +41,7 @@ impl<'a, Dbx: DbExecutor> AccountService<'a, Dbx> {
         }
 
         let n_acc = AccountForCreate {
-            email: email.to_string(),
+            email: params.email,
             name: "name".to_string(),
             description: None,
             avatar_url: None,
@@ -56,6 +56,16 @@ impl<'a, Dbx: DbExecutor> AccountService<'a, Dbx> {
         let new_account = self.acc_store.create(&ctx.into(), n_acc).await?;
 
         Ok(new_account.into())
+    }
+
+    pub async fn describe_account(
+        &self,
+        ctx: &CoreCtx,
+        _params: AccountDescribeParams,
+    ) -> CoreResult<Account> {
+        let n_acc = Account::default();
+
+        Ok(n_acc)
     }
 }
 
@@ -106,9 +116,12 @@ mod tests {
         let acc_store = AccountStore::new(dbx);
         let acc_svc = AccountService::new(&acc_store);
         let ctx = CoreCtx::new_test();
-        let new_acc = acc_svc
-            .create_account(&ctx, "user@user.com", "password")
-            .await?;
+        let params = AccountCreateParams {
+            email: "user@user.com".to_string(),
+            password: "password".to_string(),
+        };
+
+        let new_acc = acc_svc.create_account(&ctx, params).await?;
 
         let expected = Account::default();
 
@@ -145,9 +158,11 @@ mod tests {
         let acc_store = AccountStore::new(dbx);
         let acc_svc = AccountService::new(&acc_store);
         let ctx = CoreCtx::new_test();
-        let new_acc = acc_svc
-            .create_account(&ctx, "user@user.com", "password")
-            .await;
+        let params = AccountCreateParams {
+            email: "user@user.com".to_string(),
+            password: "password".to_string(),
+        };
+        let new_acc = acc_svc.create_account(&ctx, params).await;
 
         assert!(
             matches!(new_acc, Err(CoreError::AlreadyExists(..))),

@@ -23,12 +23,10 @@ impl RootRouter {
         let cors = build_cors();
         let auth = AuthLayer::new(&state);
 
-        let acc_routes = build_account_routes();
-
         Router::new()
             .route("/", get(root_handler))
             .route("/health-check", get(health_check_handler))
-            .nest("/accounts", acc_routes)
+            .nest("/accounts", build_account_routes())
             .layer(cors)
             .layer(auth)
             .layer(Extension(state))

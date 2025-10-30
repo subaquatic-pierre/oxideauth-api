@@ -9,7 +9,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::web::response::WebResponse;
+use crate::{core::error::CoreError, web::response::WebResponse};
 
 pub type WebResult<T> = Result<Json<T>, WebError>;
 
@@ -68,5 +68,14 @@ impl IntoResponse for WebError {
 
         // Return the final response, combining the HTTP status code and the JSON error body
         (status_code, Json(body)).into_response()
+    }
+}
+
+impl From<CoreError> for WebError {
+    fn from(value: CoreError) -> Self {
+        match value {
+            CoreError::ParseError(..) => WebError::InternalServerError,
+            _ => WebError::NotFound,
+        }
     }
 }

@@ -36,6 +36,7 @@ macro_rules! create_dbx_mock_unsafe {
     ) => {
         struct $name;
 
+        #[axum::async_trait]
         impl $crate::store::dbx::DbExecutor for $name {
             async fn fetch_one<'q, O, A>(
                 &self,
