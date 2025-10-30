@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use crate::store::entities::account::AccountRow;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct Account {
     pub id: Uuid,
 }

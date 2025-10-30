@@ -7,6 +7,7 @@ use crate::{
     store::ctx::StoreCtx,
 };
 
+#[derive(Clone)]
 pub struct CoreCtx {
     pub account: Account,
     pub workspace: Workspace,
@@ -17,7 +18,6 @@ impl CoreCtx {
         Self { account, workspace }
     }
 
-    #[cfg(test)]
     pub fn new_test() -> Self {
         let ctx_acc = Account::default();
         let ctx_ns = Workspace::default();

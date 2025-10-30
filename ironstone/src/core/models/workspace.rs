@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use crate::core::models::oath::AuthProvider;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Workspace {
     pub id: Uuid,
     pub name: String,
@@ -10,7 +10,7 @@ pub struct Workspace {
     pub config: WorkspaceConfig,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct WorkspaceConfig {
     allowed_auth_providers: Vec<AuthProvider>,
 }

@@ -32,7 +32,7 @@ impl AppEnv {
 pub struct AppData {
     pub config: Config,
     pub dbx: Arc<PgDbx>,
-    pub sm: StoreManager<PgDbx>,
+    pub sm: Arc<StoreManager<PgDbx>>,
 }
 
 pub async fn new_app_data() -> AppData {
@@ -66,7 +66,7 @@ pub async fn new_prod_app_data() -> AppData {
     let db: PgPool = new_db_pool(&config.database_url, 5).await;
     let dbx = Arc::new(PgDbx::new(db.clone()));
 
-    let sm = StoreManager::new(dbx.clone());
+    let sm = Arc::new(StoreManager::new(dbx.clone()));
 
     AppData {
         dbx: dbx.clone(),
@@ -81,7 +81,7 @@ pub async fn new_dev_app_data() -> AppData {
     let db: PgPool = new_db_pool(&config.database_url, 5).await;
     let dbx = Arc::new(PgDbx::new(db.clone()));
 
-    let sm = StoreManager::new(dbx.clone());
+    let sm = Arc::new(StoreManager::new(dbx.clone()));
 
     AppData {
         dbx: dbx.clone(),
@@ -95,7 +95,7 @@ pub async fn new_test_app_data() -> AppData {
 
     let db: PgPool = new_db_pool(&config.database_url, 1).await;
     let dbx = Arc::new(PgDbx::new(db.clone()));
-    let sm = StoreManager::new(dbx.clone());
+    let sm = Arc::new(StoreManager::new(dbx.clone()));
 
     AppData {
         dbx: dbx.clone(),

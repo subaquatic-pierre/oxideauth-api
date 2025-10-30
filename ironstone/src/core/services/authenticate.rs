@@ -1,3 +1,5 @@
+use std::{collections::HashMap, sync::Arc};
+
 use crate::{
     core::{
         ctx::CoreCtx,
@@ -11,23 +13,20 @@ use crate::{
     },
 };
 
-pub struct AuthenticateService<'a, Dbx>
+pub struct AuthenticateService<Dbx: DbExecutor>
 where
     Dbx: DbExecutor,
 {
-    acc_svc: &'a AccountService<'a, Dbx>,
-    token_blacklist_store: &'a TokenBlacklistStore<Dbx>,
+    store_manager: Arc<StoreManager<Dbx>>,
 }
 
-impl<'a, Dbx: DbExecutor> AuthenticateService<'a, Dbx> {
-    pub fn new(
-        acc_svc: &'a AccountService<'a, Dbx>,
-        token_blacklist_store: &'a TokenBlacklistStore<Dbx>,
-    ) -> Self {
-        Self {
-            acc_svc,
-            token_blacklist_store,
-        }
+impl<Dbx: DbExecutor> AuthenticateService<Dbx> {
+    pub fn new(store_manager: Arc<StoreManager<Dbx>>) -> Self {
+        Self { store_manager }
+    }
+
+    pub async fn resolve_ctx(&self, token: Option<&str>) -> CoreResult<CoreCtx> {
+        Ok(CoreCtx::new_test())
     }
 
     pub async fn register_account(&self, ctx: &CoreCtx) -> CoreResult<()> {
