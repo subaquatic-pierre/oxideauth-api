@@ -1,6 +1,6 @@
 use axum::{
     extract::{Extension, State},
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use std::sync::Arc;
@@ -12,18 +12,23 @@ use crate::{
     web::{error::WebResult, middlewares::cors::build_cors, response::WebResponse},
 };
 
-pub async fn root_handler(
+pub async fn describe_account(
     ctx: Extension<CoreCtx>,
     state: Extension<Arc<AppState>>,
 ) -> WebResult<WebResponse<String>> {
-    info!("root_handler - CTX: {ctx:#?}");
+    info!("ROOT HANDLER - CTX: {ctx:#?}");
     WebResponse::from_json("Hello, World".to_string())
 }
 
-pub async fn health_check_handler(
+pub async fn create_account(
     ctx: Extension<CoreCtx>,
     state: Extension<Arc<AppState>>,
-) -> WebResult<WebResponse<String>> {
-    info!("health_check_handler - CTX: {ctx:#?}");
-    WebResponse::from_json("Healthy".to_string())
+) -> &'static str {
+    "Healthy!"
+}
+
+pub fn build_account_routes() -> Router {
+    Router::new()
+        .route("/describe", post(describe_account))
+        .route("/create", post(create_account))
 }

@@ -15,8 +15,11 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
-use crate::store::dbx::{DbExecutor, PgDbx};
-use crate::{app::AppState, core::services::authenticate::AuthenticateService}; // Use Axum's body type
+use crate::{app::AppState, core::services::authenticate::AuthenticateService};
+use crate::{
+    core::services::token::TokenService,
+    store::dbx::{DbExecutor, PgDbx},
+}; // Use Axum's body type
 
 #[derive(Clone)]
 pub struct AuthLayer {
@@ -60,26 +63,14 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+    fn call(&mut self, mut req: Request) -> Self::Future {
         // Clone the state so we can move it into the async block
         let auth_service = self.auth_service.clone();
         let mut inner = self.inner.clone();
 
         Box::pin(async move {
             // Extract the Authorization header
-            let headers = req.headers();
-            let auth_header = headers.get(AUTHORIZATION).and_then(|h| h.to_str().ok());
-
-            let token = match auth_header {
-                Some(str) => {
-                    let mut iter = str.split(" ").into_iter();
-
-                    let start = iter.next();
-                    let token = iter.next();
-                    token
-                }
-                None => None,
-            };
+            let token = TokenService::token_from_req(&req);
 
             // Call your auth service
             match auth_service.resolve_ctx(token).await {

@@ -1,5 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
+use tracing::info;
+
 use crate::{
     core::{
         ctx::CoreCtx,
@@ -26,6 +28,7 @@ impl<Dbx: DbExecutor> AuthenticateService<Dbx> {
     }
 
     pub async fn resolve_ctx(&self, token: Option<&str>) -> CoreResult<CoreCtx> {
+        info!("TOKEN {token:?} - resolve_ctx");
         Ok(CoreCtx::new_test())
     }
 
