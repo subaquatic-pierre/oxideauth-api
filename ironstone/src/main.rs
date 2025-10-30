@@ -18,9 +18,8 @@ mod utils;
 mod web;
 
 use app::new_app_data;
-use web::handlers::root::root_handler;
 
-use crate::web::router::RootRouter;
+use crate::web::router::AppRouter;
 
 #[tokio::main]
 async fn main() {
@@ -44,7 +43,7 @@ async fn main() {
     let state = Arc::new(app);
 
     // Define the application's routes.
-    let router = RootRouter::build_routes_with_state(state);
+    let router = AppRouter::routes_with_state(state);
 
     axum::serve(listener, router).await.unwrap();
 }

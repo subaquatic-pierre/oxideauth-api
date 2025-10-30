@@ -15,42 +15,42 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
-use crate::{app::AppState, core::services::authenticate::AuthenticateService};
+use crate::{app::AppState, core::services::ctx::CtxService};
 use crate::{
     core::services::token::TokenService,
     store::dbx::{DbExecutor, PgDbx},
 }; // Use Axum's body type
 
 #[derive(Clone)]
-pub struct AuthLayer {
-    auth_service: Arc<AuthenticateService<PgDbx>>,
+pub struct CtxLayer {
+    ctx_svc: Arc<CtxService<PgDbx>>,
 }
 
-impl AuthLayer {
+impl CtxLayer {
     pub fn new(app_state: &Arc<AppState>) -> Self {
-        let auth_service = Arc::new(AuthenticateService::new(app_state.sm.clone()));
-        Self { auth_service }
+        let ctx_svc = Arc::new(CtxService::new(app_state.sm.clone()));
+        Self { ctx_svc }
     }
 }
 
-impl<S> Layer<S> for AuthLayer {
-    type Service = AuthMiddleware<S>;
+impl<S> Layer<S> for CtxLayer {
+    type Service = CtxMw<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        AuthMiddleware {
+        CtxMw {
             inner,
-            auth_service: self.auth_service.clone(),
+            ctx_svc: self.ctx_svc.clone(),
         }
     }
 }
 
 #[derive(Clone)]
-pub struct AuthMiddleware<S> {
+pub struct CtxMw<S> {
     inner: S,
-    auth_service: Arc<AuthenticateService<PgDbx>>,
+    ctx_svc: Arc<CtxService<PgDbx>>,
 }
 
-impl<S> Service<Request<Body>> for AuthMiddleware<S>
+impl<S> Service<Request<Body>> for CtxMw<S>
 where
     S: Service<Request, Response = Response> + Send + 'static + Clone,
     S::Future: Send + 'static,
@@ -65,7 +65,7 @@ where
 
     fn call(&mut self, mut req: Request) -> Self::Future {
         // Clone the state so we can move it into the async block
-        let auth_service = self.auth_service.clone();
+        let ctx_svc = self.ctx_svc.clone();
         let mut inner = self.inner.clone();
 
         Box::pin(async move {
@@ -73,11 +73,10 @@ where
             let token = TokenService::token_from_req(&req);
 
             // Call your auth service
-            match auth_service.resolve_ctx(token).await {
+            match ctx_svc.resolve_ctx(token).await {
                 Ok(ctx) => {
                     req.extensions_mut().insert(ctx);
 
-                    // 2. Pass the request to the inner service (the RPC handler)
                     inner.call(req).await
                 }
                 Err(_) => {

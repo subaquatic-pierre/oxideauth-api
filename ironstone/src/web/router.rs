@@ -1,34 +1,49 @@
-use axum::{extract::Extension, routing::get, Router};
+use axum::{
+    error_handling::HandleErrorLayer,
+    extract::Extension,
+    middleware::{from_fn, map_response},
+    routing::get,
+    Router,
+};
 use std::sync::Arc;
+use std::time::Duration;
+use tower::ServiceBuilder;
 
 use crate::{
     app::AppState,
     core::ctx::CoreCtx,
     web::{
-        handlers::{
-            account::build_account_routes,
-            root::{health_check_handler, root_handler},
-        },
+        handlers::{account::AccountRouter, root::RootRouter},
         middlewares::{
-            auth::{AuthLayer, AuthMiddleware},
             cors::build_cors,
+            ctx::{CtxLayer, CtxMw},
+            fallback::FallbackMw,
+            request::RequestMw,
+            response::ResponseMapMw,
         },
     },
 };
 
-pub struct RootRouter;
+pub struct AppRouter;
 
-impl RootRouter {
-    pub fn build_routes_with_state(state: Arc<AppState>) -> Router {
+impl AppRouter {
+    pub fn routes_with_state(state: Arc<AppState>) -> Router {
         let cors = build_cors();
-        let auth = AuthLayer::new(&state);
+        let auth = CtxLayer::new(&state);
+
+        let global_error_layer = ServiceBuilder::new()
+            .layer(HandleErrorLayer::new(FallbackMw::global_error_handler))
+            .timeout(Duration::from_secs(30));
 
         Router::new()
-            .route("/", get(root_handler))
-            .route("/health-check", get(health_check_handler))
-            .nest("/accounts", build_account_routes())
+            .nest("/", RootRouter::routes())
+            .nest("/accounts", AccountRouter::routes())
+            .layer(global_error_layer)
+            .layer(map_response(ResponseMapMw::map_response_handler))
             .layer(cors)
             .layer(auth)
             .layer(Extension(state))
+            .layer(from_fn(RequestMw::request_map_handler))
+            .fallback(FallbackMw::fallback_handler)
     }
 }

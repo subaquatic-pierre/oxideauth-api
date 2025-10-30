@@ -6,3 +6,4 @@ server.pid
 test-results
 .cargo/config.toml
 data/
+target

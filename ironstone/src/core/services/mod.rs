@@ -1,6 +1,6 @@
 pub mod account;
-pub mod authenticate;
-pub mod authorize;
+pub mod auth;
+pub mod ctx;
 pub mod email;
 pub mod factory;
 pub mod meta;

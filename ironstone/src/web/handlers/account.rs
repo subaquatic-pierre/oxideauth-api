@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Extension, State},
+    extract::{rejection::JsonRejection, Extension, State},
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
@@ -14,21 +14,59 @@ use crate::{
         dto::account::{AccountCreateParams, AccountDescribeParams},
         error::CoreError,
     },
-    web::{
-        dto::account::{AccountCreateReq, AccountDescribeReq, AccountRes},
-        error::WebResult,
-        middlewares::cors::build_cors,
-        response::WebResponse,
-    },
+    web::{error::WebResult, middlewares::cors::build_cors, response::WebResponse},
 };
+
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+#[derive(Deserialize)]
+pub struct AccountCreateReq {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Deserialize)]
+pub struct AccountDescribeReq {
+    pub email: String,
+}
+
+#[derive(Serialize)]
+pub struct AccountRes {
+    pub id: Uuid,
+    pub email: String,
+}
 
 #[axum::debug_handler]
 pub async fn describe_account(
     ctx: Extension<CoreCtx>,
     app: Extension<Arc<AppState>>,
+    body: Result<Json<AccountDescribeReq>, JsonRejection>,
+) -> WebResult<WebResponse<AccountRes>> {
+    let acc_svc = app.svc_build.account();
+
+    let params = AccountDescribeParams {
+        email: body?.email.clone(),
+    };
+
+    let acc = acc_svc.describe_account(&ctx, params).await?;
+
+    let acc_res = AccountRes {
+        id: acc.id,
+        email: acc.email,
+    };
+
+    info!("describe_account - CTX: {ctx:#?}");
+    WebResponse::json(acc_res)
+}
+
+#[axum::debug_handler]
+pub async fn list_accounts(
+    ctx: Extension<CoreCtx>,
+    app: Extension<Arc<AppState>>,
     body: Json<AccountDescribeReq>,
 ) -> WebResult<WebResponse<AccountRes>> {
-    let acc_svc = app.svc_build.build_acc_svc();
+    let acc_svc = app.svc_build.account();
 
     let params = AccountDescribeParams {
         email: body.email.clone(),
@@ -42,7 +80,7 @@ pub async fn describe_account(
     };
 
     info!("describe_account - CTX: {ctx:#?}");
-    WebResponse::from_json(acc_res)
+    WebResponse::json(acc_res)
 }
 
 #[axum::debug_handler]
@@ -51,7 +89,7 @@ pub async fn create_account(
     app: Extension<Arc<AppState>>,
     body: Json<AccountCreateReq>,
 ) -> WebResult<WebResponse<AccountRes>> {
-    let acc_svc = app.svc_build.build_acc_svc();
+    let acc_svc = app.svc_build.account();
 
     let params = AccountCreateParams {
         email: body.email.clone(),
@@ -66,11 +104,15 @@ pub async fn create_account(
     };
 
     info!("describe_account - CTX: {ctx:#?}");
-    WebResponse::from_json(acc_res)
+    WebResponse::json(acc_res)
 }
 
-pub fn build_account_routes() -> Router {
-    Router::new()
-        .route("/describe", post(describe_account))
-        .route("/create", post(create_account))
+pub struct AccountRouter;
+
+impl AccountRouter {
+    pub fn routes() -> Router {
+        Router::new()
+            .route("/describe", post(describe_account))
+            .route("/create", post(create_account))
+    }
 }

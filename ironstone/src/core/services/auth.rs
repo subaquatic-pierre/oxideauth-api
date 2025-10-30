@@ -1,35 +1,37 @@
-use std::{collections::HashMap, sync::Arc};
-
-use tracing::info;
+use std::{collections::HashSet, sync::Arc};
 
 use crate::{
     core::{
         ctx::CoreCtx,
-        error::{CoreError, CoreResult},
+        error::CoreResult,
+        models::permission::{PermissionCheck, PermissionChecker},
         services::account::AccountService,
     },
     store::{
         dbx::{DbExecutor, PgDbx},
         manager::StoreManager,
-        stores::token_blacklist::TokenBlacklistStore,
     },
 };
 
-pub struct AuthenticateService<Dbx: DbExecutor>
+pub struct AuthorizeService<'a, Dbx>
 where
     Dbx: DbExecutor,
 {
-    store_manager: Arc<StoreManager<Dbx>>,
+    acc_svc: &'a AccountService<'a, Dbx>,
 }
 
-impl<Dbx: DbExecutor> AuthenticateService<Dbx> {
-    pub fn new(store_manager: Arc<StoreManager<Dbx>>) -> Self {
-        Self { store_manager }
+impl<'a, Dbx: DbExecutor> AuthorizeService<'a, Dbx> {
+    pub fn new(acc_svc: &'a AccountService<'a, Dbx>) -> Self {
+        Self { acc_svc }
     }
 
-    pub async fn resolve_ctx(&self, token: Option<&str>) -> CoreResult<CoreCtx> {
-        info!("TOKEN {token:?} - resolve_ctx");
-        Ok(CoreCtx::new_test())
+    pub fn validate_perms<'b>(
+        &self,
+        granted: PermissionChecker<'b>,
+        required: &[PermissionCheck<'b>],
+    ) -> bool {
+        let all_required_match_granted = granted.has_subset(required);
+        all_required_match_granted
     }
 
     pub async fn register_account(&self, ctx: &CoreCtx) -> CoreResult<()> {

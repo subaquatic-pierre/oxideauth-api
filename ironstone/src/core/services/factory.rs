@@ -15,7 +15,7 @@ impl<Dbx: DbExecutor> ServiceFactory<Dbx> {
         Self { sm }
     }
 
-    pub fn build_acc_svc(&self) -> AccountService<'_, Dbx> {
+    pub fn account(&self) -> AccountService<'_, Dbx> {
         let svc = AccountService::new(&self.sm.account);
         svc
     }

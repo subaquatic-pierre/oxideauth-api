@@ -25,7 +25,7 @@ where
 }
 
 impl<T: Serialize> WebResponse<T> {
-    pub fn from_json(data: T) -> WebResult<Self> {
+    pub fn json(data: T) -> WebResult<Self> {
         let data = Self {
             success: true,
             status: StatusCode::OK.as_u16(),
@@ -33,5 +33,13 @@ impl<T: Serialize> WebResponse<T> {
         };
 
         Ok(Json(data))
+    }
+
+    pub fn with_status(data: T, status: StatusCode) -> WebResult<Self> {
+        Ok(Json(Self {
+            success: true,
+            status: status.as_u16(),
+            data,
+        }))
     }
 }

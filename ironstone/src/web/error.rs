@@ -1,3 +1,4 @@
+use axum::extract::rejection::{FormRejection, JsonRejection, QueryRejection};
 use axum::{
     // HTTP status codes and routing setup
     http::StatusCode,
@@ -7,6 +8,7 @@ use axum::{
     Json,
     Router,
 };
+use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
 use crate::{core::error::CoreError, web::response::WebResponse};
@@ -14,7 +16,7 @@ use crate::{core::error::CoreError, web::response::WebResponse};
 pub type WebResult<T> = Result<Json<T>, WebError>;
 
 /// Defines specific, named errors that can occur in the application.
-#[derive(Debug)]
+#[derive(Debug, Display, Clone)]
 pub enum WebError {
     /// 404 Not Found error.
     NotFound,
@@ -24,6 +26,7 @@ pub enum WebError {
     ValidationError(String),
     /// 401 Unauthorized error.
     Unauthorized,
+    ReqStampNotInReqExt,
 }
 
 #[derive(Debug, Serialize)]
@@ -57,6 +60,10 @@ impl IntoResponse for WebError {
                 StatusCode::UNAUTHORIZED,
                 "Authentication required or invalid credentials.".to_string(),
             ),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "An unexpected server error occurred.".to_string(),
+            ),
         };
 
         // Create the standardized error body
@@ -79,3 +86,47 @@ impl From<CoreError> for WebError {
         }
     }
 }
+
+impl From<JsonRejection> for WebError {
+    fn from(rej: JsonRejection) -> Self {
+        match rej {
+            JsonRejection::JsonSyntaxError(_) => {
+                WebError::ValidationError("Malformed JSON syntax.".into())
+            }
+            JsonRejection::JsonDataError(_) => {
+                WebError::ValidationError("Invalid JSON structure.".into())
+            }
+            JsonRejection::MissingJsonContentType(_) => {
+                WebError::ValidationError("Missing Content-Type: application/json.".into())
+            }
+            _ => WebError::InternalServerError,
+        }
+    }
+}
+
+impl From<FormRejection> for WebError {
+    fn from(rej: FormRejection) -> Self {
+        match rej {
+            FormRejection::InvalidFormContentType(_) => {
+                WebError::ValidationError("Malformed JSON syntax.".into())
+            }
+            FormRejection::FailedToDeserializeForm(_) => {
+                WebError::ValidationError("Invalid JSON structure.".into())
+            }
+            _ => WebError::InternalServerError,
+        }
+    }
+}
+
+impl From<QueryRejection> for WebError {
+    fn from(rej: QueryRejection) -> Self {
+        match rej {
+            QueryRejection::FailedToDeserializeQueryString(_) => {
+                WebError::ValidationError("Malformed JSON syntax.".into())
+            }
+            _ => WebError::InternalServerError,
+        }
+    }
+}
+
+impl std::error::Error for WebError {}

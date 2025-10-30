@@ -12,12 +12,12 @@ use crate::{
     web::{error::WebResult, middlewares::cors::build_cors, response::WebResponse},
 };
 
-pub async fn root_handler(
+pub async fn index_handler(
     ctx: Extension<CoreCtx>,
     app: Extension<Arc<AppState>>,
 ) -> WebResult<WebResponse<String>> {
     info!("root_handler - CTX: {ctx:#?}");
-    WebResponse::from_json("Hello, World".to_string())
+    WebResponse::json("Hello, World".to_string())
 }
 
 pub async fn health_check_handler(
@@ -25,5 +25,15 @@ pub async fn health_check_handler(
     app: Extension<Arc<AppState>>,
 ) -> WebResult<WebResponse<String>> {
     info!("health_check_handler - CTX: {ctx:#?}");
-    WebResponse::from_json("Healthy".to_string())
+    WebResponse::json("Healthy".to_string())
+}
+
+pub struct RootRouter;
+
+impl RootRouter {
+    pub fn routes() -> Router {
+        Router::new()
+            .route("/", get(index_handler))
+            .route("/health-check", get(health_check_handler))
+    }
 }
