@@ -16,7 +16,7 @@ use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
 use crate::{
-    app::AppState,
+    app::{App, AppState},
     core::services::ctx::{CtxConfig, CtxService},
     web::error::ErrorBody,
 };
@@ -31,7 +31,7 @@ pub struct CtxLayer {
 }
 
 impl CtxLayer {
-    pub fn new(app_state: &Arc<AppState>) -> Self {
+    pub fn new(app_state: &App) -> Self {
         let config = CtxConfig {};
         let ctx_svc = Arc::new(CtxService::new(app_state.svc_build.clone(), config));
         Self { ctx_svc }

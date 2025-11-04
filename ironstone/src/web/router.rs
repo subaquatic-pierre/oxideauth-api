@@ -10,7 +10,7 @@ use std::time::Duration;
 use tower::ServiceBuilder;
 
 use crate::{
-    app::AppState,
+    app::App,
     core::ctx::CoreCtx,
     web::{
         handlers::{account::AccountRouter, root::RootRouter},
@@ -27,7 +27,7 @@ use crate::{
 pub struct AppRouter;
 
 impl AppRouter {
-    pub fn routes_with_state(state: Arc<AppState>) -> Router {
+    pub fn routes_with_state(state: App) -> Router {
         let cors = build_cors();
         let ctx = CtxLayer::new(&state);
 

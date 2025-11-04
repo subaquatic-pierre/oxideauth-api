@@ -3,14 +3,18 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::store::init::new_db_pool;
+use crate::{
+    app::new_app_data,
+    cache::redis::RedisChx,
+    store::{dbx::PgDbx, init::new_db_pool},
+};
 use anyhow::Result;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::OnceCell;
 use tracing::info;
 
 use crate::{
-    app::{new_test_app_data, AppState},
+    app::AppState,
     dev::db::{init_dev_db, init_test_db},
     store::{manager::StoreManager, PgPool},
 };
@@ -36,14 +40,14 @@ pub fn init_tracing_for_tests() {
     });
 }
 
-pub async fn init_test<'a>() -> &'a AppState {
-    static INIT: OnceCell<AppState> = OnceCell::const_new();
+pub async fn init_test<'a>() -> &'a AppState<PgDbx, RedisChx> {
+    static INIT: OnceCell<AppState<PgDbx, RedisChx>> = OnceCell::const_new();
 
     let ds = INIT
         .get_or_init(|| async {
             info!("{:<12} - init_test()", "FOR-DEV-ONLY");
 
-            let app = new_test_app_data().await;
+            let app = new_app_data().await;
             init_test_db(&app.dbx.pool()).await;
 
             // init_tracing_for_tests();

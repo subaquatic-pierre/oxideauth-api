@@ -4,9 +4,11 @@ use tracing::{debug, info};
 
 use sqlx::Pool;
 
+use crate::cache::redis::RedisChx;
+use crate::cache::traits::CacheExecutor;
 use crate::core::services::factory::ServiceFactory;
 use crate::dev::init::init_dev;
-use crate::store::dbx::PgDbx;
+use crate::store::dbx::{DbExecutor, PgDbx};
 use crate::store::manager::StoreManager;
 use crate::{
     config::Config,
@@ -30,84 +32,77 @@ impl AppEnv {
     }
 }
 
-pub struct AppState {
+pub struct AppState<Dbx: DbExecutor, Chx: CacheExecutor> {
     pub config: Config,
-    pub dbx: Arc<PgDbx>,
-    pub sm: Arc<StoreManager<PgDbx>>,
-    pub svc_build: Arc<ServiceFactory<PgDbx>>,
+    pub dbx: Arc<Dbx>,
+    pub chx: Arc<Chx>,
+    pub sm: Arc<StoreManager<Dbx>>,
+    pub svc_build: Arc<ServiceFactory<Dbx>>,
 }
 
-pub async fn new_app_data() -> AppState {
+pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
     let app_env = AppEnv::from_env();
-    let app = match app_env {
+    let (config, sm, dbx, chx) = match app_env {
         AppEnv::Development => {
+            let config = Config::dev_config();
+
+            let db: PgPool = new_db_pool(&config.database_url, 1).await;
+            let dbx = Arc::new(PgDbx::new(db.clone()));
+            let sm = Arc::new(StoreManager::new(dbx.clone()));
+
             debug!(
                 "{:<12} - new_app_data()",
                 "Application started in DEVELOPMENT mode"
             );
 
-            let app = new_dev_app_data().await;
-            init_dev(&app.dbx.pool()).await;
-            app
+            init_dev(&dbx.pool()).await;
+
+            let chx = Arc::new(RedisChx::new());
+
+            (config, sm, dbx, chx)
         }
         AppEnv::Production => {
+            let config = Config::from_env();
+            let db: PgPool = new_db_pool(&config.database_url, 5).await;
+            let dbx = Arc::new(PgDbx::new(db.clone()));
+            let sm = Arc::new(StoreManager::new(dbx.clone()));
+
             debug!(
                 "{:<12} - new_app_data()",
                 "Application started in PRODUCTION mode"
             );
-            let app = new_prod_app_data().await;
-            app
+
+            let chx = Arc::new(RedisChx::new());
+
+            (config, sm, dbx, chx)
+        }
+        _ => {
+            let config = Config::test_config();
+
+            let db: PgPool = new_db_pool(&config.database_url, 1).await;
+            let dbx = Arc::new(PgDbx::new(db.clone()));
+            let sm = Arc::new(StoreManager::new(dbx.clone()));
+
+            debug!(
+                "{:<12} - new_app_data()",
+                "Application started in TEST mode"
+            );
+
+            let chx = Arc::new(RedisChx::new());
+
+            (config, sm, dbx, chx)
         }
     };
 
-    app
-}
-
-pub async fn new_prod_app_data() -> AppState {
-    let config = Config::from_env();
-    let db: PgPool = new_db_pool(&config.database_url, 5).await;
-    let dbx = Arc::new(PgDbx::new(db.clone()));
-
-    let sm = Arc::new(StoreManager::new(dbx.clone()));
     let svc_build = Arc::new(ServiceFactory::new(sm.clone()));
 
     AppState {
         dbx: dbx.clone(),
         config,
+        chx,
         sm,
         svc_build,
     }
 }
 
-pub async fn new_dev_app_data() -> AppState {
-    let config = Config::dev_config();
-
-    let db: PgPool = new_db_pool(&config.database_url, 5).await;
-    let dbx = Arc::new(PgDbx::new(db.clone()));
-
-    let sm = Arc::new(StoreManager::new(dbx.clone()));
-    let svc_build = Arc::new(ServiceFactory::new(sm.clone()));
-
-    AppState {
-        dbx: dbx.clone(),
-        config,
-        sm,
-        svc_build,
-    }
-}
-
-pub async fn new_test_app_data() -> AppState {
-    let config = Config::test_config();
-
-    let db: PgPool = new_db_pool(&config.database_url, 1).await;
-    let dbx = Arc::new(PgDbx::new(db.clone()));
-    let sm = Arc::new(StoreManager::new(dbx.clone()));
-    let svc_build = Arc::new(ServiceFactory::new(sm.clone()));
-
-    AppState {
-        dbx: dbx.clone(),
-        config,
-        sm,
-        svc_build,
-    }
-}
+pub type App = Arc<AppState<PgDbx,RedisChx>>;

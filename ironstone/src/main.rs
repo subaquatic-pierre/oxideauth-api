@@ -9,6 +9,7 @@ use axum::{routing::get, Router};
 use std::net::SocketAddr;
 
 mod app;
+mod cache;
 mod config;
 mod core;
 mod dev;

@@ -106,6 +106,7 @@ impl<Dbx: DbExecutor> ContainsFilterStore for MembershipStore<Dbx> {
 mod tests {
     use super::*;
     use crate::{
+        cache::redis::RedisChx,
         dev::init::init_test,
         store::{
             ctx::StoreCtx,
@@ -131,7 +132,7 @@ mod tests {
     /// Helper function to seed the necessary Account and Space for a Membership.
     async fn seed_prerequisites(
         ctx: &StoreCtx,
-        app: &crate::app::AppState,
+        app: &crate::app::AppState<PgDbx, RedisChx>,
     ) -> Result<(uuid::Uuid, uuid::Uuid)> {
         let account = app
             .sm
@@ -154,7 +155,7 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = MembershipStore::new(dbx);
         let ctx = StoreCtx::new_root();
-        let (account_id, workspace_id) = seed_prerequisites(&ctx, &app).await?;
+        let (account_id, workspace_id) = seed_prerequisites(&ctx, app).await?;
 
         let data = MembershipForCreate {
             account_id,

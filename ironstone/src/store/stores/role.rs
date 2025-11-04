@@ -103,6 +103,7 @@ impl<Dbx: DbExecutor> ContainsFilterStore for RoleStore<Dbx> {
 mod tests {
     use super::*;
     use crate::{
+        cache::redis::RedisChx,
         dev::init::init_test,
         store::{
             ctx::StoreCtx,
@@ -123,7 +124,10 @@ mod tests {
     use uuid::Uuid;
 
     /// Helper function to seed the necessary Workspace for a Role.
-    async fn seed_prerequisite(ctx: &StoreCtx, app: &crate::app::AppState) -> Result<Uuid> {
+    async fn seed_prerequisite(
+        ctx: &StoreCtx,
+        app: &crate::app::AppState<PgDbx, RedisChx>,
+    ) -> Result<Uuid> {
         let workspace = app
             .sm
             .workspace

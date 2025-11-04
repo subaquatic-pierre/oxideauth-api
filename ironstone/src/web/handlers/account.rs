@@ -8,7 +8,7 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::{
-    app::AppState,
+    app::App,
     core::{
         ctx::CoreCtx,
         dto::account::{AccountCreateParams, AccountDescribeParams},
@@ -40,7 +40,7 @@ pub struct AccountRes {
 #[axum::debug_handler]
 pub async fn describe_account(
     ctx: Extension<CoreCtx>,
-    app: Extension<Arc<AppState>>,
+    app: Extension<App>,
     body: Result<Json<AccountDescribeReq>, JsonRejection>,
 ) -> WebResult<WebResponse<AccountRes>> {
     let acc_svc = app.svc_build.account();
@@ -63,7 +63,7 @@ pub async fn describe_account(
 #[axum::debug_handler]
 pub async fn list_accounts(
     ctx: Extension<CoreCtx>,
-    app: Extension<Arc<AppState>>,
+    app: Extension<App>,
     body: Json<AccountDescribeReq>,
 ) -> WebResult<WebResponse<AccountRes>> {
     let acc_svc = app.svc_build.account();
@@ -86,7 +86,7 @@ pub async fn list_accounts(
 #[axum::debug_handler]
 pub async fn create_account(
     ctx: Extension<CoreCtx>,
-    app: Extension<Arc<AppState>>,
+    app: Extension<App>,
     body: Json<AccountCreateReq>,
 ) -> WebResult<WebResponse<AccountRes>> {
     let acc_svc = app.svc_build.account();
