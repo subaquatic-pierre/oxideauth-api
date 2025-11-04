@@ -34,7 +34,7 @@ pub struct AppState {
     pub config: Config,
     pub dbx: Arc<PgDbx>,
     pub sm: Arc<StoreManager<PgDbx>>,
-    pub svc_build: ServiceFactory<PgDbx>,
+    pub svc_build: Arc<ServiceFactory<PgDbx>>,
 }
 
 pub async fn new_app_data() -> AppState {
@@ -69,7 +69,7 @@ pub async fn new_prod_app_data() -> AppState {
     let dbx = Arc::new(PgDbx::new(db.clone()));
 
     let sm = Arc::new(StoreManager::new(dbx.clone()));
-    let svc_build = ServiceFactory::new(sm.clone());
+    let svc_build = Arc::new(ServiceFactory::new(sm.clone()));
 
     AppState {
         dbx: dbx.clone(),
@@ -86,7 +86,7 @@ pub async fn new_dev_app_data() -> AppState {
     let dbx = Arc::new(PgDbx::new(db.clone()));
 
     let sm = Arc::new(StoreManager::new(dbx.clone()));
-    let svc_build = ServiceFactory::new(sm.clone());
+    let svc_build = Arc::new(ServiceFactory::new(sm.clone()));
 
     AppState {
         dbx: dbx.clone(),
@@ -102,7 +102,7 @@ pub async fn new_test_app_data() -> AppState {
     let db: PgPool = new_db_pool(&config.database_url, 1).await;
     let dbx = Arc::new(PgDbx::new(db.clone()));
     let sm = Arc::new(StoreManager::new(dbx.clone()));
-    let svc_build = ServiceFactory::new(sm.clone());
+    let svc_build = Arc::new(ServiceFactory::new(sm.clone()));
 
     AppState {
         dbx: dbx.clone(),

@@ -9,10 +9,10 @@ use uuid::Uuid;
 use crate::core::ctx::CoreCtx;
 use crate::web::middlewares::request::ReqStamp;
 
-pub struct ResponseMapMw;
+pub struct ResponseMw;
 
-impl ResponseMapMw {
-    pub async fn map_response_handler(
+impl ResponseMw {
+    pub async fn response_map_handler(
         stamp: Extension<ReqStamp>,
         ctx: Extension<CoreCtx>,
         uri: Uri,

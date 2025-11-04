@@ -2,7 +2,7 @@ use axum::{
     body::Body,
     extract::{FromRequest, Request},
     http::{header::AUTHORIZATION, HeaderMap, StatusCode},
-    response::Response,
+    response::{IntoResponse, Response},
     RequestExt,
 };
 use axum_extra::{
@@ -15,7 +15,11 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
-use crate::{app::AppState, core::services::ctx::CtxService};
+use crate::{
+    app::AppState,
+    core::services::ctx::{CtxConfig, CtxService},
+    web::error::ErrorBody,
+};
 use crate::{
     core::services::token::TokenService,
     store::dbx::{DbExecutor, PgDbx},
@@ -28,7 +32,8 @@ pub struct CtxLayer {
 
 impl CtxLayer {
     pub fn new(app_state: &Arc<AppState>) -> Self {
-        let ctx_svc = Arc::new(CtxService::new(app_state.sm.clone()));
+        let config = CtxConfig {};
+        let ctx_svc = Arc::new(CtxService::new(app_state.svc_build.clone(), config));
         Self { ctx_svc }
     }
 }
@@ -70,22 +75,22 @@ where
 
         Box::pin(async move {
             // Extract the Authorization header
-            let token = TokenService::token_from_req(&req);
 
             // Call your auth service
-            match ctx_svc.resolve_ctx(token).await {
+            match ctx_svc.resolve_ctx(req.headers()).await {
                 Ok(ctx) => {
                     req.extensions_mut().insert(ctx);
 
                     inner.call(req).await
                 }
-                Err(_) => {
-                    // FAILED! Token is invalid. Return 401.
-                    let res = Response::builder()
-                        .status(StatusCode::UNAUTHORIZED)
-                        .body(Body::from("Invalid token"))
-                        .unwrap();
-                    Ok(res)
+                Err(_e) => {
+                    let body = ErrorBody {
+                        success: false,
+                        status: StatusCode::UNAUTHORIZED.as_u16(),
+                        message: "unauthorized".to_string(),
+                    };
+
+                    Ok((StatusCode::UNAUTHORIZED, axum::Json(body)).into_response())
                 }
             }
         })

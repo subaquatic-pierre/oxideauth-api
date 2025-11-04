@@ -1,12 +1,13 @@
 use std::{collections::HashMap, sync::Arc};
 
+use axum::{extract::Request, http::HeaderMap};
 use tracing::info;
 
 use crate::{
     core::{
         ctx::CoreCtx,
         error::{CoreError, CoreResult},
-        services::account::AccountService,
+        services::{account::AccountService, factory::ServiceFactory, token::TokenService},
     },
     store::{
         dbx::{DbExecutor, PgDbx},
@@ -15,40 +16,36 @@ use crate::{
     },
 };
 
+pub struct CtxConfig {}
+
 pub struct CtxService<Dbx: DbExecutor>
 where
     Dbx: DbExecutor,
 {
-    store_manager: Arc<StoreManager<Dbx>>,
+    svc_build: Arc<ServiceFactory<Dbx>>,
 }
 
 impl<Dbx: DbExecutor> CtxService<Dbx> {
-    pub fn new(store_manager: Arc<StoreManager<Dbx>>) -> Self {
-        Self { store_manager }
+    pub fn new(svc_build: Arc<ServiceFactory<Dbx>>, config: CtxConfig) -> Self {
+        Self { svc_build }
     }
 
-    pub async fn resolve_ctx(&self, token: Option<&str>) -> CoreResult<CoreCtx> {
+    pub async fn resolve_ctx(&self, headers: &HeaderMap) -> CoreResult<CoreCtx> {
+        let token = match TokenService::<Dbx>::token_from_req(&headers) {
+            Some(t) => {
+                let token_svc = self.svc_build.token();
+                // if token exists and is in blacklist return unauthorized response
+                if token_svc.is_blacklisted(t) {
+                    return Err(CoreError::Auth("token blacklisted".to_string()));
+                }
+                Some(t)
+            }
+            None => None,
+        };
+
         info!("TOKEN {token:?} - resolve_ctx");
+
+        // TODO: return correct built context
         Ok(CoreCtx::new_test())
-    }
-
-    pub async fn register_account(&self, ctx: &CoreCtx) -> CoreResult<()> {
-        Ok(())
-    }
-
-    pub async fn black_list_token(&self, ctx: &CoreCtx) -> CoreResult<()> {
-        Ok(())
-    }
-
-    pub async fn revoke_token(&self, ctx: &CoreCtx) -> CoreResult<()> {
-        Ok(())
-    }
-
-    pub async fn refresh_token(&self, ctx: &CoreCtx) -> CoreResult<()> {
-        Ok(())
-    }
-
-    pub async fn request_token(&self, ctx: &CoreCtx) -> CoreResult<()> {
-        Ok(())
     }
 }

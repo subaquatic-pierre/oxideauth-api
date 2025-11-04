@@ -19,7 +19,7 @@ use crate::{
             ctx::{CtxLayer, CtxMw},
             fallback::FallbackMw,
             request::RequestMw,
-            response::ResponseMapMw,
+            response::ResponseMw,
         },
     },
 };
@@ -29,7 +29,7 @@ pub struct AppRouter;
 impl AppRouter {
     pub fn routes_with_state(state: Arc<AppState>) -> Router {
         let cors = build_cors();
-        let auth = CtxLayer::new(&state);
+        let ctx = CtxLayer::new(&state);
 
         let global_error_layer = ServiceBuilder::new()
             .layer(HandleErrorLayer::new(FallbackMw::global_error_handler))
@@ -39,9 +39,9 @@ impl AppRouter {
             .nest("/", RootRouter::routes())
             .nest("/accounts", AccountRouter::routes())
             .layer(global_error_layer)
-            .layer(map_response(ResponseMapMw::map_response_handler))
+            .layer(map_response(ResponseMw::response_map_handler))
             .layer(cors)
-            .layer(auth)
+            .layer(ctx)
             .layer(Extension(state))
             .layer(from_fn(RequestMw::request_map_handler))
             .fallback(FallbackMw::fallback_handler)

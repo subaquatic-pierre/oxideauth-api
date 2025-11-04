@@ -13,4 +13,6 @@ pub struct Workspace {
 #[derive(Default, Clone, Debug)]
 pub struct WorkspaceConfig {
     allowed_auth_providers: Vec<AuthProvider>,
+    jwt_max_age: u64,
+    jwt_secret: String,
 }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     app::AppState,
-    core::services::account::AccountService,
+    core::services::{account::AccountService, token::TokenService},
     store::{dbx::DbExecutor, manager::StoreManager},
 };
 
@@ -17,6 +17,11 @@ impl<Dbx: DbExecutor> ServiceFactory<Dbx> {
 
     pub fn account(&self) -> AccountService<'_, Dbx> {
         let svc = AccountService::new(&self.sm.account);
+        svc
+    }
+
+    pub fn token(&self) -> TokenService<'_, Dbx> {
+        let svc = TokenService::new(&self.sm.token_blacklist);
         svc
     }
 }
