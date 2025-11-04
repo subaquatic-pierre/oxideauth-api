@@ -11,13 +11,13 @@ use crate::store::{
 };
 
 /// The struct for our Workspace store, holding the database connection wrapper.
-pub struct WorkspaceStore<Dbx: DbExecutor> {
-    dbx: Arc<Dbx>,
+pub struct WorkspaceStore<D: DbExecutor> {
+    dbx: Arc<D>,
 }
 
-impl<Dbx: DbExecutor> WorkspaceStore<Dbx> {
+impl<D: DbExecutor> WorkspaceStore<D> {
     /// Creates a new `WorkspaceStore`.
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+    pub fn new(dbx: Arc<D>) -> Self {
         // Use generic
         Self { dbx }
     }
@@ -28,7 +28,7 @@ impl<Dbx: DbExecutor> WorkspaceStore<Dbx> {
 // By implementing these meta traits, WorkspaceStore implicitly gains all of the
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl<Dbx: DbExecutor> Store for WorkspaceStore<Dbx> {
+impl<D: DbExecutor> Store for WorkspaceStore<D> {
     type Iden = WorkspaceIden;
     type Row = WorkspaceRow;
 
@@ -37,7 +37,7 @@ impl<Dbx: DbExecutor> Store for WorkspaceStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> ReadStore for WorkspaceStore<Dbx> {
+impl<D: DbExecutor> ReadStore for WorkspaceStore<D> {
     type FilterStoreParams = WorkspaceFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -49,7 +49,7 @@ impl<Dbx: DbExecutor> ReadStore for WorkspaceStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> MutateStore for WorkspaceStore<Dbx> {
+impl<D: DbExecutor> MutateStore for WorkspaceStore<D> {
     type CreateStoreParams = WorkspaceForCreate;
     type UpdateStoreParams = WorkspaceForUpdate;
 
@@ -62,7 +62,7 @@ impl<Dbx: DbExecutor> MutateStore for WorkspaceStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> OneToManyStore for WorkspaceStore<Dbx> {
+impl<D: DbExecutor> OneToManyStore for WorkspaceStore<D> {
     type OneToManyRow = WorkspaceWithProjects;
 
     type FilterStoreParams = WorkspaceFilter;
@@ -80,7 +80,7 @@ impl<Dbx: DbExecutor> OneToManyStore for WorkspaceStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> ContainsFilterStore for WorkspaceStore<Dbx> {
+impl<D: DbExecutor> ContainsFilterStore for WorkspaceStore<D> {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: WorkspaceIden::Table,
@@ -108,7 +108,7 @@ mod tests {
         dev::init::init_test,
         store::{
             ctx::StoreCtx,
-            entities::{workspace::WorkspaceForCreate, project::ProjectForCreate},
+            entities::{project::ProjectForCreate, workspace::WorkspaceForCreate},
             error::StoreError,
             traits::{contains::FilterByContains, crud::*, join::GetOneToMany},
         },

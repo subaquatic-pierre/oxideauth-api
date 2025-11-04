@@ -1,18 +1,52 @@
-version: "3.8"
-
 services:
+  # ironstone:
+  #   container_name: ironstone-api
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.dev
+  #   env_file: ./ironstone/.env.dev
+  #   user: "1000:1000"
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./ironstone:/app/ironstone
+  #     - ./ironstone-macros:/app/ironstone-macros
+  #   depends_on:
+  #     - postgres
+  #     - redis
+  #   networks:
+  #     - ironstone_net # Use the explicit network name defined below
+
   postgres:
-    # Use 'build' to reference your custom Dockerfile
-    build:
-      context: . # Use the current directory as the build context
-      dockerfile: Dockerfile.psq
+    container_name: ironstone-postgres
+    image: postgres:16
     environment:
       POSTGRES_DB: dev_db
       POSTGRES_USER: test_user
       POSTGRES_PASSWORD: password
+      PGDATA: /var/lib/postgresql/data/pgdata
 
     ports:
       - "5432:5432"
     volumes:
-      - ./data/db:/var/lib/postgresql/data #
+      - ./data/psql:/var/lib/postgresql/data/pgdata
+    restart: always
+    networks:
+      - ironstone_net
 
+  redis:
+    container_name: ironstone-redis
+    image: redis:7-alpine
+    command: redis-server --save 60 1
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data # Store Redis data persistently
+    restart: always
+    networks:
+      - ironstone_net
+
+# Define the networks section
+networks:
+  ironstone_net: # The corrected network definition name
+    driver: bridge

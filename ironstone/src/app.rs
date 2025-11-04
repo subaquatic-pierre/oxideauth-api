@@ -32,21 +32,25 @@ impl AppEnv {
     }
 }
 
-pub struct AppState<Dbx: DbExecutor, Chx: CacheExecutor> {
+pub struct AppState<D, C>
+where
+    D: DbExecutor,
+    C: CacheExecutor,
+{
     pub config: Config,
-    pub dbx: Arc<Dbx>,
-    pub chx: Arc<Chx>,
-    pub sm: Arc<StoreManager<Dbx>>,
-    pub svc_build: Arc<ServiceFactory<Dbx>>,
+    pub dbx: Arc<D>,
+    pub chx: Arc<C>,
+    pub sm: Arc<StoreManager<D>>,
+    pub svc_build: Arc<ServiceFactory<D, C>>,
 }
 
 pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
     let app_env = AppEnv::from_env();
-    let (config, sm, dbx, chx) = match app_env {
+    let config = Config::from_env();
+    let (sm, dbx, chx) = match app_env {
         AppEnv::Development => {
-            let config = Config::dev_config();
-
             let db: PgPool = new_db_pool(&config.database_url, 1).await;
+
             let dbx = Arc::new(PgDbx::new(db.clone()));
             let sm = Arc::new(StoreManager::new(dbx.clone()));
 
@@ -57,13 +61,13 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
 
             init_dev(&dbx.pool()).await;
 
-            let chx = Arc::new(RedisChx::new(&config.redis_url));
+            let chx = RedisChx::new(&config.redis_url).await;
 
-            (config, sm, dbx, chx)
+            (sm, dbx, chx)
         }
         AppEnv::Production => {
-            let config = Config::from_env();
             let db: PgPool = new_db_pool(&config.database_url, 5).await;
+
             let dbx = Arc::new(PgDbx::new(db.clone()));
             let sm = Arc::new(StoreManager::new(dbx.clone()));
 
@@ -72,13 +76,11 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
                 "Application started in PRODUCTION mode"
             );
 
-            let chx = Arc::new(RedisChx::new(&config.redis_url));
+            let chx = RedisChx::new(&config.redis_url).await;
 
-            (config, sm, dbx, chx)
+            (sm, dbx, chx)
         }
         _ => {
-            let config = Config::test_config();
-
             let db: PgPool = new_db_pool(&config.database_url, 1).await;
             let dbx = Arc::new(PgDbx::new(db.clone()));
             let sm = Arc::new(StoreManager::new(dbx.clone()));
@@ -88,13 +90,14 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
                 "Application started in TEST mode"
             );
 
-            let chx = Arc::new(RedisChx::new(&config.redis_url));
+            let chx = RedisChx::new(&config.redis_url).await;
 
-            (config, sm, dbx, chx)
+            (sm, dbx, chx)
         }
     };
 
-    let svc_build = Arc::new(ServiceFactory::new(sm.clone()));
+    let chx = Arc::new(chx);
+    let svc_build = Arc::new(ServiceFactory::new(sm.clone(), chx.clone()));
 
     AppState {
         dbx: dbx.clone(),

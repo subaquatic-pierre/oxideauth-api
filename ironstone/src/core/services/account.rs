@@ -16,13 +16,13 @@ use crate::{
     },
 };
 
-pub struct AccountService<'a, Dbx: DbExecutor> {
-    acc_store: &'a AccountStore<Dbx>,
+pub struct AccountService<'a, D: DbExecutor> {
+    acc_store: &'a AccountStore<D>,
     // password_hasher: Arc<dyn PasswordHasher>, // Dependency for hashing
 }
 
-impl<'a, Dbx: DbExecutor> AccountService<'a, Dbx> {
-    pub fn new(acc_store: &'a AccountStore<Dbx>) -> Self {
+impl<'a, D: DbExecutor> AccountService<'a, D> {
+    pub fn new(acc_store: &'a AccountStore<D>) -> Self {
         Self { acc_store }
     }
 

@@ -4,6 +4,7 @@ use axum::{extract::Request, http::HeaderMap};
 use tracing::info;
 
 use crate::{
+    cache::traits::CacheExecutor,
     core::{
         ctx::CoreCtx,
         error::{CoreError, CoreResult},
@@ -18,20 +19,25 @@ use crate::{
 
 pub struct CtxConfig {}
 
-pub struct CtxService<Dbx: DbExecutor>
+pub struct CtxService<D, C>
 where
-    Dbx: DbExecutor,
+    D: DbExecutor,
+    C: CacheExecutor,
 {
-    svc_build: Arc<ServiceFactory<Dbx>>,
+    svc_build: Arc<ServiceFactory<D, C>>,
 }
 
-impl<Dbx: DbExecutor> CtxService<Dbx> {
-    pub fn new(svc_build: Arc<ServiceFactory<Dbx>>, config: CtxConfig) -> Self {
+impl<D, C> CtxService<D, C>
+where
+    D: DbExecutor,
+    C: CacheExecutor,
+{
+    pub fn new(svc_build: Arc<ServiceFactory<D, C>>, config: CtxConfig) -> Self {
         Self { svc_build }
     }
 
     pub async fn resolve_ctx(&self, headers: &HeaderMap) -> CoreResult<CoreCtx> {
-        let token = match TokenService::<Dbx>::token_from_req(&headers) {
+        let token = match TokenService::<D, C>::token_from_req(&headers) {
             Some(t) => {
                 let token_svc = self.svc_build.token();
                 // if token exists and is in blacklist return unauthorized response

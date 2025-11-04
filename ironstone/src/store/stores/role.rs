@@ -9,13 +9,13 @@ use crate::store::{
     traits::meta::{ContainsFilterStore, ManyToManyStore, MutateStore, ReadStore, Store},
 };
 /// The struct for our Role store, holding the database connection wrapper.
-pub struct RoleStore<Dbx: DbExecutor> {
-    dbx: Arc<Dbx>,
+pub struct RoleStore<D: DbExecutor> {
+    dbx: Arc<D>,
 }
 
-impl<Dbx: DbExecutor> RoleStore<Dbx> {
+impl<D: DbExecutor> RoleStore<D> {
     /// Creates a new `RoleStore`.
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+    pub fn new(dbx: Arc<D>) -> Self {
         Self { dbx }
     }
 }
@@ -25,7 +25,7 @@ impl<Dbx: DbExecutor> RoleStore<Dbx> {
 // By implementing these meta traits, RoleStore implicitly gains all of the
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl<Dbx: DbExecutor> Store for RoleStore<Dbx> {
+impl<D: DbExecutor> Store for RoleStore<D> {
     type Iden = RoleIden;
     type Row = RoleRow;
 
@@ -34,7 +34,7 @@ impl<Dbx: DbExecutor> Store for RoleStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> ReadStore for RoleStore<Dbx> {
+impl<D: DbExecutor> ReadStore for RoleStore<D> {
     type FilterStoreParams = RoleFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -46,7 +46,7 @@ impl<Dbx: DbExecutor> ReadStore for RoleStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> MutateStore for RoleStore<Dbx> {
+impl<D: DbExecutor> MutateStore for RoleStore<D> {
     type CreateStoreParams = RoleForCreate;
     type UpdateStoreParams = RoleForUpdate;
 
@@ -59,7 +59,7 @@ impl<Dbx: DbExecutor> MutateStore for RoleStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> ManyToManyStore for RoleStore<Dbx> {
+impl<D: DbExecutor> ManyToManyStore for RoleStore<D> {
     type ManyToManyRow = RoleWithPermissions;
 
     type FilterStoreParams = RoleFilter;
@@ -79,7 +79,7 @@ impl<Dbx: DbExecutor> ManyToManyStore for RoleStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> ContainsFilterStore for RoleStore<Dbx> {
+impl<D: DbExecutor> ContainsFilterStore for RoleStore<D> {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: RoleIden::Table,

@@ -17,6 +17,7 @@ use tower::{Layer, Service};
 
 use crate::{
     app::{App, AppState},
+    cache::redis::RedisChx,
     core::services::ctx::{CtxConfig, CtxService},
     web::error::ErrorBody,
 };
@@ -27,7 +28,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct CtxLayer {
-    ctx_svc: Arc<CtxService<PgDbx>>,
+    ctx_svc: Arc<CtxService<PgDbx, RedisChx>>,
 }
 
 impl CtxLayer {
@@ -52,7 +53,7 @@ impl<S> Layer<S> for CtxLayer {
 #[derive(Clone)]
 pub struct CtxMw<S> {
     inner: S,
-    ctx_svc: Arc<CtxService<PgDbx>>,
+    ctx_svc: Arc<CtxService<PgDbx, RedisChx>>,
 }
 
 impl<S> Service<Request<Body>> for CtxMw<S>

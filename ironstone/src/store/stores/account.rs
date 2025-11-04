@@ -16,13 +16,13 @@ use crate::store::{
 };
 
 /// The struct for our Account store, holding the database connection wrapper.
-pub struct AccountStore<Dbx: DbExecutor> {
-    dbx: Arc<Dbx>,
+pub struct AccountStore<D: DbExecutor> {
+    dbx: Arc<D>,
 }
 
-impl<Dbx: DbExecutor> AccountStore<Dbx> {
+impl<D: DbExecutor> AccountStore<D> {
     /// Creates a new `AccountStore`.
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+    pub fn new(dbx: Arc<D>) -> Self {
         Self { dbx }
     }
 
@@ -45,7 +45,7 @@ impl<Dbx: DbExecutor> AccountStore<Dbx> {
 // By implementing these meta traits, AccountStore implicitly gains all of the
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl<Dbx: DbExecutor> Store for AccountStore<Dbx> {
+impl<D: DbExecutor> Store for AccountStore<D> {
     type Iden = AccountIden;
     type Row = AccountRow;
 
@@ -54,7 +54,7 @@ impl<Dbx: DbExecutor> Store for AccountStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> ReadStore for AccountStore<Dbx> {
+impl<D: DbExecutor> ReadStore for AccountStore<D> {
     type FilterStoreParams = AccountFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -66,7 +66,7 @@ impl<Dbx: DbExecutor> ReadStore for AccountStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> MutateStore for AccountStore<Dbx> {
+impl<D: DbExecutor> MutateStore for AccountStore<D> {
     type CreateStoreParams = AccountForCreate;
     type UpdateStoreParams = AccountForUpdate;
 
@@ -79,7 +79,7 @@ impl<Dbx: DbExecutor> MutateStore for AccountStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> OneToManyStore for AccountStore<Dbx> {
+impl<D: DbExecutor> OneToManyStore for AccountStore<D> {
     type OneToManyRow = AccountWithCredentials;
 
     type FilterStoreParams = AccountFilter;
@@ -97,7 +97,7 @@ impl<Dbx: DbExecutor> OneToManyStore for AccountStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> ContainsFilterStore for AccountStore<Dbx> {
+impl<D: DbExecutor> ContainsFilterStore for AccountStore<D> {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: AccountIden::Table,

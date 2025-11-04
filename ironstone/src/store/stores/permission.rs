@@ -10,13 +10,13 @@ use crate::store::{
 };
 
 /// The struct for our Permission store, holding the database connection wrapper.
-pub struct PermissionStore<Dbx: DbExecutor> {
-    dbx: Arc<Dbx>,
+pub struct PermissionStore<D: DbExecutor> {
+    dbx: Arc<D>,
 }
 
-impl<Dbx: DbExecutor> PermissionStore<Dbx> {
+impl<D: DbExecutor> PermissionStore<D> {
     /// Creates a new `PermissionStore`.
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+    pub fn new(dbx: Arc<D>) -> Self {
         Self { dbx }
     }
 }
@@ -26,7 +26,7 @@ impl<Dbx: DbExecutor> PermissionStore<Dbx> {
 // By implementing these meta traits, PermissionStore implicitly gains all of the
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl<Dbx: DbExecutor> Store for PermissionStore<Dbx> {
+impl<D: DbExecutor> Store for PermissionStore<D> {
     type Iden = PermissionIden;
     type Row = PermissionRow;
 
@@ -35,7 +35,7 @@ impl<Dbx: DbExecutor> Store for PermissionStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> ReadStore for PermissionStore<Dbx> {
+impl<D: DbExecutor> ReadStore for PermissionStore<D> {
     type FilterStoreParams = PermissionFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -47,7 +47,7 @@ impl<Dbx: DbExecutor> ReadStore for PermissionStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> MutateStore for PermissionStore<Dbx> {
+impl<D: DbExecutor> MutateStore for PermissionStore<D> {
     type CreateStoreParams = PermissionForCreate;
     type UpdateStoreParams = PermissionForUpdate;
 
@@ -60,7 +60,7 @@ impl<Dbx: DbExecutor> MutateStore for PermissionStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> ContainsFilterStore for PermissionStore<Dbx> {
+impl<D: DbExecutor> ContainsFilterStore for PermissionStore<D> {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: PermissionIden::Table,

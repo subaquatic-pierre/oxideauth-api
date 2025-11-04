@@ -1,6 +1,6 @@
 /target
 /migrations
 server.pid
-db.*
+data/db
 
 Dockerfile.prod

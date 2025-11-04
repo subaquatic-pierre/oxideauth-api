@@ -16,12 +16,12 @@ use crate::{
     },
 };
 
-pub struct WorkspaceService<'a, Dbx: DbExecutor> {
-    ws_store: &'a WorkspaceStore<Dbx>,
+pub struct WorkspaceService<'a, D: DbExecutor> {
+    ws_store: &'a WorkspaceStore<D>,
 }
 
-impl<'a, Dbx: DbExecutor> WorkspaceService<'a, Dbx> {
-    pub fn new(ws_store: &'a WorkspaceStore<Dbx>) -> Self {
+impl<'a, D: DbExecutor> WorkspaceService<'a, D> {
+    pub fn new(ws_store: &'a WorkspaceStore<D>) -> Self {
         Self { ws_store }
     }
 

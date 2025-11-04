@@ -1,9 +1,0 @@
-# Use the official PostgreSQL image as a base
-FROM postgres:16
-
-# Install the pg_cron extension package
-RUN apt-get update && apt-get install -y postgresql-16-cron
-
-# Set the shared_preload_libraries configuration
-# This can also be done in the docker-compose.yml file, but doing it here ensures it's part of the image
-RUN echo 'shared_preload_libraries=pg_cron' >> /var/lib/postgresql/data/postgresql.conf

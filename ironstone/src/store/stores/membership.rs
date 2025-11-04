@@ -11,13 +11,13 @@ use crate::store::{
 };
 
 /// The struct for our Membership store, holding the database connection wrapper.
-pub struct MembershipStore<Dbx: DbExecutor> {
-    dbx: Arc<Dbx>,
+pub struct MembershipStore<D: DbExecutor> {
+    dbx: Arc<D>,
 }
 
-impl<Dbx: DbExecutor> MembershipStore<Dbx> {
+impl<D: DbExecutor> MembershipStore<D> {
     /// Creates a new `MembershipStore`.
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+    pub fn new(dbx: Arc<D>) -> Self {
         Self { dbx }
     }
 }
@@ -27,7 +27,7 @@ impl<Dbx: DbExecutor> MembershipStore<Dbx> {
 // By implementing these meta traits, MembershipStore implicitly gains all of the
 // CRUD, Batch, and Query capabilities from the blanket implementations.
 
-impl<Dbx: DbExecutor> Store for MembershipStore<Dbx> {
+impl<D: DbExecutor> Store for MembershipStore<D> {
     type Iden = MembershipIden;
     type Row = MembershipRow;
 
@@ -36,7 +36,7 @@ impl<Dbx: DbExecutor> Store for MembershipStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> ReadStore for MembershipStore<Dbx> {
+impl<D: DbExecutor> ReadStore for MembershipStore<D> {
     type FilterStoreParams = MembershipFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
@@ -48,7 +48,7 @@ impl<Dbx: DbExecutor> ReadStore for MembershipStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> MutateStore for MembershipStore<Dbx> {
+impl<D: DbExecutor> MutateStore for MembershipStore<D> {
     type CreateStoreParams = MembershipForCreate;
     type UpdateStoreParams = MembershipForUpdate;
 
@@ -61,7 +61,7 @@ impl<Dbx: DbExecutor> MutateStore for MembershipStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> ManyToManyStore for MembershipStore<Dbx> {
+impl<D: DbExecutor> ManyToManyStore for MembershipStore<D> {
     type ManyToManyRow = MembershipWithRoles;
 
     type FilterStoreParams = MembershipFilter;
@@ -81,7 +81,7 @@ impl<Dbx: DbExecutor> ManyToManyStore for MembershipStore<Dbx> {
     }
 }
 
-impl<Dbx: DbExecutor> ContainsFilterStore for MembershipStore<Dbx> {
+impl<D: DbExecutor> ContainsFilterStore for MembershipStore<D> {
     fn contains_tags_meta(&self) -> ContainsFilterQueryMeta<Self::Iden> {
         ContainsFilterQueryMeta {
             table: MembershipIden::Table,

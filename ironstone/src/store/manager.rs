@@ -5,26 +5,26 @@ use crate::store::{
     init::PgPool,
     stores::{
         account::AccountStore, credential::CredentialStore, membership::MembershipStore,
-        workspace::WorkspaceStore, permission::PermissionStore, project::ProjectStore,
-        role::RoleStore, token_blacklist::TokenBlacklistStore,
+        permission::PermissionStore, project::ProjectStore, role::RoleStore,
+        token_blacklist::TokenBlacklistStore, workspace::WorkspaceStore,
     },
 };
 
-pub struct StoreManager<Dbx: DbExecutor> {
-    pub dbx: Arc<Dbx>,
+pub struct StoreManager<D: DbExecutor> {
+    pub dbx: Arc<D>,
 
-    pub account: AccountStore<Dbx>,
-    pub credential: CredentialStore<Dbx>,
-    pub membership: MembershipStore<Dbx>,
-    pub workspace: WorkspaceStore<Dbx>,
-    pub permission: PermissionStore<Dbx>,
-    pub project: ProjectStore<Dbx>,
-    pub role: RoleStore<Dbx>,
-    pub token_blacklist: TokenBlacklistStore<Dbx>,
+    pub account: AccountStore<D>,
+    pub credential: CredentialStore<D>,
+    pub membership: MembershipStore<D>,
+    pub workspace: WorkspaceStore<D>,
+    pub permission: PermissionStore<D>,
+    pub project: ProjectStore<D>,
+    pub role: RoleStore<D>,
+    pub token_blacklist: TokenBlacklistStore<D>,
 }
 
-impl<Dbx: DbExecutor> StoreManager<Dbx> {
-    pub fn new(dbx: Arc<Dbx>) -> Self {
+impl<D: DbExecutor> StoreManager<D> {
+    pub fn new(dbx: Arc<D>) -> Self {
         let account = AccountStore::new(dbx.clone());
         let credential = CredentialStore::new(dbx.clone());
         let membership = MembershipStore::new(dbx.clone());
@@ -47,11 +47,11 @@ impl<Dbx: DbExecutor> StoreManager<Dbx> {
         }
     }
 
-    pub fn dbx(&self) -> Arc<Dbx> {
+    pub fn dbx(&self) -> Arc<D> {
         self.dbx.clone()
     }
 }
 
-pub trait StoreManagerTrait<Dbx: DbExecutor> {
-    fn account(&self) -> &AccountStore<Dbx>;
+pub trait StoreManagerTrait<D: DbExecutor> {
+    fn account(&self) -> &AccountStore<D>;
 }

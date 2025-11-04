@@ -3,16 +3,25 @@ use axum::{
     http::{header::AUTHORIZATION, HeaderMap, StatusCode},
 };
 
-use crate::store::{dbx::DbExecutor, stores::token_blacklist::TokenBlacklistStore};
+use crate::{
+    cache::traits::CacheExecutor,
+    store::{dbx::DbExecutor, stores::token_blacklist::TokenBlacklistStore},
+};
 
-pub struct TokenService<'a, Dbx: DbExecutor> {
-    token_blacklist_store: &'a TokenBlacklistStore<Dbx>,
+pub struct TokenService<'a, D: DbExecutor, C: CacheExecutor> {
+    token_blacklist_store: &'a TokenBlacklistStore<D>,
+    cache: &'a C,
 }
 
-impl<'a, Dbx: DbExecutor> TokenService<'a, Dbx> {
-    pub fn new(token_blacklist_store: &'a TokenBlacklistStore<Dbx>) -> Self {
+impl<'a, D, C> TokenService<'a, D, C>
+where
+    D: DbExecutor,
+    C: CacheExecutor,
+{
+    pub fn new(token_blacklist_store: &'a TokenBlacklistStore<D>, cache: &'a C) -> Self {
         Self {
             token_blacklist_store,
+            cache,
         }
     }
 
