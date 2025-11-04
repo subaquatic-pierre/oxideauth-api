@@ -57,7 +57,7 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
 
             init_dev(&dbx.pool()).await;
 
-            let chx = Arc::new(RedisChx::new());
+            let chx = Arc::new(RedisChx::new(&config.redis_url));
 
             (config, sm, dbx, chx)
         }
@@ -72,7 +72,7 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
                 "Application started in PRODUCTION mode"
             );
 
-            let chx = Arc::new(RedisChx::new());
+            let chx = Arc::new(RedisChx::new(&config.redis_url));
 
             (config, sm, dbx, chx)
         }
@@ -88,7 +88,7 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
                 "Application started in TEST mode"
             );
 
-            let chx = Arc::new(RedisChx::new());
+            let chx = Arc::new(RedisChx::new(&config.redis_url));
 
             (config, sm, dbx, chx)
         }
@@ -105,4 +105,4 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
     }
 }
 
-pub type App = Arc<AppState<PgDbx,RedisChx>>;
+pub type App = Arc<AppState<PgDbx, RedisChx>>;

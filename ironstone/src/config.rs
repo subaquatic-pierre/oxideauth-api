@@ -8,6 +8,7 @@ pub struct Config {
 
     pub client_origin: String,
     pub database_url: String,
+    pub redis_url: String,
     pub jwt_secret: String,
     pub jwt_max_age: u64,
 
@@ -31,6 +32,7 @@ pub struct Config {
 impl Config {
     pub fn from_env() -> Self {
         let database_url = var("DATABASE_URL").expect("DATABASE_URL must be set");
+        let redis_url = var("REDIS_URL").expect("REDIS_URL must be set");
         let host = var("HOST").unwrap_or("http://localhost".to_string());
         let port = var("PORT")
             .unwrap_or("8080".to_string())
@@ -67,6 +69,7 @@ impl Config {
 
         Config {
             database_url,
+            redis_url,
             jwt_secret,
             client_origin,
             jwt_max_age: jwt_max_age.parse::<u64>().unwrap(),
@@ -94,6 +97,8 @@ impl Config {
             port: 8080,
             client_origin: "http://localhost:3000".to_string(),
             database_url: "postgres://user:password@localhost/test_db".to_string(),
+            // TODO: update redis url
+            redis_url: "postgres://user:password@localhost/test_db".to_string(),
             jwt_secret: "supersecretkey".to_string(),
             jwt_max_age: 3600,
             google_oauth_client_id: "mock-client-id".to_string(),
@@ -117,6 +122,8 @@ impl Config {
             port: 8080,
             client_origin: "http://localhost:3000".to_string(),
             database_url: "postgres://test_user:password@localhost:5432/test_db".to_string(),
+            // TODO: update redis url
+            redis_url: "postgres://test_user:password@localhost:5432/test_db".to_string(),
             jwt_secret: "supersecretkey".to_string(),
             jwt_max_age: 3600,
             google_oauth_client_id: "mock-client-id".to_string(),
@@ -140,6 +147,8 @@ impl Config {
             port: 8000,
             client_origin: "http://localhost:3000".to_string(),
             database_url: "postgres://test_user:password@localhost:5432/dev_db".to_string(),
+            // TODO: update redis url
+            redis_url: "postgres://test_user:password@localhost:5432/test_db".to_string(),
             jwt_secret: "supersecretkey".to_string(),
             jwt_max_age: 3600,
             google_oauth_client_id: "mock-client-id".to_string(),

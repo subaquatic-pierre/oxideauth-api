@@ -10,8 +10,11 @@ pub type CacheResult<T> = Result<T, CacheError>;
 #[serde_as]
 #[derive(Debug, Serialize, From)]
 pub enum CacheError {
+    Init(String),
     #[from]
-    BincodeError(#[serde_as(as = "DisplayFromStr")] redis::RedisError),
+    RedisError(#[serde_as(as = "DisplayFromStr")] redis::RedisError),
+    #[from]
+    SerdeError(#[serde_as(as = "DisplayFromStr")] serde_json::Error),
 }
 
 impl Display for CacheError {
