@@ -68,7 +68,7 @@ where
         }
     }
 
-    pub fn is_blacklisted(&self, token: &str) -> bool {
+    pub fn is_blacklisted(&self, token: &TokenClaims) -> bool {
         // TODO: check token against cache
         return false;
     }

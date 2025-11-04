@@ -40,11 +40,15 @@ where
         let token = match TokenService::<D, C>::token_str_from_req(&headers) {
             Some(t) => {
                 let token_svc = self.svc_build.token();
+                // decode token, will cause method to error if token signature or deserialization of claims fails, this means that request will return UNAUTHORIZED response. this is preferred behavior because token is on header. this means that request is malicious or has been tampered with, in which case return early
+                let token = token_svc.decode_token_str(t)?;
+
                 // if token exists and is in blacklist return unauthorized response
-                if token_svc.is_blacklisted(t) {
+                if token_svc.is_blacklisted(&token) {
                     return Err(CoreError::Auth("token blacklisted".to_string()));
                 }
-                Some(t)
+
+                Some(token)
             }
             None => None,
         };
