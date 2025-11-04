@@ -22,6 +22,10 @@ pub enum CoreError {
     #[from]
     StoreError(#[serde_as(as = "DisplayFromStr")] crate::store::error::StoreError),
     #[from]
+    CacheError(#[serde_as(as = "DisplayFromStr")] crate::cache::error::CacheError),
+    #[from]
+    JsonWebTokenError(#[serde_as(as = "DisplayFromStr")] jsonwebtoken::errors::Error),
+    #[from]
     FormatError(#[serde_as(as = "DisplayFromStr")] std::fmt::Error),
     #[from]
     BincodeError(#[serde_as(as = "DisplayFromStr")] bincode::Error),

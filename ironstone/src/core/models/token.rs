@@ -6,17 +6,17 @@ use crate::{
     utils::time::{format_time, now_utc},
 };
 
-#[derive(Serialize, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, Deserialize, PartialEq, Eq)]
 pub struct TokenClaims {
     sub: String, // membership ID
     iss: String,
     aud: String,
-    iat: String,
-    exp: String,
+    pub exp: usize,
+    pub iat: usize,
     ty: TokenType,
 }
 
-#[derive(Serialize, PartialEq, Eq, Clone, Copy, Deserialize)]
+#[derive(Debug, Serialize, PartialEq, Eq, Clone, Copy, Deserialize)]
 pub enum TokenType {
     Auth,
     ResetPassword,
@@ -30,8 +30,8 @@ impl TokenClaims {
             sub: mem.id.to_string(),
             iss: "ironstone.app".to_string(),
             aud: "ironstone.api".to_string(),
-            iat: format_time(now_utc()),
-            exp: format_time(exp),
+            iat: now_utc().unix_timestamp() as usize,
+            exp: exp.unix_timestamp() as usize,
             ty,
         }
     }

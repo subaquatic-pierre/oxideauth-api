@@ -37,7 +37,7 @@ where
     }
 
     pub async fn resolve_ctx(&self, headers: &HeaderMap) -> CoreResult<CoreCtx> {
-        let token = match TokenService::<D, C>::token_from_req(&headers) {
+        let token = match TokenService::<D, C>::token_str_from_req(&headers) {
             Some(t) => {
                 let token_svc = self.svc_build.token();
                 // if token exists and is in blacklist return unauthorized response

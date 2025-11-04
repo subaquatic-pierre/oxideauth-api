@@ -3,7 +3,10 @@ use std::sync::Arc;
 use crate::{
     app::AppState,
     cache::traits::CacheExecutor,
-    core::services::{account::AccountService, token::TokenService},
+    core::services::{
+        account::AccountService,
+        token::{TokenService, TokenServiceConfig},
+    },
     store::{dbx::DbExecutor, manager::StoreManager},
 };
 
@@ -31,7 +34,9 @@ where
     }
 
     pub fn token(&self) -> TokenService<'_, D, C> {
-        let svc = TokenService::new(&self.sm.token_blacklist, self.cache.as_ref());
+        // TODO: get config from storage, first check cache, if not found then check database and update cache
+        let config = TokenServiceConfig::default();
+        let svc = TokenService::new(&self.sm.token_blacklist, self.cache.as_ref(), config);
         svc
     }
 }
