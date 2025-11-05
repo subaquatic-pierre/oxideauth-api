@@ -43,13 +43,13 @@ pub async fn describe_account(
     app: Extension<App>,
     body: Result<Json<AccountDescribeReq>, JsonRejection>,
 ) -> WebResult<WebResponse<AccountRes>> {
-    let acc_svc = app.svc_build.account();
+    let svc = app.svc_build.account();
 
     let params = AccountDescribeParams {
         email: body?.email.clone(),
     };
 
-    let acc = acc_svc.describe_account(&ctx, params).await?;
+    let acc = svc.describe(&ctx, params).await?;
 
     let acc_res = AccountRes {
         id: acc.id,
@@ -66,13 +66,13 @@ pub async fn list_accounts(
     app: Extension<App>,
     body: Json<AccountDescribeReq>,
 ) -> WebResult<WebResponse<AccountRes>> {
-    let acc_svc = app.svc_build.account();
+    let svc = app.svc_build.account();
 
     let params = AccountDescribeParams {
         email: body.email.clone(),
     };
 
-    let acc = acc_svc.describe_account(&ctx, params).await?;
+    let acc = svc.describe(&ctx, params).await?;
 
     let acc_res = AccountRes {
         id: acc.id,
@@ -89,14 +89,14 @@ pub async fn create_account(
     app: Extension<App>,
     body: Json<AccountCreateReq>,
 ) -> WebResult<WebResponse<AccountRes>> {
-    let acc_svc = app.svc_build.account();
+    let svc = app.svc_build.account();
 
     let params = AccountCreateParams {
         email: body.email.clone(),
         password: body.password.clone(),
     };
 
-    let acc = acc_svc.create_account(&ctx, params).await?;
+    let acc = svc.create(&ctx, params).await?;
 
     let acc_res = AccountRes {
         id: acc.id,

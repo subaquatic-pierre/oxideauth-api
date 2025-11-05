@@ -26,11 +26,7 @@ impl<'a, D: DbExecutor> AccountService<'a, D> {
         Self { acc_store }
     }
 
-    pub async fn create_account(
-        &self,
-        ctx: &CoreCtx,
-        params: AccountCreateParams,
-    ) -> CoreResult<Account> {
+    pub async fn create(&self, ctx: &CoreCtx, params: AccountCreateParams) -> CoreResult<Account> {
         if self
             .acc_store
             .get_by_email(&ctx.into(), &params.email)
@@ -58,7 +54,7 @@ impl<'a, D: DbExecutor> AccountService<'a, D> {
         Ok(new_account.into())
     }
 
-    pub async fn describe_account(
+    pub async fn describe(
         &self,
         ctx: &CoreCtx,
         _params: AccountDescribeParams,
@@ -121,13 +117,13 @@ mod tests {
             password: "password".to_string(),
         };
 
-        let new_acc = acc_svc.create_account(&ctx, params).await?;
+        let new_acc = acc_svc.create(&ctx, params).await?;
 
         let expected = Account::default();
 
         assert_eq!(
             new_acc.id, expected.id,
-            "incorrect account id returned from AccountService.create_account()"
+            "incorrect account id returned from AccountService.create()"
         );
 
         Ok(())
@@ -162,7 +158,7 @@ mod tests {
             email: "user@user.com".to_string(),
             password: "password".to_string(),
         };
-        let new_acc = acc_svc.create_account(&ctx, params).await;
+        let new_acc = acc_svc.create(&ctx, params).await;
 
         assert!(
             matches!(new_acc, Err(CoreError::AlreadyExists(..))),

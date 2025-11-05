@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::core::models::oath::AuthProvider;
+use crate::{core::models::oath::AuthProvider, store::entities::workspace::WorkspaceRow};
 
 #[derive(Default, Clone, Debug)]
 pub struct Workspace {
@@ -15,4 +15,10 @@ pub struct WorkspaceConfig {
     allowed_auth_providers: Vec<AuthProvider>,
     jwt_max_age: u64,
     jwt_secret: String,
+}
+
+impl From<WorkspaceRow> for Workspace {
+    fn from(value: WorkspaceRow) -> Self {
+        Workspace::default()
+    }
 }

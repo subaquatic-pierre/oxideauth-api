@@ -3,13 +3,19 @@ use serde_json::json;
 use crate::{
     core::{
         ctx::CoreCtx,
-        dto::membership::{MembershipCreateParams, MembershipDescribeParams},
+        dto::workspace::{
+            WorkspaceCreateParams, WorkspaceDeleteParams, WorkspaceDescribeParams,
+            WorkspaceListParams, WorkspaceUpdateParams,
+        },
         error::{CoreError, CoreResult},
-        models::{account::Account, membership::Membership},
+        models::{account::Account, workspace::Workspace},
     },
     store::{
         dbx::{DbExecutor, PgDbx},
-        entities::account::{AccountFilter, AccountForCreate, AccountMeta},
+        entities::{
+            account::{AccountFilter, AccountForCreate, AccountMeta},
+            workspace::{WorkspaceFilter, WorkspaceForCreate, WorkspaceForUpdate},
+        },
         manager::StoreManager,
         stores::workspace::WorkspaceStore,
         traits::crud::*,
@@ -17,31 +23,80 @@ use crate::{
 };
 
 pub struct WorkspaceService<'a, D: DbExecutor> {
-    ws_store: &'a WorkspaceStore<D>,
+    store: &'a WorkspaceStore<D>,
 }
 
 impl<'a, D: DbExecutor> WorkspaceService<'a, D> {
-    pub fn new(ws_store: &'a WorkspaceStore<D>) -> Self {
-        Self { ws_store }
+    pub fn new(store: &'a WorkspaceStore<D>) -> Self {
+        Self { store }
     }
 
-    pub async fn create_membership(
+    pub async fn create(
         &self,
         ctx: &CoreCtx,
-        params: MembershipCreateParams,
-    ) -> CoreResult<Membership> {
-        // ensure can create membership in this workspace
-        let n = Membership::default();
+        params: WorkspaceCreateParams,
+    ) -> CoreResult<Workspace> {
+        let data = WorkspaceForCreate::default();
+
+        let res = self.store.create(&ctx.into(), data).await?;
+
+        let n = res.into();
 
         Ok(n)
     }
 
-    pub async fn describe_membership(
+    pub async fn delete(
         &self,
         ctx: &CoreCtx,
-        _params: MembershipDescribeParams,
-    ) -> CoreResult<Membership> {
-        let n = Membership::default();
+        params: WorkspaceDeleteParams,
+    ) -> CoreResult<Workspace> {
+        let res = self.store.delete(&ctx.into(), &params.id.into()).await?;
+
+        let n = res.into();
+
+        Ok(n)
+    }
+    pub async fn list(
+        &self,
+        ctx: &CoreCtx,
+        params: WorkspaceListParams,
+    ) -> CoreResult<Vec<Workspace>> {
+        let filter: WorkspaceFilter = json!({ "name": "placeholder" }).try_into()?;
+        let res = self
+            .store
+            .list(&ctx.into(), Some(filter.into()), None)
+            .await?;
+
+        let res: Vec<Workspace> = res.into_iter().map(|el| el.into()).collect();
+
+        Ok(res)
+    }
+
+    pub async fn update(
+        &self,
+        ctx: &CoreCtx,
+        params: WorkspaceUpdateParams,
+    ) -> CoreResult<Workspace> {
+        let data = WorkspaceForUpdate::default();
+
+        let res = self
+            .store
+            .update(&ctx.into(), &params.id.into(), data)
+            .await?;
+
+        let n = res.into();
+
+        Ok(n)
+    }
+
+    pub async fn describe(
+        &self,
+        ctx: &CoreCtx,
+        params: WorkspaceDescribeParams,
+    ) -> CoreResult<Workspace> {
+        let res = self.store.get(&ctx.into(), &params.id.into()).await?;
+
+        let n = res.into();
 
         Ok(n)
     }
@@ -73,55 +128,4 @@ mod tests {
     use serde_json::json;
     use serial_test::serial;
     use uuid::Uuid;
-
-    #[tokio::test]
-    #[serial]
-    async fn test_create_membership_success() -> CoreResult<()> {
-        create_dbx_mock_unsafe!(
-            MockDbxAccountRegister,
-            fetch_one: {
-                let acc = AccountRow::default();
-                let result = unsafe { mem::transmute_copy::<AccountRow, O>(&acc) };
-                mem::forget(acc);
-                Ok(result)
-            },
-            fetch_optional: { Ok(None) },
-            fetch_all: { Ok(vec![]) },
-            execute: { Ok(1) }
-        );
-
-        let dbx = Arc::new(MockDbxAccountRegister);
-        let ws_store = WorkspaceStore::new(dbx);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_create_account_error() -> CoreResult<()> {
-        create_dbx_mock_unsafe!(
-            MockDbxAccountRegister,
-            fetch_one: {
-                let acc = AccountRow::default();
-                let result = unsafe { mem::transmute_copy::<AccountRow, O>(&acc) };
-                mem::forget(acc);
-                Ok(result)
-            },
-            fetch_optional: { Ok(None) },
-            fetch_all: {
-                let mut acc = AccountRow::default();
-                acc.email = "user@user.com".to_string();
-                let result = unsafe { mem::transmute_copy::<AccountRow, O>(&acc) };
-                mem::forget(acc);
-                Ok(vec![result])
-            },
-            execute: { Ok(1) }
-        );
-        let dbx = Arc::new(MockDbxAccountRegister);
-        let ws_store = WorkspaceStore::new(dbx);
-        let membership_svc = WorkspaceService::new(&ws_store);
-        let ctx = CoreCtx::new_test();
-
-        Ok(())
-    }
 }

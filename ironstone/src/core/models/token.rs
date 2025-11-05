@@ -35,4 +35,13 @@ impl TokenClaims {
             ty,
         }
     }
+
+    pub fn is_expired(&self) -> bool {
+        let now = now_utc().unix_timestamp() as usize;
+        if self.exp < now {
+            true
+        } else {
+            false
+        }
+    }
 }

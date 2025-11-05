@@ -26,7 +26,7 @@ impl<'a, D: DbExecutor> MembershipService<'a, D> {
         Self { membership_store }
     }
 
-    pub async fn create_membership(
+    pub async fn create(
         &self,
         ctx: &CoreCtx,
         params: MembershipCreateParams,
@@ -37,7 +37,7 @@ impl<'a, D: DbExecutor> MembershipService<'a, D> {
         Ok(n)
     }
 
-    pub async fn describe_membership(
+    pub async fn describe(
         &self,
         ctx: &CoreCtx,
         _params: MembershipDescribeParams,

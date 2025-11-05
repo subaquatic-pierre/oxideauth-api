@@ -181,8 +181,10 @@ impl TryFrom<JsonValue> for WorkspaceFilter {
     }
 }
 
+// TODO: uncomment cfg(test)
+
 // --- Defaults for testing ---
-#[cfg(test)]
+// #[cfg(test)]
 impl Default for WorkspaceForCreate {
     fn default() -> Self {
         use crate::store::utils::gen_rand_str;
@@ -202,7 +204,7 @@ impl Default for WorkspaceForCreate {
     }
 }
 
-#[cfg(test)]
+// #[cfg(test)]
 impl Default for WorkspaceForUpdate {
     fn default() -> Self {
         Self {

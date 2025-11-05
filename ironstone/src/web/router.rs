@@ -13,7 +13,7 @@ use crate::{
     app::App,
     core::ctx::CoreCtx,
     web::{
-        handlers::{account::AccountRouter, root::RootRouter},
+        handlers::{account::AccountRouter, root::RootRouter, workspace::WorkspaceRouter},
         middlewares::{
             cors::build_cors,
             ctx::{CtxLayer, CtxMw},
@@ -36,8 +36,11 @@ impl AppRouter {
             .timeout(Duration::from_secs(30));
 
         Router::new()
+            // Define main routes
             .nest("/", RootRouter::routes())
-            .nest("/accounts", AccountRouter::routes())
+            .nest("/account", AccountRouter::routes())
+            .nest("/workspace", WorkspaceRouter::routes())
+            // Define middleware
             .layer(global_error_layer)
             .layer(map_response(ResponseMw::response_map_handler))
             .layer(cors)

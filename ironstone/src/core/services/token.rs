@@ -94,20 +94,15 @@ where
         Ok(token)
     }
 
-    fn gen_token_exp_time(max_age: u64) -> usize {
+    fn gen_token_exp_time(&self) -> usize {
         let now = now_utc();
-        let expire_duration = Duration::from_secs(max_age);
+        let expire_duration = Duration::from_secs(self.config.jwt_max_age);
         let future_time = now + expire_duration;
         future_time.unix_timestamp_nanos() as usize
     }
 
     pub fn is_token_exp(token: &TokenClaims) -> bool {
-        let now = now_utc().unix_timestamp() as usize;
-        if token.exp < now {
-            true
-        } else {
-            false
-        }
+        token.is_expired()
     }
 
     pub fn token_str_from_req<'b>(headers: &'b HeaderMap) -> Option<&'b str> {

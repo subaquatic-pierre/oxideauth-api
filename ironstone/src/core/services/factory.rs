@@ -6,6 +6,7 @@ use crate::{
     core::services::{
         account::AccountService,
         token::{TokenService, TokenServiceConfig},
+        workspace::WorkspaceService,
     },
     store::{dbx::DbExecutor, manager::StoreManager},
 };
@@ -30,6 +31,11 @@ where
 
     pub fn account(&self) -> AccountService<'_, D> {
         let svc = AccountService::new(&self.sm.account);
+        svc
+    }
+
+    pub fn workspace(&self) -> WorkspaceService<'_, D> {
+        let svc = WorkspaceService::new(&self.sm.workspace);
         svc
     }
 
