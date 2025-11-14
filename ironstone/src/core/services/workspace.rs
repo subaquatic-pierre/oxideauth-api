@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde_json::json;
 
 use crate::{
@@ -22,13 +24,13 @@ use crate::{
     },
 };
 
-pub struct WorkspaceService<'a, D: DbExecutor> {
-    store: &'a WorkspaceStore<D>,
+pub struct WorkspaceService<D: DbExecutor> {
+    sm: Arc<StoreManager<D>>,
 }
 
-impl<'a, D: DbExecutor> WorkspaceService<'a, D> {
-    pub fn new(store: &'a WorkspaceStore<D>) -> Self {
-        Self { store }
+impl<D: DbExecutor> WorkspaceService<D> {
+    pub fn new(sm: Arc<StoreManager<D>>) -> Self {
+        Self { sm }
     }
 
     pub async fn create(
@@ -38,7 +40,9 @@ impl<'a, D: DbExecutor> WorkspaceService<'a, D> {
     ) -> CoreResult<Workspace> {
         let data = WorkspaceForCreate::default();
 
-        let res = self.store.create(&ctx.into(), data).await?;
+        let store = &self.sm.workspace;
+
+        let res = store.create(&ctx.into(), data).await?;
 
         let n = res.into();
 
@@ -50,7 +54,9 @@ impl<'a, D: DbExecutor> WorkspaceService<'a, D> {
         ctx: &CoreCtx,
         params: WorkspaceDeleteParams,
     ) -> CoreResult<Workspace> {
-        let res = self.store.delete(&ctx.into(), &params.id.into()).await?;
+        let store = &self.sm.workspace;
+
+        let res = store.delete(&ctx.into(), &params.id.into()).await?;
 
         let n = res.into();
 
@@ -62,10 +68,9 @@ impl<'a, D: DbExecutor> WorkspaceService<'a, D> {
         params: WorkspaceListParams,
     ) -> CoreResult<Vec<Workspace>> {
         let filter: WorkspaceFilter = json!({ "name": "placeholder" }).try_into()?;
-        let res = self
-            .store
-            .list(&ctx.into(), Some(filter.into()), None)
-            .await?;
+        let store = self.store();
+
+        let res = store.list(&ctx.into(), Some(filter.into()), None).await?;
 
         let res: Vec<Workspace> = res.into_iter().map(|el| el.into()).collect();
 
@@ -78,11 +83,9 @@ impl<'a, D: DbExecutor> WorkspaceService<'a, D> {
         params: WorkspaceUpdateParams,
     ) -> CoreResult<Workspace> {
         let data = WorkspaceForUpdate::default();
+        let store = self.store();
 
-        let res = self
-            .store
-            .update(&ctx.into(), &params.id.into(), data)
-            .await?;
+        let res = store.update(&ctx.into(), &params.id.into(), data).await?;
 
         let n = res.into();
 
@@ -94,11 +97,17 @@ impl<'a, D: DbExecutor> WorkspaceService<'a, D> {
         ctx: &CoreCtx,
         params: WorkspaceDescribeParams,
     ) -> CoreResult<Workspace> {
-        let res = self.store.get(&ctx.into(), &params.id.into()).await?;
+        let store = self.store();
+
+        let res = store.get(&ctx.into(), &params.id.into()).await?;
 
         let n = res.into();
 
         Ok(n)
+    }
+
+    fn store(&self) -> &WorkspaceStore<D> {
+        &self.sm.workspace
     }
 }
 

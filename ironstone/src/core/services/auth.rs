@@ -13,15 +13,15 @@ use crate::{
     },
 };
 
-pub struct AuthorizeService<'a, D>
+pub struct AuthorizeService<D>
 where
     D: DbExecutor,
 {
-    acc_svc: &'a AccountService<'a, D>,
+    acc_svc: AccountService<D>,
 }
 
-impl<'a, D: DbExecutor> AuthorizeService<'a, D> {
-    pub fn new(acc_svc: &'a AccountService<'a, D>) -> Self {
+impl<D: DbExecutor> AuthorizeService<D> {
+    pub fn new(acc_svc: AccountService<D>) -> Self {
         Self { acc_svc }
     }
 

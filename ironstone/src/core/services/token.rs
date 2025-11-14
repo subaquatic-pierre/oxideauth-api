@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use axum::{
     extract::Request,
@@ -15,7 +15,7 @@ use crate::{
         error::{CoreError, CoreResult},
         models::token::TokenClaims,
     },
-    store::{dbx::DbExecutor, stores::token_blacklist::TokenBlacklistStore},
+    store::{dbx::DbExecutor, manager::StoreManager, stores::token_blacklist::TokenBlacklistStore},
     utils::time::now_utc,
 };
 
@@ -45,27 +45,19 @@ impl Default for TokenServiceConfig {
     }
 }
 
-pub struct TokenService<'a, D: DbExecutor, C: CacheExecutor> {
-    token_blacklist_store: &'a TokenBlacklistStore<D>,
-    cache: &'a C,
+pub struct TokenService<D: DbExecutor, C: CacheExecutor> {
+    sm: Arc<StoreManager<D>>,
+    cache: Arc<C>,
     config: TokenServiceConfig,
 }
 
-impl<'a, D, C> TokenService<'a, D, C>
+impl<D, C> TokenService<D, C>
 where
     D: DbExecutor,
     C: CacheExecutor,
 {
-    pub fn new(
-        token_blacklist_store: &'a TokenBlacklistStore<D>,
-        cache: &'a C,
-        config: TokenServiceConfig,
-    ) -> Self {
-        Self {
-            token_blacklist_store,
-            cache,
-            config,
-        }
+    pub fn new(sm: Arc<StoreManager<D>>, cache: Arc<C>, config: TokenServiceConfig) -> Self {
+        Self { sm, cache, config }
     }
 
     pub fn is_blacklisted(&self, token: &TokenClaims) -> bool {
