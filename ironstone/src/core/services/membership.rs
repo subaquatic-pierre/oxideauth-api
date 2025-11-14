@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde_json::json;
 
 use crate::{
@@ -16,14 +18,14 @@ use crate::{
     },
 };
 
-pub struct MembershipService<'a, D: DbExecutor> {
-    membership_store: &'a MembershipStore<D>,
+pub struct MembershipService<D: DbExecutor> {
+    sm: Arc<StoreManager<D>>,
     // password_hasher: Arc<dyn PasswordHasher>, // Dependency for hashing
 }
 
-impl<'a, D: DbExecutor> MembershipService<'a, D> {
-    pub fn new(membership_store: &'a MembershipStore<D>) -> Self {
-        Self { membership_store }
+impl<D: DbExecutor> MembershipService<D> {
+    pub fn new(sm: Arc<StoreManager<D>>) -> Self {
+        Self { sm }
     }
 
     pub async fn create(
@@ -45,6 +47,10 @@ impl<'a, D: DbExecutor> MembershipService<'a, D> {
         let n = Membership::default();
 
         Ok(n)
+    }
+
+    fn store(&self) -> &MembershipStore<D> {
+        &self.sm.membership
     }
 }
 
@@ -92,7 +98,8 @@ mod tests {
         );
 
         let dbx = Arc::new(MockDbxAccountRegister);
-        let membership_store = MembershipStore::new(dbx);
+        let sm = Arc::new(StoreManager::new(dbx));
+        let svc = MembershipService::new(sm);
 
         Ok(())
     }
@@ -119,8 +126,8 @@ mod tests {
             execute: { Ok(1) }
         );
         let dbx = Arc::new(MockDbxAccountRegister);
-        let membership_store = MembershipStore::new(dbx);
-        let membership_svc = MembershipService::new(&membership_store);
+        let sm = Arc::new(StoreManager::new(dbx));
+        let svc = MembershipService::new(sm);
         let ctx = CoreCtx::new_test();
 
         Ok(())
