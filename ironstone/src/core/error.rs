@@ -16,6 +16,7 @@ pub enum CoreError {
     AlreadyExists(String),
     ParseError(String),
     Auth(String),
+    InvalidParams(String),
 
     #[from]
     ReqwestError(#[serde_as(as = "DisplayFromStr")] reqwest::Error),

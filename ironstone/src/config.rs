@@ -97,8 +97,7 @@ impl Config {
             port: 8080,
             client_origin: "http://localhost:3000".to_string(),
             database_url: "postgres://user:password@localhost/test_db".to_string(),
-            // TODO: update redis url
-            redis_url: "postgres://user:password@localhost/test_db".to_string(),
+            redis_url: "redis://127.0.0.1:6379".to_string(),
             jwt_secret: "supersecretkey".to_string(),
             jwt_max_age: 3600,
             google_oauth_client_id: "mock-client-id".to_string(),
@@ -122,8 +121,7 @@ impl Config {
             port: 8080,
             client_origin: "http://localhost:3000".to_string(),
             database_url: "postgres://test_user:password@localhost:5432/test_db".to_string(),
-            // TODO: update redis url
-            redis_url: "postgres://test_user:password@localhost:5432/test_db".to_string(),
+            redis_url: "redis://127.0.0.1:6379".to_string(),
             jwt_secret: "supersecretkey".to_string(),
             jwt_max_age: 3600,
             google_oauth_client_id: "mock-client-id".to_string(),

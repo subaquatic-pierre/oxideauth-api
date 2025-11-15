@@ -5,14 +5,16 @@ use serde_json::json;
 use crate::{
     core::{
         ctx::CoreCtx,
-        dto::account::{AccountCreateParams, AccountDescribeParams},
+        dto::account::{AccountCreateParams, AccountDescribeParams, AccountListParams},
         error::{CoreError, CoreResult},
         models::account::Account,
     },
     store::{
+        contains::FilterByContains,
         dbx::{DbExecutor, PgDbx},
         entities::account::{AccountFilter, AccountForCreate, AccountMeta},
         manager::StoreManager,
+        meta::ContainsFilterStore,
         stores::account::AccountStore,
         traits::crud::*,
     },
@@ -65,6 +67,21 @@ impl<D: DbExecutor> AccountService<D> {
         let n_acc = Account::default();
 
         Ok(n_acc)
+    }
+
+    pub async fn list(&self, ctx: &CoreCtx, params: AccountListParams) -> CoreResult<Vec<Account>> {
+        let store = self.store();
+
+        let (tags, filter) = match params.filter {
+            Some(filter) => filter.validate()?,
+            None => (None, None),
+        };
+
+        // if let Some(tags) = tags {
+        //     store.filter_by_tags_contain()
+        // }
+
+        Ok(vec![])
     }
 
     fn store(&self) -> &AccountStore<D> {

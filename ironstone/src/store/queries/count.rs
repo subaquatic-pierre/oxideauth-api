@@ -8,11 +8,46 @@ use sqlx::{query_as_with, query_scalar_with, query_with, Value};
 
 use crate::store::dbx::{DbExecutor, PgDbx};
 use crate::store::error::{StoreError, StoreResult};
-use crate::store::queries::meta::{CountManyQueryMeta, ReadQueryMeta};
+use crate::store::queries::meta::{
+    ContainsFilter, ContainsFilterQueryMeta, CountManyQueryMeta, ReadQueryMeta,
+};
 use crate::store::traits::meta::{StoreId, TableIden};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 use crate::store::{traits::meta::Store, utils::ListOptionsValidator};
 
+/// Counts the total number of entities (rows) in a table that match an
+/// optional set of filters.
+///
+/// This is a generic function used to determine the size of a filtered result
+/// set without fetching all the data.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor trait implementation (`DbExecutor`).
+/// * `F`: A type that can be converted into `FilterGroups` (e.g., your `AccountFilter` struct).
+/// * `I`: The identifier for the table being queried (`TableIden`).
+///
+/// # Arguments
+///
+/// * `_ctx`: The store context (currently unused, denoted by `_`).
+/// * `dbx`: The database executor used to run the query.
+/// * `filter`: An optional set of filters (`F`) to apply to the count. If `None`,
+///   all rows in the table will be counted.
+/// * `meta`: Metadata about the read query, containing the target table identifier (`I`).
+///
+/// # Query Performed (Example)
+///
+/// If `table` is `account` and a filter for `email` is provided, the SQL generated is:
+///
+/// ```sql
+/// SELECT COUNT(*) AS count FROM account WHERE email = $1
+/// ```
+///
+/// # Returns
+///
+/// A `StoreResult<i64>` containing:
+/// * `Ok(count)`: The total number of rows matching the optional filters.
+/// * `Err(StoreError)`: If there is an issue converting the filters or executing the query.
 pub async fn count<E: DbExecutor, F: Into<FilterGroups>, I: TableIden>(
     _ctx: &StoreCtx,
     dbx: &E,
@@ -42,7 +77,42 @@ pub async fn count<E: DbExecutor, F: Into<FilterGroups>, I: TableIden>(
     Ok(count.0)
 }
 
-/// Counts the number of related items for a given parent ID.
+/// Counts the number of related entities in a "many" (or child) table
+/// based on a foreign key relationship to a single "one" (or parent) entity ID.
+///
+/// This is typically used for calculating the number of child records associated
+/// with a parent record (e.g., counting the number of comments for a single post).
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor trait implementation (`DbExecutor`).
+/// * `I`: The identifier for the table being counted (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context, often used for authorization or transaction handling.
+/// * `dbx`: The database executor used to run the query.
+/// * `id`: The unique identifier (`StoreId`) of the parent entity. This value
+///   is used to filter the child table on the foreign key column.
+/// * `meta`: Metadata about the count query, including:
+///     * `table`: The identifier of the many (child) table being counted.
+///     * `fk`: The name of the foreign key column in the child table that links
+///       back to the parent entity.
+///
+/// # Query Performed (Example)
+///
+/// If `table` is `comments` and `fk` is `post_id`, the SQL generated is:
+///
+/// ```sql
+/// SELECT COUNT(*) FROM comments WHERE post_id = $1
+/// ```
+///
+/// # Returns
+///
+/// A `StoreResult<i64>` containing:
+/// * `Ok(count)`: The total number of rows in the child table matching the
+///   provided foreign key `id`.
+/// * `Err(StoreError)`: If the query fails to execute.
 pub async fn count_many<E: DbExecutor, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
@@ -63,6 +133,62 @@ pub async fn count_many<E: DbExecutor, I: TableIden>(
     // so we fetch into a tuple, which is very efficient.
     let query = sqlx::query_as_with(&sql, values);
     let count: (i64,) = dbx.fetch_one(query).await?;
+
+    Ok(count.0)
+}
+
+/// Counts the number of entities that satisfy a 'contains' condition on a column.
+///
+/// This function is generic over the DbExecutor and the TableIden.
+///
+/// # Arguments
+/// * `_ctx` - The store context (ignored for simplicity here).
+/// * `dbx` - The database executor.
+/// * `value` - The value to check for containment (Array of Strings or JSON).
+/// * `meta` - Metadata including the table and the target column name.
+///
+/// # Returns
+/// A StoreResult containing the count (i64).
+pub async fn count_contains<E, I>(
+    _ctx: &StoreCtx,
+    dbx: &E,
+    value: ContainsFilter,
+    meta: &ContainsFilterQueryMeta<I>,
+) -> StoreResult<i64>
+where
+    E: DbExecutor,
+    I: TableIden,
+{
+    let mut query = Query::select();
+
+    // SELECT COUNT(*)
+    query
+        .expr_as(Func::count(Expr::col(Asterisk)), "count")
+        .from(meta.table);
+
+    // Build the expression for the containment check (@>)
+    let expr = match value {
+        // For Array: "col_name" @> $1
+        ContainsFilter::Array(tags) => {
+            Expr::cust_with_values(format!(r#""{}" @> $"#, meta.col.to_string()), [tags])
+        }
+        // For JSON: "col_name" @> $1 (checks for key/value containment in JSONB)
+        ContainsFilter::Json(json) => {
+            Expr::cust_with_values(format!(r#""{}" @> $"#, meta.col.to_string()), [json])
+        }
+    };
+
+    // Apply the containment expression as a WHERE clause
+    query.cond_where(expr);
+
+    // build SQL and values
+    let (sql, vals) = query.build_sqlx(PostgresQueryBuilder);
+
+    // Execute query
+    let sqlx_query = sqlx::query_as_with(&sql, vals);
+
+    // fetch_one returns a tuple (i64,) for COUNT(*)
+    let count: (i64,) = dbx.fetch_one(sqlx_query).await?;
 
     Ok(count.0)
 }

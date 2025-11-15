@@ -11,9 +11,13 @@ use crate::{
     app::App,
     core::{
         ctx::CoreCtx,
-        dto::account::{AccountCreateParams, AccountDescribeParams},
+        dto::{
+            account::{AccountCreateParams, AccountDescribeParams, AccountListParams},
+            list::{RequestFilterParams, RequestListOptions},
+        },
         error::CoreError,
     },
+    store::entities::account::AccountFilter,
     web::{error::WebResult, middlewares::cors::build_cors, response::WebResponse},
 };
 
@@ -60,26 +64,41 @@ pub async fn describe_account(
     WebResponse::json(acc_res)
 }
 
+#[derive(Deserialize)]
+pub struct AccountListReq {
+    pub filter: Option<RequestFilterParams<AccountFilter>>,
+    pub options: Option<RequestListOptions>,
+}
+
+impl From<AccountListReq> for AccountListParams {
+    fn from(value: AccountListReq) -> Self {
+        Self {
+            filter: value.filter,
+            options: value.options,
+        }
+    }
+}
+
 #[axum::debug_handler]
 pub async fn list_accounts(
     ctx: Extension<CoreCtx>,
     app: Extension<App>,
-    body: Json<AccountDescribeReq>,
-) -> WebResult<WebResponse<AccountRes>> {
+    body: Json<AccountListReq>,
+) -> WebResult<WebResponse<Vec<AccountRes>>> {
     let svc = app.svc_build.account();
 
-    let params = AccountDescribeParams {
-        email: body.email.clone(),
-    };
+    let params: AccountListParams = body.0.into();
+    let accounts = svc.list(&ctx, params).await?;
 
-    let acc = svc.describe(&ctx, params).await?;
+    let acc_res = accounts
+        .into_iter()
+        .map(|el| AccountRes {
+            id: el.id,
+            email: el.email,
+        })
+        .collect();
 
-    let acc_res = AccountRes {
-        id: acc.id,
-        email: acc.email,
-    };
-
-    info!("describe_account - CTX: {ctx:#?}");
+    info!("list_account - CTX: {ctx:#?}");
     WebResponse::json(acc_res)
 }
 

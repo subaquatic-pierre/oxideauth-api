@@ -18,6 +18,39 @@ use crate::store::utils::ListOptionsValidator;
 use crate::store::utils::{pg_type_of, prepare_audit_fields, push_sq_value};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 
+/// Inserts multiple new entities into the database in a single batch operation
+/// and returns the created entities (including generated IDs, audit fields, etc.).
+///
+/// This function constructs a single `INSERT INTO ... VALUES (...), (...), ...` query
+/// and executes it against the database executor.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor trait implementation (`DbExecutor`).
+/// * `T`: The type representing the fetched and created row (must implement `StoreRow`).
+/// * `D`: The data transfer object (DTO) for creation (must implement `HasSeaFields` to provide column values).
+/// * `I`: The identifier for the table being mutated (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context, providing necessary information like the `user_id` for audit fields.
+/// * `dbx`: The database executor used to run the query.
+/// * `data`: A `Vec<D>` containing the creation DTOs for the entities to be inserted.
+/// * `meta`: Metadata about the mutation query, including the target table identifier (`I`)
+///   and a flag indicating if audit fields should be applied (`has_audit`).
+///
+/// # Logic Flow
+///
+/// 1. **Checks**: Performs an early exit if `data` is empty and validates the input limit.
+/// 2. **Audit**: Prepares audit fields (`created_by`, `created_at`) for each entity if `meta.has_audit` is true.
+/// 3. **Query Build**: Iterates through the `data`, collects column names once (from the first item), and adds values for all items.
+/// 4. **Return**: The `RETURNING *` clause (`.returning_all()`) ensures the newly created entities are fetched back.
+///
+/// # Returns
+///
+/// A `StoreResult<Vec<T>>` containing:
+/// * `Ok(Vec<T>)`: A vector of the fully created and returned entities.
+/// * `Err(StoreError)`: If the limit check fails or the query execution encounters an error.
 pub async fn create_many<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
@@ -53,7 +86,7 @@ pub async fn create_many<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableId
         if is_first {
             query.columns(cols);
             // update is_first to skip for all next iterations
-            is_first = true;
+            is_first = false;
         }
 
         query.values(vals)?;

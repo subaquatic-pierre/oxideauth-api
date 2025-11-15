@@ -18,6 +18,7 @@ use crate::{
 pub enum AppEnv {
     Development,
     Production,
+    Test,
 }
 
 impl AppEnv {
@@ -27,6 +28,7 @@ impl AppEnv {
         match app_env.as_str() {
             "dev" => AppEnv::Development,
             "prod" => AppEnv::Production,
+            "test" => AppEnv::Test,
             _ => panic!("incorrect environment value set for APP_ENV, must be 'prod' or 'dev"),
         }
     }
@@ -46,9 +48,9 @@ where
 
 pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
     let app_env = AppEnv::from_env();
-    let config = Config::from_env();
-    let (sm, dbx, chx) = match app_env {
+    let (sm, dbx, chx, config) = match app_env {
         AppEnv::Development => {
+            let config = Config::from_env();
             let db: PgPool = new_db_pool(&config.database_url, 1).await;
 
             let dbx = Arc::new(PgDbx::new(db.clone()));
@@ -63,9 +65,10 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
 
             let chx = RedisChx::new(&config.redis_url).await;
 
-            (sm, dbx, chx)
+            (sm, dbx, chx, config)
         }
         AppEnv::Production => {
+            let config = Config::from_env();
             let db: PgPool = new_db_pool(&config.database_url, 5).await;
 
             let dbx = Arc::new(PgDbx::new(db.clone()));
@@ -78,9 +81,10 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
 
             let chx = RedisChx::new(&config.redis_url).await;
 
-            (sm, dbx, chx)
+            (sm, dbx, chx, config)
         }
         _ => {
+            let config = Config::test_config();
             let db: PgPool = new_db_pool(&config.database_url, 1).await;
             let dbx = Arc::new(PgDbx::new(db.clone()));
             let sm = Arc::new(StoreManager::new(dbx.clone()));
@@ -92,7 +96,7 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
 
             let chx = RedisChx::new(&config.redis_url).await;
 
-            (sm, dbx, chx)
+            (sm, dbx, chx, config)
         }
     };
 

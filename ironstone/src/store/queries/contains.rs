@@ -10,6 +10,47 @@ use crate::store::{
     traits::meta::{StoreRow, TableIden},
 };
 
+/// Fetches all entities (rows) from a table where a specified column contains
+/// the provided value. This function utilizes PostgreSQL's containment operator (`@>`),
+/// which is typically used for querying array or JSONB columns.
+///
+/// # Note on Limit Checking
+///
+/// The comment `// count ensure list limit not exceeded` suggests an upstream requirement
+/// to check limits before fetching. This method focuses on executing the filtered
+/// selection query itself.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor trait implementation (`DbExecutor`).
+/// * `T`: The type representing the fetched row (must implement `StoreRow`).
+/// * `I`: The identifier for the table being queried (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context (currently unused in the provided implementation).
+/// * `dbx`: The database executor used to run the query.
+/// * `value`: The containment value, wrapped in `ContainsFilter`:
+///     * `ContainsFilter::Array(Vec<String>)`: Used for array containment checks (e.g., checking if an array column contains all given strings).
+///     * `ContainsFilter::Json(Value)`: Used for JSONB containment checks (e.g., checking if a JSONB column contains a specific key/value subset).
+/// * `meta`: Metadata about the containment query, including:
+///     * `table`: The identifier of the table being queried.
+///     * `col`: The name of the column on which the containment check is performed.
+///
+/// # Query Performed (Example)
+///
+/// If `table` is `post`, `col` is `tags`, and `value` is `ContainsFilter::Array(["rust", "async"])`,
+/// the core SQL condition generated is:
+///
+/// ```sql
+/// ... WHERE "tags" @> $1
+/// ```
+///
+/// # Returns
+///
+/// A `StoreResult<Vec<T>>` containing:
+/// * `Ok(Vec<T>)`: A vector of entities (rows) that satisfy the containment condition.
+/// * `Err(StoreError)`: If the query fails to execute.
 pub async fn filter_by_value_contains<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
