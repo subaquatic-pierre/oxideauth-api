@@ -372,26 +372,11 @@ pub async fn get_many_to_many_opt<T: StoreRow, I: TableIden>(
     Ok(res)
 }
 
-pub async fn get_many_to_many<T: StoreRow, I: TableIden>(
-    ctx: &StoreCtx,
-    dbx: &impl DbExecutor,
-    id: &impl StoreId,
-    meta: &ManyToManyQueryMeta<I>,
-) -> StoreResult<T> {
-    match get_many_to_many_opt(ctx, dbx, id, meta).await? {
-        Some(t) => Ok(t),
-        None => Err(StoreError::EntityNotFound {
-            entity: meta.single_table.to_string(),
-            id: id.to_string(),
-        }),
-    }
-}
-
-/// Retrieves a single "parent" entity and its associated "many" collection via a
-/// join table, and **requires** that the parent entity is found.
+/// Retrieves a single **"parent"** entity and its associated **"many"** collection
+/// (via a join table), and **requires** that the parent entity is found.
 ///
-/// This function calls `get_many_to_many_opt` internally. If the parent entity is not
-/// found, it returns a specific `EntityNotFound` error.
+/// This function delegates to `get_many_to_many_opt` and converts a `None` result
+/// into a `StoreError::EntityNotFound`.
 ///
 /// # Type Parameters
 ///
@@ -411,6 +396,48 @@ pub async fn get_many_to_many<T: StoreRow, I: TableIden>(
 /// * `Ok(T)`: The parent entity with its collection of children embedded.
 /// * `Err(StoreError::EntityNotFound)`: If the parent entity was not found.
 /// * `Err(StoreError)`: If the underlying query execution or list limit check fails.
+pub async fn get_many_to_many<T: StoreRow, I: TableIden>(
+    ctx: &StoreCtx,
+    dbx: &impl DbExecutor,
+    id: &impl StoreId,
+    meta: &ManyToManyQueryMeta<I>,
+) -> StoreResult<T> {
+    match get_many_to_many_opt(ctx, dbx, id, meta).await? {
+        Some(t) => Ok(t),
+        None => Err(StoreError::EntityNotFound {
+            entity: meta.single_table.to_string(),
+            id: id.to_string(),
+        }),
+    }
+}
+
+/// Retrieves a list of **"parent"** entities, where each parent entity includes its
+/// associated **"many"** collection entities aggregated via an intermediary **join table**.
+///
+/// This function performs a list operation on the **parent table** (`meta.single_table`),
+/// applies filtering and list options to the parents, and embeds the related child data
+/// using a CTE and `jsonb_agg`.
+///
+/// # Type Parameters
+///
+/// * `T`: The custom result type, containing the parent row fields and the aggregated child collection (`StoreRow`).
+/// * `F`: A type convertible into `FilterGroups` and must be `Clone` for the initial count check.
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context.
+/// * `dbx`: The database executor.
+/// * `filter`: An optional filter applied to the **parent table**.
+/// * `opts`: Optional `ListOptions` for sorting and pagination of the **parent table**.
+/// * `meta`: Metadata defining the many-to-many relationship tables, keys, and aggregation alias.
+///
+/// # Returns
+///
+/// A `StoreResult<Vec<T>>` containing:
+/// * `Ok(Vec<T>)`: A list of parent entities, each with their associated child collection embedded.
+/// * `Err(StoreError::ListLimitExceeded)`: If the total count of parent rows exceeds `LIST_LIMIT_MAX`.
+/// * `Err(StoreError)`: If the query execution or option validation fails.
 pub async fn list_many_to_many<T: StoreRow, F: Into<FilterGroups> + Clone, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &impl DbExecutor,
