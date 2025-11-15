@@ -5,7 +5,7 @@ use axum::{
     Json, Router,
 };
 use std::sync::Arc;
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::{
     app::App,
@@ -13,9 +13,10 @@ use crate::{
         ctx::CoreCtx,
         dto::{
             account::{AccountCreateParams, AccountDescribeParams, AccountListParams},
-            list::{RequestFilterParams, RequestListOptions},
+            list::{ListResponse, ListResponseMeta, RequestFilterParams, RequestListOptions},
         },
         error::CoreError,
+        models::account::Account,
     },
     store::entities::account::AccountFilter,
     web::{error::WebResult, middlewares::cors::build_cors, response::WebResponse},
@@ -64,7 +65,7 @@ pub async fn describe_account(
     WebResponse::json(acc_res)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct AccountListReq {
     pub filter: Option<RequestFilterParams<AccountFilter>>,
     pub options: Option<RequestListOptions>,
@@ -79,28 +80,31 @@ impl From<AccountListReq> for AccountListParams {
     }
 }
 
+#[derive(Serialize, Debug)]
+pub struct AccountListRes {
+    pub accounts: Vec<Account>,
+    pub metadata: ListResponseMeta,
+}
+
 #[axum::debug_handler]
 pub async fn list_accounts(
     ctx: Extension<CoreCtx>,
     app: Extension<App>,
     body: Json<AccountListReq>,
-) -> WebResult<WebResponse<Vec<AccountRes>>> {
+) -> WebResult<AccountListRes> {
     let svc = app.svc_build.account();
+    debug!("list_account - body: {:#?}", body);
 
     let params: AccountListParams = body.0.into();
-    let accounts = svc.list(&ctx, params).await?;
+    let res = svc.list(&ctx, params).await?;
 
-    let acc_res = accounts
-        .data
-        .into_iter()
-        .map(|el| AccountRes {
-            id: el.id,
-            email: el.email,
-        })
-        .collect();
+    let res = AccountListRes {
+        accounts: res.data,
+        metadata: res.metadata,
+    };
 
-    info!("list_account - CTX: {ctx:#?}");
-    WebResponse::json(acc_res)
+    // info!("list_account - CTX: {ctx:#?}");
+    WebResponse::json_flat(res)
 }
 
 #[axum::debug_handler]

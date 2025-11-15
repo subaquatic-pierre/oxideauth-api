@@ -20,3 +20,12 @@ pub fn json_to_sea_value(v: JsonValue) -> SeaResult<SeaValue> {
 pub fn bytes_to_sea_value(bytes: &[u8]) -> SeaValue {
     SeaValue::Bytes(Some(bytes.to_vec().into()))
 }
+
+pub fn to_sea_bool(val: JsonValue) -> SeaResult<SeaValue> {
+    match val {
+        JsonValue::Bool(v) => Ok(SeaValue::Bool(Some(v))),
+        _ => Err(modql::filter::IntoSeaError::Custom(
+            "invalid bool type".to_string(),
+        )),
+    }
+}

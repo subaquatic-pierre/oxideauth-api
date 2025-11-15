@@ -8,6 +8,7 @@ use axum::{
 use std::sync::Arc;
 use std::time::Duration;
 use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
 
 use crate::{
     app::App,
@@ -47,6 +48,7 @@ impl AppRouter {
             .layer(ctx)
             .layer(Extension(state))
             .layer(from_fn(RequestMw::request_map_handler))
+            .layer(TraceLayer::new_for_http())
             .fallback(FallbackMw::fallback_handler)
     }
 }

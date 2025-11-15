@@ -1,3 +1,5 @@
+use crate::impl_has_active_filter;
+use crate::store::filter;
 use derive_more::Display;
 use ironauth_macros::HasId;
 use modql::field::Fields;
@@ -16,7 +18,7 @@ use crate::store::entities::credential::{
     CredentialKind, CredentialProvider, CredentialRow, CredentialStatus,
 };
 use crate::store::entities::id::DbId;
-use crate::store::utils::{json_to_sea_value, time_to_sea_value};
+use crate::store::utils::{json_to_sea_value, time_to_sea_value, to_sea_bool};
 
 use crate::store::traits::meta::HasId;
 
@@ -137,6 +139,7 @@ impl From<AccountMeta> for SeaValue {
 
 /// Filtering options for queries
 #[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
+
 pub struct AccountFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<OpValsString>,
@@ -147,8 +150,10 @@ pub struct AccountFilter {
     pub description: Option<OpValsString>,
     pub avatar_url: Option<OpValsString>,
 
+    #[modql(to_sea_value_fn = "to_sea_bool")]
     pub verified: Option<OpValsValue>, // bool
-    pub enabled: Option<OpValsValue>,  // bool
+    #[modql(to_sea_value_fn = "to_sea_bool")]
+    pub enabled: Option<OpValsValue>, // bool
 
     // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]
@@ -163,6 +168,21 @@ pub struct AccountFilter {
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
 }
+
+// impl_has_active_filter! {
+//     AccountFilter,
+//     id,
+//     email,
+//     name,
+//     description,
+//     avatar_url,
+//     verified,
+//     enabled,
+//     created_by,
+//     created_at,
+//     updated_by,
+//     updated_at
+// }
 
 impl TryFrom<JsonValue> for AccountFilter {
     type Error = StoreError;

@@ -11,6 +11,7 @@ use axum::{
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
+use crate::store::error::StoreError;
 use crate::{core::error::CoreError, web::response::WebResponse};
 
 pub type WebResult<T> = Result<Json<T>, WebError>;
@@ -81,8 +82,65 @@ impl IntoResponse for WebError {
 impl From<CoreError> for WebError {
     fn from(value: CoreError) -> Self {
         match value {
-            CoreError::ParseError(..) => WebError::InternalServerError,
-            _ => WebError::NotFound,
+            // 400 Bad Request / Validation Errors
+            CoreError::ParseError(msg) => WebError::ValidationError(msg),
+            CoreError::InvalidParams(msg) => WebError::ValidationError(msg),
+            CoreError::AlreadyExists(msg) => WebError::ValidationError(msg), // Conflict/Bad Request
+
+            // 404 Not Found
+            CoreError::StoreError(store_err) => match store_err {
+                // 404 Not Found
+                StoreError::EntityNotFound { entity, id } => WebError::NotFound,
+
+                // 400 Bad Request / Validation (The primary change requested)
+                StoreError::ListLimitExceeded { max, actual } => {
+                    WebError::ValidationError(format!(
+                        "Query limit exceeded: found {} items, max is {}",
+                        actual, max
+                    ))
+                }
+                StoreError::DataError(msg) => WebError::ValidationError(msg),
+
+                // MAPPING SYSTEM/EXTERNAL ERRORS TO VALIDATION_ERROR (HTTP 400)
+                // This implies any failure in serialization, SQL query structure, or time parsing
+                // is due to user input data being malformed.
+                StoreError::BincodeError(err) => {
+                    WebError::ValidationError(format!("Bincode error: {}", err))
+                }
+                StoreError::FromHexError(err) => {
+                    WebError::ValidationError(format!("Hex conversion error: {}", err))
+                }
+                StoreError::SerdeJsonError(err) => {
+                    WebError::ValidationError(format!("JSON serialization error: {}", err))
+                }
+                StoreError::IntoSeaError(err) => {
+                    WebError::ValidationError(format!("Filter conversion error: {}", err))
+                }
+                StoreError::SqlxError(err) => {
+                    WebError::ValidationError(format!("Database query error: {}", err))
+                }
+                StoreError::SeaQueryError(err) => {
+                    WebError::ValidationError(format!("Query building error: {}", err))
+                }
+                StoreError::TimeParseError(err) => {
+                    WebError::ValidationError(format!("Time parsing error: {}", err))
+                }
+                StoreError::TimeFormatError(err) => {
+                    WebError::ValidationError(format!("Time formatting error: {}", err))
+                }
+
+                // 500 Internal Server Errors (System/DB access issues that can't be attributed to bad input)
+                StoreError::CantCreateDataStore(msg) => WebError::InternalServerError,
+                StoreError::WithTxnFalse | StoreError::NoTxn => WebError::InternalServerError,
+                StoreError::MockReturn => WebError::InternalServerError,
+            },
+
+            // 401 Unauthorized
+            CoreError::Auth(msg) => WebError::Unauthorized,
+            CoreError::JsonWebTokenError(jwt_err) => WebError::Unauthorized,
+
+            // 500 Internal Server Error (all other unexpected/critical errors)
+            _ => WebError::InternalServerError,
         }
     }
 }

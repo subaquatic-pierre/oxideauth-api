@@ -1,9 +1,13 @@
-use modql::filter::{ListOptions, OrderBys};
+use ironauth_macros::{HasActiveFilter, HasId};
+use modql::filter::{IntoFilterNodes, ListOptions, OrderBys};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     core::error::{CoreError, CoreResult},
-    store::utils::{LIST_LIMIT_DEFAULT, LIST_LIMIT_MAX},
+    store::{
+        filter::HasActiveFilter,
+        utils::{LIST_LIMIT_DEFAULT, LIST_LIMIT_MAX},
+    },
 };
 
 /// Represents the combined parameters for list and filter requests, allowing filtering either by a
@@ -14,17 +18,16 @@ use crate::{
 /// # Type Parameters
 ///
 /// * `F`: The generic filter struct specific to the target entity (e.g., `UserFilter`, `TaskFilter`).
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RequestFilterParams<F>
 where
     F: Clone,
 {
+    /// This is used for standard field-based filtering (e.g., equality, range).
+    pub fields: Option<F>,
+
     /// An optional list of tags used for filtering entities that support tag containment queries.
     pub tags: Option<Vec<String>>,
-    /// An optional, generic filter struct (`F`) flattened into the request parameters.
-    /// This is used for standard field-based filtering (e.g., equality, range).
-    #[serde(flatten)]
-    pub filter: Option<F>,
 }
 
 impl<F> RequestFilterParams<F>
@@ -39,13 +42,13 @@ where
     /// A `CoreResult` containing `Ok((Option<Vec<String>>, Option<F>))` if validation succeeds,
     /// or `Err(CoreError::InvalidParams)` if both filters are present.
     pub fn validate(&self) -> CoreResult<(Option<Vec<String>>, Option<F>)> {
-        if self.tags.is_some() && self.filter.is_some() {
+        if self.tags.is_some() && self.fields.is_some() {
             return Err(CoreError::InvalidParams(
                 "cannot have both filter and tags on params".to_string(),
             ));
         }
 
-        Ok((self.tags.clone(), self.filter.clone()))
+        Ok((self.tags.clone(), self.fields.clone()))
     }
 }
 
@@ -54,7 +57,7 @@ pub type RequestListOptions = ListOptions;
 
 /// Metadata detailing the list query result.
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ListMeta {
+pub struct ListResponseMeta {
     /// The total number of items available for the current filter criteria (ignoring pagination).
     pub total: i64,
     /// The number of items returned in the current data vector.
@@ -74,7 +77,7 @@ pub struct ListResponse<T> {
     /// The vector of entities retrieved for the current page/query.
     pub data: Vec<T>,
     /// Metadata detailing the total available items and pagination specifics.
-    pub metadata: ListMeta,
+    pub metadata: ListResponseMeta,
 }
 
 impl<T> ListResponse<T> {
@@ -107,7 +110,7 @@ impl<T> ListResponse<T> {
             None => Some(vec![]),
         };
 
-        let metadata = ListMeta {
+        let metadata = ListResponseMeta {
             total,
             count,
             offset: options.offset,

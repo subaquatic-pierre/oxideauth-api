@@ -19,10 +19,10 @@ impl ResponseMw {
         method: Method,
         res: Response,
     ) -> Response {
-        debug!(
-            "{:<12} - mw_reponse_map - {ctx:#?}, REQ STAMP {stamp:#?}",
-            "RES_MAPPER"
-        );
+        // debug!(
+        //     "{:<12} - mw_reponse_map - {ctx:#?}, REQ STAMP {stamp:#?}",
+        //     "RES_MAPPER"
+        // );
 
         // add logging if needed
 

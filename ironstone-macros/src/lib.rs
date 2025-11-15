@@ -146,3 +146,44 @@ pub fn enum_text_type_derive(input: TokenStream) -> TokenStream {
     // Return the generated code as a TokenStream
     gen.into()
 }
+
+#[proc_macro_derive(HasActiveFilter)]
+pub fn has_active_filter_derive(input: TokenStream) -> TokenStream {
+    // 1. Parse the input tokens into a syntax tree
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = input.ident;
+
+    // 2. Extract fields (assuming it's a struct with named fields)
+    let fields = match input.data {
+        Data::Struct(data) => match data.fields {
+            Fields::Named(fields) => fields.named,
+            _ => panic!("HasActiveFilter can only be derived for structs with named fields."),
+        },
+        _ => panic!("HasActiveFilter can only be derived for structs."),
+    };
+
+    // 3. Generate the OR'd checks for each field.
+    // The macro iterates over the fields and creates tokens like: self.field1.is_some() || self.field2.is_some()
+    let checks = fields
+        .iter()
+        .map(|f| {
+            let field_name = &f.ident;
+            quote! {
+                self.#field_name.is_some()
+            }
+        })
+        .collect::<Vec<_>>();
+
+    // 4. Combine into the final impl block
+    let expanded = quote! {
+        // You need to ensure the trait path is correct for your project
+        impl HasActiveFilter for #name {
+            fn has_active_filter(&self) -> bool {
+                // Combine all checks with '||'
+                #(#checks)||*
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
