@@ -202,8 +202,10 @@ mod tests {
     use crate::{
         dev::init::init_test,
         store::{
+            contains::FilterByContains,
             ctx::StoreCtx,
             entities::account::{AccountFilter, AccountForCreate, AccountRow},
+            meta::ContainsFilterStore,
             queries::crud::create,
             stores::account::AccountStore,
             traits::{
@@ -251,6 +253,125 @@ mod tests {
         let meta = acc_store.read_meta();
         let total = count(&ctx, &dbx, Some(filter), &meta).await?;
         assert_eq!(total as usize, n);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_count_contains_matches_array_count() -> StoreResult<()> {
+        // 1. Setup
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+        // Assuming a store that manages entities with a 'tags' array column
+        let acc_store = AccountStore::new(dbx.clone());
+        let ctx = StoreCtx::new_root();
+
+        // Define the common array of tags to check for containment
+        let test_tags = vec!["premium".to_string(), "active".to_string()];
+        let unique_tag = "test_tag_contains".to_string(); // Used for uniqueness
+
+        let mut ac = |i: usize| {
+            let mut data = AccountForCreate::default();
+            // Ensure unique email
+            data.email = format!("contains_user{i}@example.com");
+            data.tags = vec![
+                test_tags[0].clone(),
+                test_tags[1].clone(),
+                unique_tag.clone(),
+            ];
+            data
+        };
+
+        // 2. Create N accounts, all containing the 'test_tags'
+        let n = 4usize;
+        let mut created: Vec<AccountRow> = Vec::with_capacity(n);
+        for i in 0..n {
+            let row = ac(i);
+            created.push(acc_store.create(&ctx, row).await?);
+        }
+
+        // 3. Prepare the ContainsFilter and Query Meta
+
+        // Create the filter for array containment
+        let contains_filter = ContainsFilter::Array(test_tags);
+
+        let meta = acc_store.contains_tags_meta();
+
+        let total = count_contains(&ctx, &dbx, contains_filter, &meta).await?;
+
+        // All 4 created accounts should contain the tags, so the count must be 4
+        assert_eq!(
+            total as usize, n,
+            "The count_contains result should match the number of inserted rows."
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_count_contains_partial_and_missing_tags() -> StoreResult<()> {
+        // 1. Setup
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+        let acc_store = AccountStore::new(dbx.clone());
+        let ctx = StoreCtx::new_root();
+
+        // Define the required tags for the count check (the subset we are looking for)
+        let required_tags = vec!["test_here".to_string(), "test_again".to_string()];
+
+        // --- Create Test Data ---
+
+        // A. Fully Contained Accounts (EXPECTED COUNT = 2)
+        // These accounts contain ALL required_tags plus others.
+        let fully_contained_count = 2usize;
+        for i in 0..fully_contained_count {
+            let mut data = AccountForCreate::default();
+            data.email = format!("contained_user_{}@example.com", i);
+            // Includes BOTH "premium" and "active"
+            data.tags = vec![
+                required_tags[0].clone(),
+                required_tags[1].clone(),
+                "extra".to_string(),
+            ];
+            acc_store.create(&ctx, data).await?;
+        }
+
+        // B. Partially Contained Account (EXCLUDED)
+        // Missing "active" tag. Should NOT be counted.
+        let mut data_partial = AccountForCreate::default();
+        data_partial.email = "partial_user@example.com".to_string();
+        data_partial.tags = vec![required_tags[0].clone(), "basic".to_string()]; // Only has "premium"
+        acc_store.create(&ctx, data_partial).await?;
+
+        // C. Empty or Irrelevant Tags Account (EXCLUDED)
+        // Has none of the required tags. Should NOT be counted.
+        let mut data_irrelevant = AccountForCreate::default();
+        data_irrelevant.email = "irrelevant_user@example.com".to_string();
+        data_irrelevant.tags = vec!["unrelated".to_string()];
+        acc_store.create(&ctx, data_irrelevant).await?;
+
+        // 2. Prepare the ContainsFilter and Query Meta
+
+        // The filter looks for the full set of required tags
+        let contains_filter = ContainsFilter::Array(required_tags);
+
+        let meta = acc_store.contains_tags_meta();
+
+        // 3. Call count_contains and Verify
+        let total = count_contains(&ctx, &dbx, contains_filter, &meta).await?;
+
+        // Only the 2 fully contained accounts should be counted.
+        assert_eq!(
+            total as usize, fully_contained_count,
+            "The count_contains result should match ONLY the fully contained rows (Expected: 2)."
+        );
+
+        let contains_filter = ContainsFilter::Array(vec!["test_here".to_string()]);
+
+        let total = count_contains(&ctx, &dbx, contains_filter, &meta).await?;
+        assert_eq!(total as usize, 3, "Should include 3");
 
         Ok(())
     }

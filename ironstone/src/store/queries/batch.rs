@@ -102,6 +102,30 @@ pub async fn create_many<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableId
     Ok(ret)
 }
 
+/// Updates multiple entities in the database, where each entity has a specific ID
+/// and a set of fields to update.
+///
+/// This performs an individual `UPDATE` query for **each** item in the `data` vector.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor (`DbExecutor`).
+/// * `T`: The type representing the returned row (`StoreRow`).
+/// * `D`: The data transfer object (DTO) with fields to update (`HasSeaFields`).
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context, providing the `user_id` for audit fields.
+/// * `dbx`: The database executor.
+/// * `data`: A vector of tuples `(ID, Updates)`, where `ID` is the primary key
+///   and `Updates` is the DTO containing the fields to modify.
+/// * `meta`: Metadata including the target table, primary key (`pk`), and audit flag.
+///
+/// # Returns
+///
+/// A `StoreResult<Vec<T>>` containing a vector of the fully updated entities
+/// that were successfully found and modified.
 pub async fn update_many<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
@@ -149,6 +173,27 @@ pub async fn update_many<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableId
     Ok(updated_rows)
 }
 
+/// Deletes multiple entities from the database based on a list of primary keys (IDs).
+///
+/// This performs a single batch `DELETE FROM ... WHERE pk IN ($1, $2, ...)` query.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor (`DbExecutor`).
+/// * `T`: The type representing the deleted row, which is returned by `RETURNING *` (`StoreRow`).
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context (currently unused in the deletion logic).
+/// * `dbx`: The database executor.
+/// * `ids`: A vector of primary key identifiers (`StoreId`) of the entities to be deleted.
+/// * `meta`: Metadata including the target table and the primary key column name (`pk`).
+///
+/// # Returns
+///
+/// A `StoreResult<Vec<T>>` containing a vector of the fully deleted entities
+/// as returned by the `RETURNING ALL` clause.
 pub async fn delete_many<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
@@ -177,6 +222,7 @@ pub async fn delete_many<E: DbExecutor, T: StoreRow, I: TableIden>(
 
     Ok(ret)
 }
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
