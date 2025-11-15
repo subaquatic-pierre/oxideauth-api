@@ -12,6 +12,38 @@ use crate::store::traits::meta::{StoreRow, TableIden};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 use crate::store::{traits::meta::Store, utils::ListOptionsValidator};
 
+/// Retrieves the first entity that matches the optional filter and options,
+/// ensuring a deterministic result by applying a default ordering if none is specified.
+///
+/// This performs a `SELECT * FROM table WHERE condition ORDER BY ... LIMIT 1` query.
+///
+/// # Logic
+///
+/// 1. **Filtering**: Applies the optional `filter`.
+/// 2. **Ordering**: If `opts` does not specify `order_bys`, it enforces a default order (e.g., descending by `created_at`) to ensure the "first" result is consistent.
+/// 3. **Limiting**: Explicitly sets the query `LIMIT` to 1.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor (`DbExecutor`).
+/// * `T`: The type representing the fetched row (`StoreRow`).
+/// * `F`: A type convertible into `FilterGroups`.
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context.
+/// * `dbx`: The database executor.
+/// * `filter`: An optional filter to apply to the rows.
+/// * `opts`: Optional `ListOptions` for ordering (limit/offset are overridden).
+/// * `meta`: Metadata about the read query.
+///
+/// # Returns
+///
+/// A `StoreResult<Option<T>>` containing:
+/// * `Ok(Some(T))`: The first entity found that matches the criteria.
+/// * `Ok(None)`: If no rows were found.
+/// * `Err(StoreError)`: If the query execution fails.
 pub async fn first_opt<E: DbExecutor, T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
@@ -52,6 +84,33 @@ pub async fn first_opt<E: DbExecutor, T: StoreRow, F: Into<FilterGroups>, I: Tab
 
     Ok(ret)
 }
+
+/// Retrieves the first entity that matches the optional filter and options,
+/// and **requires** that at least one entity is found.
+///
+/// This function calls `first_opt` internally. If no entity is found, it returns
+/// a specific `EntityNotFound` error.
+///
+/// # Type Parameters
+///
+/// * `T`: The type representing the fetched row (`StoreRow`).
+/// * `F`: A type convertible into `FilterGroups`.
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context.
+/// * `dbx`: The database executor.
+/// * `filter`: An optional filter to apply to the rows.
+/// * `opts`: Optional `ListOptions` for ordering (limit/offset are overridden).
+/// * `meta`: Metadata about the read query.
+///
+/// # Returns
+///
+/// A `StoreResult<T>` containing:
+/// * `Ok(T)`: The first entity found that matches the criteria.
+/// * `Err(StoreError::EntityNotFound)`: If no row was found.
+/// * `Err(StoreError)`: If the underlying query execution fails.
 pub async fn first<T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &impl DbExecutor,

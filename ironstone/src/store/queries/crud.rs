@@ -17,6 +17,29 @@ use crate::store::utils::prepare_audit_fields;
 use crate::store::utils::ListOptionsValidator;
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 
+/// Inserts a single new entity into the database and returns the fully created row.
+///
+/// This performs an `INSERT INTO ... VALUES (...) RETURNING *` query.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor (`DbExecutor`).
+/// * `T`: The type representing the fetched and created row (`StoreRow`).
+/// * `D`: The data transfer object (DTO) for creation (`HasSeaFields`).
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context, providing the required `user_id` for audit fields.
+/// * `dbx`: The database executor.
+/// * `data`: The creation DTO containing the fields for the new entity.
+/// * `meta`: Metadata including the target table and a flag for audit field management (`has_audit`).
+///
+/// # Returns
+///
+/// A `StoreResult<T>` containing:
+/// * `Ok(T)`: The fully created entity, including the generated primary key and audit timestamps.
+/// * `Err(StoreError)`: If the query fails to execute.
 pub async fn create<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
@@ -46,6 +69,30 @@ pub async fn create<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     Ok(ret)
 }
 
+/// Retrieves a single entity (row) from the database by its primary key ID,
+/// returning `Some(entity)` if found, or `None` if no entity matches the ID.
+///
+/// This performs a `SELECT * FROM table WHERE pk = $1` query.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor (`DbExecutor`).
+/// * `T`: The type representing the fetched row (`StoreRow`).
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context (currently unused).
+/// * `dbx`: The database executor.
+/// * `id`: The primary key identifier (`StoreId`) of the entity to retrieve.
+/// * `meta`: Metadata including the target table and the primary key column name (`pk`).
+///
+/// # Returns
+///
+/// A `StoreResult<Option<T>>` containing:
+/// * `Ok(Some(T))`: The entity if a row was found.
+/// * `Ok(None)`: If no row was found matching the `id`.
+/// * `Err(StoreError)`: If the query execution encounters a database error.
 pub async fn get_opt<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
@@ -67,6 +114,30 @@ pub async fn get_opt<E: DbExecutor, T: StoreRow, I: TableIden>(
     Ok(ret)
 }
 
+/// Retrieves a single entity (row) from the database by its primary key ID.
+///
+/// This function calls `get_opt` internally and **requires** that an entity
+/// is found. If no entity matches the ID, it returns a specific `EntityNotFound` error.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor (`DbExecutor`).
+/// * `T`: The type representing the fetched row (`StoreRow`).
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context.
+/// * `dbx`: The database executor.
+/// * `id`: The primary key identifier (`StoreId`) of the entity to retrieve.
+/// * `meta`: Metadata including the target table and the primary key column name.
+///
+/// # Returns
+///
+/// A `StoreResult<T>` containing:
+/// * `Ok(T)`: The entity if a row was successfully found.
+/// * `Err(StoreError::EntityNotFound)`: If no row was found matching the `id`.
+/// * `Err(StoreError)`: If the underlying query execution encounters a database error.
 pub async fn get<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
@@ -82,6 +153,31 @@ pub async fn get<E: DbExecutor, T: StoreRow, I: TableIden>(
     }
 }
 
+/// Retrieves a list of entities (rows) from a table, applying optional filtering,
+/// sorting, and pagination (limit/offset) options.
+///
+/// This constructs a `SELECT * FROM table WHERE condition ORDER BY ... LIMIT ... OFFSET ...` query.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor (`DbExecutor`).
+/// * `T`: The type representing the fetched rows (`StoreRow`).
+/// * `F`: A type convertible into `FilterGroups` for complex filtering.
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context.
+/// * `dbx`: The database executor.
+/// * `filter`: An optional set of filters to narrow the result set.
+/// * `opts`: An optional struct containing pagination (`limit`, `offset`) and sorting (`order_bys`) parameters.
+/// * `meta`: Metadata about the read query, including the target table and audit flag.
+///
+/// # Returns
+///
+/// A `StoreResult<Vec<T>>` containing:
+/// * `Ok(Vec<T>)`: A vector of entities matching the criteria, potentially paginated.
+/// * `Err(StoreError)`: If filter conversion or query execution fails, or if list options validation fails.
 pub async fn list<E: DbExecutor, T: StoreRow, F: Into<FilterGroups>, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
@@ -118,6 +214,34 @@ pub async fn list<E: DbExecutor, T: StoreRow, F: Into<FilterGroups>, I: TableIde
     Ok(ret)
 }
 
+/// Updates an existing entity in the database by its primary key ID with the provided data.
+///
+/// Returns `Some(T)` with the updated entity if the row was found and modified, or `None` if
+/// no entity matching the ID was found.
+///
+/// This performs an `UPDATE table SET ... WHERE pk = $1 RETURNING *` query.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor (`DbExecutor`).
+/// * `T`: The type representing the fetched, updated row (`StoreRow`).
+/// * `D`: The data transfer object (DTO) containing fields to update (`HasSeaFields`).
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context, providing the `user_id` for setting audit fields (`updated_by`, `updated_at`).
+/// * `dbx`: The database executor.
+/// * `id`: The primary key identifier (`StoreId`) of the entity to update.
+/// * `data`: The DTO with the fields to modify. Only non-None fields are included in the update.
+/// * `meta`: Metadata including the target table, primary key (`pk`), and audit flag.
+///
+/// # Returns
+///
+/// A `StoreResult<Option<T>>` containing:
+/// * `Ok(Some(T))`: The fully updated entity as returned by `RETURNING ALL`.
+/// * `Ok(None)`: If no entity was found matching the primary key `id`.
+/// * `Err(StoreError)`: If the query execution encounters a database error.
 pub async fn update_opt<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
@@ -151,6 +275,33 @@ pub async fn update_opt<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIde
     Ok(ret)
 }
 
+/// Updates an existing entity in the database by its primary key ID and **requires**
+/// that the entity is found and successfully updated.
+///
+/// This function calls `update_opt` internally and returns a specific `EntityNotFound`
+/// error if no entity matching the ID is found.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor (`DbExecutor`).
+/// * `T`: The type representing the fetched, updated row (`StoreRow`).
+/// * `D`: The data transfer object (DTO) containing fields to update (`HasSeaFields`).
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context, providing the `user_id` for audit fields.
+/// * `dbx`: The database executor.
+/// * `id`: The primary key identifier (`StoreId`) of the entity to update.
+/// * `data`: The DTO with the fields to modify.
+/// * `meta`: Metadata including the target table, primary key, and audit flag.
+///
+/// # Returns
+///
+/// A `StoreResult<T>` containing:
+/// * `Ok(T)`: The fully updated entity.
+/// * `Err(StoreError::EntityNotFound)`: If no row was found matching the `id`.
+/// * `Err(StoreError)`: If the underlying query execution fails.
 pub async fn update<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
@@ -167,6 +318,32 @@ pub async fn update<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     }
 }
 
+/// Deletes a single entity from the database by its primary key ID.
+///
+/// Returns `Some(T)` with the deleted entity if the row was found and removed, or `None` if
+/// no entity matching the ID was found.
+///
+/// This performs a `DELETE FROM table WHERE pk = $1 RETURNING *` query.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor (`DbExecutor`).
+/// * `T`: The type representing the deleted row (`StoreRow`).
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context (currently unused in the deletion logic).
+/// * `dbx`: The database executor.
+/// * `id`: The primary key identifier (`StoreId`) of the entity to delete.
+/// * `meta`: Metadata including the target table and the primary key column name (`pk`).
+///
+/// # Returns
+///
+/// A `StoreResult<Option<T>>` containing:
+/// * `Ok(Some(T))`: The deleted entity as returned by `RETURNING ALL`.
+/// * `Ok(None)`: If no entity was found matching the primary key `id`.
+/// * `Err(StoreError)`: If the query execution encounters a database error.
 pub async fn delete_opt<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
@@ -190,6 +367,31 @@ pub async fn delete_opt<E: DbExecutor, T: StoreRow, I: TableIden>(
     Ok(ret)
 }
 
+/// Deletes a single entity from the database by its primary key ID and **requires**
+/// that the entity is found and successfully deleted.
+///
+/// This function calls `delete_opt` internally and returns a specific `EntityNotFound`
+/// error if no entity matching the ID is found.
+///
+/// # Type Parameters
+///
+/// * `E`: The database executor (`DbExecutor`).
+/// * `T`: The type representing the deleted row (`StoreRow`).
+/// * `I`: The table identifier (`TableIden`).
+///
+/// # Arguments
+///
+/// * `ctx`: The store context.
+/// * `dbx`: The database executor.
+/// * `id`: The primary key identifier (`StoreId`) of the entity to delete.
+/// * `meta`: Metadata including the target table and the primary key column name.
+///
+/// # Returns
+///
+/// A `StoreResult<T>` containing:
+/// * `Ok(T)`: The fully deleted entity.
+/// * `Err(StoreError::EntityNotFound)`: If no row was found matching the `id`.
+/// * `Err(StoreError)`: If the underlying query execution fails.
 pub async fn delete<E: DbExecutor, T: StoreRow, I: TableIden>(
     ctx: &StoreCtx,
     dbx: &E,
