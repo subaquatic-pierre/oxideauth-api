@@ -1,14 +1,28 @@
-use modql::filter::ListOptions;
+use modql::filter::{ListOptions, OrderBys};
 use serde::{Deserialize, Serialize};
 
-use crate::core::error::{CoreError, CoreResult};
+use crate::{
+    core::error::{CoreError, CoreResult},
+    store::utils::{LIST_LIMIT_DEFAULT, LIST_LIMIT_MAX},
+};
 
+/// Represents the combined parameters for list and filter requests, allowing filtering either by a
+/// specific list of tags or by a generalized filter struct, but not both simultaneously.
+///
+/// This structure is typically received from the request body or query string.
+///
+/// # Type Parameters
+///
+/// * `F`: The generic filter struct specific to the target entity (e.g., `UserFilter`, `TaskFilter`).
 #[derive(Serialize, Deserialize, Clone)]
 pub struct RequestFilterParams<F>
 where
     F: Clone,
 {
+    /// An optional list of tags used for filtering entities that support tag containment queries.
     pub tags: Option<Vec<String>>,
+    /// An optional, generic filter struct (`F`) flattened into the request parameters.
+    /// This is used for standard field-based filtering (e.g., equality, range).
     #[serde(flatten)]
     pub filter: Option<F>,
 }
@@ -17,6 +31,13 @@ impl<F> RequestFilterParams<F>
 where
     F: Clone,
 {
+    /// Validates the request parameters, ensuring that the request does not contain both
+    /// a `tags` filter and a flattened `filter` struct simultaneously.
+    ///
+    /// # Returns
+    ///
+    /// A `CoreResult` containing `Ok((Option<Vec<String>>, Option<F>))` if validation succeeds,
+    /// or `Err(CoreError::InvalidParams)` if both filters are present.
     pub fn validate(&self) -> CoreResult<(Option<Vec<String>>, Option<F>)> {
         if self.tags.is_some() && self.filter.is_some() {
             return Err(CoreError::InvalidParams(
@@ -28,4 +49,72 @@ where
     }
 }
 
+/// A type alias for `modql::filter::ListOptions`, used for standard pagination and sorting.
 pub type RequestListOptions = ListOptions;
+
+/// Metadata detailing the list query result.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ListMeta {
+    /// The total number of items available for the current filter criteria (ignoring pagination).
+    pub total: i64,
+    /// The number of items returned in the current data vector.
+    pub count: usize,
+    /// The offset applied to the query (for pagination).
+    pub offset: Option<i64>,
+    /// The limit applied to the query (for pagination).
+    pub limit: i64,
+
+    pub order_bys: Option<Vec<String>>,
+}
+
+/// A standard structure used for returning list results, combining the retrieved data
+/// with metadata about the total count and pagination.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ListResponse<T> {
+    /// The vector of entities retrieved for the current page/query.
+    pub data: Vec<T>,
+    /// Metadata detailing the total available items and pagination specifics.
+    pub metadata: ListMeta,
+}
+
+impl<T> ListResponse<T> {
+    /// Creates a new `ListResponse` instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `data`: The list of entities retrieved for the current page.
+    /// * `total`: The overall count of entities matching the filter criteria (before limit/offset).
+    /// * `offset`: The query offset used.
+    /// * `limit`: The query limit used.
+    ///
+    /// # Returns
+    ///
+    /// A `ListResponse` wrapping the data and calculated metadata.
+    pub fn new(data: Vec<T>, total: i64, options: ListOptions) -> Self {
+        let count = data.len();
+
+        let limit = options.limit.unwrap_or(LIST_LIMIT_MAX);
+        let order_bys = match options.order_bys {
+            Some(order_bys) => {
+                let mut strings = vec![];
+
+                for order_by in order_bys.order_bys().iter() {
+                    strings.push(format!("{order_by}"));
+                }
+
+                Some(strings)
+            }
+            None => Some(vec![]),
+        };
+
+        let metadata = ListMeta {
+            total,
+            count,
+            offset: options.offset,
+            limit,
+            order_bys,
+        };
+
+        ListResponse { data, metadata }
+    }
+}

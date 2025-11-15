@@ -91,6 +91,7 @@ pub async fn list_accounts(
     let accounts = svc.list(&ctx, params).await?;
 
     let acc_res = accounts
+        .data
         .into_iter()
         .map(|el| AccountRes {
             id: el.id,
@@ -133,5 +134,6 @@ impl AccountRouter {
         Router::new()
             .route("/describe", post(describe_account))
             .route("/create", post(create_account))
+            .route("/list", post(list_accounts))
     }
 }

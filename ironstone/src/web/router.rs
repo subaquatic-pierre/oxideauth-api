@@ -38,7 +38,7 @@ impl AppRouter {
         Router::new()
             // Define main routes
             .nest("/", RootRouter::routes())
-            .nest("/account", AccountRouter::routes())
+            .nest("/accounts", AccountRouter::routes())
             .nest("/workspace", WorkspaceRouter::routes())
             // Define middleware
             .layer(global_error_layer)

@@ -5,18 +5,23 @@ use serde_json::json;
 use crate::{
     core::{
         ctx::CoreCtx,
-        dto::account::{AccountCreateParams, AccountDescribeParams, AccountListParams},
+        dto::{
+            account::{AccountCreateParams, AccountDescribeParams, AccountListParams},
+            list::ListResponse,
+        },
         error::{CoreError, CoreResult},
         models::account::Account,
     },
     store::{
         contains::FilterByContains,
+        ctx::StoreCtx,
         dbx::{DbExecutor, PgDbx},
         entities::account::{AccountFilter, AccountForCreate, AccountMeta},
         manager::StoreManager,
         meta::ContainsFilterStore,
         stores::account::AccountStore,
         traits::crud::*,
+        utils::ListOptionsValidator,
     },
 };
 
@@ -69,19 +74,39 @@ impl<D: DbExecutor> AccountService<D> {
         Ok(n_acc)
     }
 
-    pub async fn list(&self, ctx: &CoreCtx, params: AccountListParams) -> CoreResult<Vec<Account>> {
+    pub async fn list(
+        &self,
+        ctx: &CoreCtx,
+        params: AccountListParams,
+    ) -> CoreResult<ListResponse<Account>> {
         let store = self.store();
+
+        let ctx: StoreCtx = ctx.into();
+
+        let options = match params.options {
+            Some(options) => options,
+            None => ListOptionsValidator::default(),
+        };
 
         let (tags, filter) = match params.filter {
             Some(filter) => filter.validate()?,
             None => (None, None),
         };
 
-        // if let Some(tags) = tags {
-        //     store.filter_by_tags_contain()
-        // }
+        if let Some(tags) = tags {
+            let data = store.filter_by_tags_contain(&ctx, tags.clone()).await?;
+            let total = store.count_by_tags_contain(&ctx, tags).await?;
 
-        Ok(vec![])
+            let accounts: Vec<Account> = data.into_iter().map(|el| el.into()).collect();
+            Ok(ListResponse::new(accounts, total, options))
+        } else {
+            let data = store
+                .list(&ctx, filter.clone(), Some(options.clone()))
+                .await?;
+            let total = store.count(&ctx, filter).await?;
+            let accounts: Vec<Account> = data.into_iter().map(|el| el.into()).collect();
+            Ok(ListResponse::new(accounts, total, options))
+        }
     }
 
     fn store(&self) -> &AccountStore<D> {
