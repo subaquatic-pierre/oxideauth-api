@@ -11,3 +11,7 @@ pub struct Membership {
 }
 
 impl Membership {}
+
+pub struct MembershipCreateParams {}
+
+pub struct MembershipDescribeParams {}

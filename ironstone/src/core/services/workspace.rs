@@ -5,12 +5,12 @@ use serde_json::json;
 use crate::{
     core::{
         ctx::CoreCtx,
-        dto::workspace::{
-            WorkspaceCreateParams, WorkspaceDeleteParams, WorkspaceDescribeParams,
+        error::{CoreError, CoreResult},
+        models::account::Account,
+        models::workspace::{
+            Workspace, WorkspaceCreateParams, WorkspaceDeleteParams, WorkspaceDescribeParams,
             WorkspaceListParams, WorkspaceUpdateParams,
         },
-        error::{CoreError, CoreResult},
-        models::{account::Account, workspace::Workspace},
     },
     store::{
         dbx::{DbExecutor, PgDbx},

@@ -5,9 +5,9 @@ use serde_json::json;
 use crate::{
     core::{
         ctx::CoreCtx,
-        dto::membership::{MembershipCreateParams, MembershipDescribeParams},
         error::{CoreError, CoreResult},
-        models::{account::Account, membership::Membership},
+        models::account::Account,
+        models::membership::{Membership, MembershipCreateParams, MembershipDescribeParams},
     },
     store::{
         dbx::{DbExecutor, PgDbx},

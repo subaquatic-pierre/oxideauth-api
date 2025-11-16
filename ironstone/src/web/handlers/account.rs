@@ -11,12 +11,11 @@ use crate::{
     app::App,
     core::{
         ctx::CoreCtx,
-        dto::{
-            account::{AccountCreateParams, AccountDescribeParams, AccountListParams},
+        error::CoreError,
+        models::{
+            account::{Account, AccountCreateParams, AccountDescribeParams, AccountListParams},
             list::{ListResponse, ListResponseMeta, RequestFilterParams, RequestListOptions},
         },
-        error::CoreError,
-        models::account::Account,
     },
     store::entities::account::AccountFilter,
     web::{error::WebResult, middlewares::cors::build_cors, response::WebResponse},

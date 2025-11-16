@@ -2,8 +2,11 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::{
-    core::dto::audit::CoreAuditFields,
-    store::entities::account::{AccountMeta, AccountRow},
+    core::{
+        models::audit::CoreAuditFields,
+        models::list::{RequestFilterParams, RequestListOptions},
+    },
+    store::entities::account::{AccountFilter, AccountMeta, AccountRow},
 };
 
 #[derive(Serialize, Debug, Clone)]
@@ -70,4 +73,18 @@ impl Default for Account {
             audit: CoreAuditFields::default(),
         }
     }
+}
+
+pub struct AccountCreateParams {
+    pub email: String,
+    pub password: String,
+}
+
+pub struct AccountDescribeParams {
+    pub email: String,
+}
+
+pub struct AccountListParams {
+    pub filter: Option<RequestFilterParams<AccountFilter>>,
+    pub options: Option<RequestListOptions>,
 }

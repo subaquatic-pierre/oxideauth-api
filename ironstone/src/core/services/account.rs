@@ -5,12 +5,11 @@ use serde_json::json;
 use crate::{
     core::{
         ctx::CoreCtx,
-        dto::{
-            account::{AccountCreateParams, AccountDescribeParams, AccountListParams},
+        error::{CoreError, CoreResult},
+        models::{
+            account::{Account, AccountCreateParams, AccountDescribeParams, AccountListParams},
             list::ListResponse,
         },
-        error::{CoreError, CoreResult},
-        models::account::Account,
     },
     store::{
         contains::FilterByContains,

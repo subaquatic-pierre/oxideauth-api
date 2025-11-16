@@ -11,14 +11,14 @@ use crate::{
     app::App,
     core::{
         ctx::CoreCtx,
-        dto::{
+        error::CoreError,
+        models::{
             account::{AccountCreateParams, AccountDescribeParams},
             workspace::{
                 WorkspaceCreateParams, WorkspaceDeleteParams, WorkspaceDescribeParams,
                 WorkspaceListParams, WorkspaceUpdateParams,
             },
         },
-        error::CoreError,
     },
     web::{error::WebResult, middlewares::cors::build_cors, response::WebResponse},
 };
