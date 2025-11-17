@@ -1,11 +1,11 @@
 use axum::{
     extract::{rejection::JsonRejection, Extension, State},
     response::IntoResponse,
-    routing::{get, post},
+    routing::{delete, get, patch, post},
     Json, Router,
 };
 use std::sync::Arc;
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::{
     app::App,
@@ -13,150 +13,148 @@ use crate::{
         ctx::CoreCtx,
         error::CoreError,
         models::{
-            account::{AccountCreateParams, AccountDescribeParams},
+            list::{ListResponse, ListResponseMeta, RequestFilterParams, RequestListOptions},
             workspace::{
-                WorkspaceCreateParams, WorkspaceDeleteParams, WorkspaceDescribeParams,
+                Workspace, WorkspaceCreateParams, WorkspaceDeleteParams, WorkspaceDescribeParams,
                 WorkspaceListParams, WorkspaceUpdateParams,
             },
         },
     },
-    web::{error::JsonResResult, middlewares::cors::build_cors, response::WebResponse},
+    store::entities::workspace::WorkspaceFilter,
+    web::{
+        dtos::workspace::{
+            WorkspaceCreateReq, WorkspaceDeleteReq, WorkspaceDeleteRes, WorkspaceDescribeReq,
+            WorkspaceDescribeRes, WorkspaceListReq, WorkspaceListRes, WorkspaceUpdateReq,
+        },
+        error::{JsonReqResult, JsonResResult},
+        middlewares::cors::build_cors,
+        response::WebResponse,
+    },
 };
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Serialize)]
-pub struct WorkspaceRes {
-    pub id: Uuid,
-}
-
-#[derive(Deserialize)]
-pub struct WorkspaceDescribeReq {
-    pub email: String,
-}
-
+// --- Describe Workspace ---
 #[axum::debug_handler]
 pub async fn describe_workspace(
     ctx: Extension<CoreCtx>,
     app: Extension<App>,
-    body: Result<Json<WorkspaceDescribeReq>, JsonRejection>,
-) -> JsonResResult<WebResponse<WorkspaceRes>> {
+    body: JsonReqResult<WorkspaceDescribeReq>,
+) -> JsonResResult<WebResponse<WorkspaceDescribeRes>> {
+    let Json(body) = body?;
     let svc = app.svc_build.workspace();
 
-    let params = WorkspaceDescribeParams { id: Uuid::new_v4() };
+    let params: WorkspaceDescribeParams = body.into();
+
     let ws = svc.describe(&ctx, params).await?;
 
-    let ws_res = WorkspaceRes { id: ws.id };
+    let ws_res: WorkspaceDescribeRes = ws.into();
 
     info!("describe_workspace - CTX: {ctx:#?}");
     WebResponse::json(ws_res)
 }
 
-#[derive(Deserialize)]
-pub struct WorkspaceListReq {
-    pub email: String,
-}
-
+// --- List Workspaces ---
 #[axum::debug_handler]
-pub async fn list_workspace(
+pub async fn list_workspaces(
     ctx: Extension<CoreCtx>,
     app: Extension<App>,
-    body: Json<WorkspaceListReq>,
-) -> JsonResResult<WebResponse<Vec<WorkspaceRes>>> {
+    body: JsonReqResult<WorkspaceListReq>,
+) -> JsonResResult<WebResponse<WorkspaceListRes>> {
+    let Json(body) = body?;
     let svc = app.svc_build.workspace();
 
-    let params = WorkspaceListParams {};
+    let params: WorkspaceListParams = body.into();
+    let res = svc.list(&ctx, params).await?;
 
-    let ws = svc.list(&ctx, params).await?;
+    // Map the vector of Workspace entities to the vector of DTOs
+    let workspaces: Vec<WorkspaceDescribeRes> = res
+        .data
+        .into_iter()
+        .map(WorkspaceDescribeRes::from)
+        .collect();
 
-    let ws_res = ws.iter().map(|el| WorkspaceRes { id: el.id }).collect();
+    let res = WorkspaceListRes {
+        workspaces,
+        metadata: res.metadata,
+    };
 
-    info!("describe_workspace - CTX: {ctx:#?}");
-    WebResponse::json(ws_res)
+    WebResponse::json(res)
 }
 
-#[derive(Deserialize)]
-pub struct WorkspaceCreateReq {
-    pub email: String,
-    pub password: String,
-}
-
+// --- Create Workspace ---
 #[axum::debug_handler]
 pub async fn create_workspace(
     ctx: Extension<CoreCtx>,
     app: Extension<App>,
-    body: Json<WorkspaceCreateReq>,
-) -> JsonResResult<WebResponse<WorkspaceRes>> {
+    body: JsonReqResult<WorkspaceCreateReq>,
+) -> JsonResResult<WebResponse<WorkspaceDescribeRes>> {
+    let Json(body) = body?;
     let svc = app.svc_build.workspace();
 
-    let params = WorkspaceCreateParams {};
+    let params: WorkspaceCreateParams = body.into();
 
     let ws = svc.create(&ctx, params).await?;
 
-    let ws_res = WorkspaceRes { id: ws.id };
+    let ws_res: WorkspaceDescribeRes = ws.into();
 
-    info!("describe_workspace - CTX: {ctx:#?}");
+    info!("create_workspace - CTX: {ctx:#?}");
     WebResponse::json(ws_res)
 }
 
-#[derive(Deserialize)]
-pub struct WorkspaceDeleteReq {
-    pub email: String,
-    pub password: String,
-}
-
-#[axum::debug_handler]
-pub async fn delete_workspace(
-    ctx: Extension<CoreCtx>,
-    app: Extension<App>,
-    body: Json<WorkspaceDeleteReq>,
-) -> JsonResResult<WebResponse<WorkspaceRes>> {
-    let svc = app.svc_build.workspace();
-
-    let params = WorkspaceDeleteParams { id: Uuid::new_v4() };
-
-    let ws = svc.delete(&ctx, params).await?;
-
-    let ws_res = WorkspaceRes { id: ws.id };
-
-    info!("describe_workspace - CTX: {ctx:#?}");
-    WebResponse::json(ws_res)
-}
-
-#[derive(Deserialize)]
-pub struct WorkspaceUpdateReq {
-    pub email: String,
-    pub password: String,
-}
-
+// --- Update Workspace ---
 #[axum::debug_handler]
 pub async fn update_workspace(
     ctx: Extension<CoreCtx>,
     app: Extension<App>,
-    body: Json<WorkspaceUpdateReq>,
-) -> JsonResResult<WebResponse<WorkspaceRes>> {
+    body: JsonReqResult<WorkspaceUpdateReq>,
+) -> JsonResResult<WebResponse<WorkspaceDescribeRes>> {
+    let Json(body) = body?;
     let svc = app.svc_build.workspace();
 
-    let params = WorkspaceUpdateParams { id: Uuid::new_v4() };
+    let params: WorkspaceUpdateParams = body.into();
 
     let ws = svc.update(&ctx, params).await?;
 
-    let ws_res = WorkspaceRes { id: ws.id };
+    let ws_res: WorkspaceDescribeRes = ws.into();
 
-    info!("describe_workspace - CTX: {ctx:#?}");
+    info!("update_workspace - CTX: {ctx:#?}");
     WebResponse::json(ws_res)
 }
 
+// --- Delete Workspace ---
+#[axum::debug_handler]
+pub async fn delete_workspace(
+    ctx: Extension<CoreCtx>,
+    app: Extension<App>,
+    body: JsonReqResult<WorkspaceDeleteReq>,
+) -> JsonResResult<WebResponse<WorkspaceDeleteRes>> {
+    let Json(body) = body?;
+    let svc = app.svc_build.workspace();
+
+    let params: WorkspaceDeleteParams = body.into();
+
+    // The service returns the deleted Workspace entity
+    let ws = svc.delete(&ctx, params).await?;
+
+    // Convert the deleted Workspace entity into the response DTO
+    let res: WorkspaceDeleteRes = ws.into();
+
+    info!("delete_workspace - CTX: {ctx:#?}");
+    WebResponse::json(res)
+}
+
+// --- Workspace Router ---
 pub struct WorkspaceRouter;
 
 impl WorkspaceRouter {
     pub fn routes() -> Router {
         Router::new()
             .route("/describe", post(describe_workspace))
-            .route("/list", post(list_workspace))
             .route("/create", post(create_workspace))
+            .route("/list", post(list_workspaces))
             .route("/update", post(update_workspace))
-            .route("/delete", post(create_workspace))
+            .route("/delete", post(delete_workspace))
     }
 }

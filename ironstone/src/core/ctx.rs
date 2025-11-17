@@ -28,6 +28,10 @@ impl CoreCtx {
             workspace: ctx_ns,
         }
     }
+
+    pub fn workspace_id(&self) -> Uuid {
+        self.workspace.id
+    }
 }
 
 impl From<CoreCtx> for StoreCtx {

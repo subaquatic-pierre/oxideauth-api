@@ -1,12 +1,18 @@
 use std::sync::Arc;
 
+use serde_json::json;
+
 use crate::store::{
+    ctx::StoreCtx,
     dbx::PgDbx,
-    entities::project::{
-        ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow,
+    entities::{
+        id::DbId,
+        project::{ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow},
     },
+    error::StoreResult,
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, ReadQueryMeta},
     traits::{
+        crud::List,
         dbx::DbExecutor,
         meta::{ContainsFilterStore, MutateStore, ReadStore, Store},
     },
@@ -23,6 +29,21 @@ impl<D: DbExecutor> ProjectStore<D> {
     pub fn new(dbx: Arc<D>) -> Self {
         // Use generic
         Self { dbx }
+    }
+
+    pub async fn get_by_code(
+        &self,
+        ctx: &StoreCtx,
+        code: &str,
+        workspace_id: &DbId,
+    ) -> StoreResult<Option<ProjectRow>> {
+        let filter: ProjectFilter = json!({
+            "code": code.to_string(),
+            "workspace_id": workspace_id.to_string()
+        })
+        .try_into()?;
+
+        Ok(self.list(ctx, Some(filter), None).await?.into_iter().next())
     }
 }
 

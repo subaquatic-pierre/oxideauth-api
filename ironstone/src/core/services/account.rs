@@ -174,7 +174,7 @@ impl<D: DbExecutor> AccountService<D> {
             },
             (None, None) => {
                 return Err(CoreError::InvalidParams(
-                    "Account ID or email required for delete".to_string(),
+                    "Account ID or email required".to_string(),
                 ))
             }
         };

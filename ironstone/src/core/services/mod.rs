@@ -5,6 +5,7 @@ pub mod email;
 pub mod factory;
 pub mod membership;
 pub mod meta;
+pub mod project;
 pub mod storage;
 pub mod token;
 pub mod workspace;

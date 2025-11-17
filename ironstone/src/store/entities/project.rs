@@ -110,7 +110,7 @@ impl From<ProjectMeta> for SeaValue {
 }
 
 /// Filtering options for `project` queries.
-#[derive(FilterNodes, Deserialize, Default, Debug)]
+#[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
 pub struct ProjectFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<OpValsString>,

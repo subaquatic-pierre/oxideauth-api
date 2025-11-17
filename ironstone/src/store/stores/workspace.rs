@@ -1,13 +1,18 @@
 use std::sync::Arc;
 
+use serde_json::json;
+
 use crate::store::{
+    ctx::StoreCtx,
     dbx::PgDbx,
     entities::workspace::{
         WorkspaceFilter, WorkspaceForCreate, WorkspaceForUpdate, WorkspaceIden, WorkspaceRow,
         WorkspaceWithProjects,
     },
+    error::StoreResult,
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
     traits::{
+        crud::List,
         dbx::DbExecutor,
         meta::{ContainsFilterStore, MutateStore, OneToManyStore, ReadStore, Store},
     },
@@ -23,6 +28,19 @@ impl<D: DbExecutor> WorkspaceStore<D> {
     pub fn new(dbx: Arc<D>) -> Self {
         // Use generic
         Self { dbx }
+    }
+
+    pub async fn get_by_slug(
+        &self,
+        ctx: &StoreCtx,
+        slug: &str,
+    ) -> StoreResult<Option<WorkspaceRow>> {
+        let filter: WorkspaceFilter = json!({
+            "slug": slug.to_string()
+        })
+        .try_into()?;
+
+        Ok(self.list(ctx, Some(filter), None).await?.into_iter().next())
     }
 }
 
