@@ -94,7 +94,7 @@ modql = { version = "0.4.1", features = ["with-sea-query"]}
 # ──────────────────────────────────────────────────────────────────────────────
 # Database (SQLx)
 # ──────────────────────────────────────────────────────────────────────────────
-redis = { version = "0.32.7", features = ["tokio-comp", "tokio-native-tls-comp", "connection-manager", "uuid"] }
+redis = { version = "0.32.7", features = ["tokio-comp", "tokio-native-tls-comp", "connection-manager", "uuid", "json"] }
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Test / Mock

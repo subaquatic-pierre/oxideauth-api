@@ -11,6 +11,8 @@ pub type CacheResult<T> = Result<T, CacheError>;
 #[derive(Debug, Serialize, From)]
 pub enum CacheError {
     Init(String),
+    NotFound(String),
+    InvalidSetOperation(String),
     #[from]
     RedisError(#[serde_as(as = "DisplayFromStr")] redis::RedisError),
     #[from]

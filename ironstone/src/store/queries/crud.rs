@@ -9,9 +9,10 @@ use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, Value};
 use uuid::Uuid;
 
-use crate::store::dbx::{DbExecutor, PgDbx};
+use crate::store::dbx::PgDbx;
 use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::{MutateQueryMeta, ReadQueryMeta};
+use crate::store::traits::dbx::DbExecutor;
 use crate::store::traits::meta::{Store, StoreId, StoreRow, TableIden};
 use crate::store::utils::prepare_audit_fields;
 use crate::store::utils::ListOptionsValidator;

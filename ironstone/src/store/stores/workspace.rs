@@ -1,13 +1,16 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, PgDbx},
+    dbx::PgDbx,
     entities::workspace::{
         WorkspaceFilter, WorkspaceForCreate, WorkspaceForUpdate, WorkspaceIden, WorkspaceRow,
         WorkspaceWithProjects,
     },
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
-    traits::meta::{ContainsFilterStore, MutateStore, OneToManyStore, ReadStore, Store},
+    traits::{
+        dbx::DbExecutor,
+        meta::{ContainsFilterStore, MutateStore, OneToManyStore, ReadStore, Store},
+    },
 };
 
 /// The struct for our Workspace store, holding the database connection wrapper.

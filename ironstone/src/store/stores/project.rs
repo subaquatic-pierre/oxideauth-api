@@ -1,12 +1,15 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, PgDbx},
+    dbx::PgDbx,
     entities::project::{
         ProjectFilter, ProjectForCreate, ProjectForUpdate, ProjectIden, ProjectRow,
     },
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{ContainsFilterStore, MutateStore, ReadStore, Store},
+    traits::{
+        dbx::DbExecutor,
+        meta::{ContainsFilterStore, MutateStore, ReadStore, Store},
+    },
 };
 
 /// The struct for our Project store, holding the database connection wrapper.

@@ -1,25 +1,33 @@
 use std::sync::Arc;
 
 use serde_json::json;
+use uuid::Uuid;
 
 use crate::{
     core::{
         ctx::CoreCtx,
         error::{CoreError, CoreResult},
         models::{
-            account::{Account, AccountCreateParams, AccountDescribeParams, AccountListParams},
+            account::{
+                Account, AccountCreateParams, AccountDeleteParams, AccountDescribeParams,
+                AccountListParams, AccountUpdateParams,
+            },
             list::ListResponse,
         },
     },
     store::{
         contains::FilterByContains,
         ctx::StoreCtx,
-        dbx::{DbExecutor, PgDbx},
-        entities::account::{AccountFilter, AccountForCreate, AccountMeta},
+        dbx::PgDbx,
+        entities::{
+            account::{AccountFilter, AccountForCreate, AccountForUpdate, AccountMeta},
+            id::DbId,
+        },
+        error::StoreError,
         manager::StoreManager,
-        meta::ContainsFilterStore,
+        meta::{ContainsFilterStore, StoreId},
         stores::account::AccountStore,
-        traits::crud::*,
+        traits::{crud::*, dbx::DbExecutor},
         utils::ListOptionsValidator,
     },
 };
@@ -66,11 +74,15 @@ impl<D: DbExecutor> AccountService<D> {
     pub async fn describe(
         &self,
         ctx: &CoreCtx,
-        _params: AccountDescribeParams,
+        params: AccountDescribeParams,
     ) -> CoreResult<Account> {
-        let n_acc = Account::default();
+        let store = self.store();
 
-        Ok(n_acc)
+        let id = self.get_account_id(&ctx, params.id, params.email).await?;
+
+        let acc: Account = store.get(&ctx.into(), &id).await?.into();
+
+        Ok(acc)
     }
 
     pub async fn list(
@@ -106,6 +118,68 @@ impl<D: DbExecutor> AccountService<D> {
             let accounts: Vec<Account> = data.into_iter().map(|el| el.into()).collect();
             Ok(ListResponse::new(accounts, total, options))
         }
+    }
+
+    pub async fn delete(&self, ctx: &CoreCtx, params: AccountDeleteParams) -> CoreResult<Account> {
+        let store = self.store();
+
+        let id = self.get_account_id(ctx, params.id, params.email).await?;
+
+        let deleted = store.delete(&ctx.into(), &id).await?.into();
+
+        Ok(deleted)
+    }
+
+    pub async fn update(&self, ctx: &CoreCtx, params: AccountUpdateParams) -> CoreResult<Account> {
+        let store = self.store();
+
+        let email = params.email.clone();
+        let id = self.get_account_id(ctx, params.id, params.email).await?;
+
+        // 2. Prepare the update struct for the store layer
+        let update_data = AccountForUpdate {
+            email: email, // Use the new email if provided in params
+            name: params.name,
+            description: params.description,
+            avatar_url: params.avatar_url,
+            enabled: params.enabled,
+            verified: params.verified,
+            tags: params.tags,
+            meta: params.meta,
+        };
+
+        let updated_account = store.update(&ctx.into(), &id, update_data).await?;
+
+        Ok(updated_account.into())
+    }
+
+    async fn get_account_id(
+        &self,
+        ctx: &CoreCtx,
+        id: Option<Uuid>,
+        email: Option<String>,
+    ) -> CoreResult<DbId> {
+        let store = self.store();
+
+        let id: DbId = match (id, email) {
+            (Some(id), _) => id.into(),
+            (None, Some(email)) => match store.get_by_email(&ctx.into(), &email).await? {
+                Some(acc) => acc.id,
+                None => {
+                    return Err(CoreError::StoreError(StoreError::EntityNotFound {
+                        entity: "account".to_string(),
+                        id: email.to_string(),
+                    }))
+                }
+            },
+            (None, None) => {
+                return Err(CoreError::InvalidParams(
+                    "Account ID or email required for delete".to_string(),
+                ))
+            }
+        };
+
+        Ok(id)
     }
 
     fn store(&self) -> &AccountStore<D> {
@@ -160,10 +234,7 @@ mod tests {
         let sm = Arc::new(StoreManager::new(dbx));
         let svc = AccountService::new(sm);
         let ctx = CoreCtx::new_test();
-        let params = AccountCreateParams {
-            email: "user@user.com".to_string(),
-            password: "password".to_string(),
-        };
+        let params = AccountCreateParams::default();
 
         let new_acc = svc.create(&ctx, params).await?;
 
@@ -203,10 +274,7 @@ mod tests {
         let sm = Arc::new(StoreManager::new(dbx));
         let svc = AccountService::new(sm);
         let ctx = CoreCtx::new_test();
-        let params = AccountCreateParams {
-            email: "user@user.com".to_string(),
-            password: "password".to_string(),
-        };
+        let params = AccountCreateParams::default();
         let new_acc = svc.create(&ctx, params).await;
 
         assert!(

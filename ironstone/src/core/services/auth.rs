@@ -7,10 +7,7 @@ use crate::{
         models::permission::{PermissionCheck, PermissionChecker},
         services::account::AccountService,
     },
-    store::{
-        dbx::{DbExecutor, PgDbx},
-        manager::StoreManager,
-    },
+    store::{dbx::PgDbx, manager::StoreManager, traits::dbx::DbExecutor},
 };
 
 pub struct AuthorizeService<D>

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use crate::{
     core::models::membership::Membership,
@@ -19,15 +20,15 @@ pub struct TokenClaims {
 #[derive(Debug, Serialize, PartialEq, Eq, Clone, Copy, Deserialize)]
 pub enum TokenType {
     Auth,
-    ResetPassword,
+    PasswordReset,
     Refresh,
-    ConfirmAccount,
+    AccountConfirm,
 }
 
 impl TokenClaims {
-    pub fn new(mem: Membership, exp: OffsetDateTime, ty: TokenType) -> Self {
+    pub fn new(sub: Uuid, exp: OffsetDateTime, ty: TokenType) -> Self {
         Self {
-            sub: mem.id.to_string(),
+            sub: sub.to_string(),
             iss: "ironstone.app".to_string(),
             aud: "ironstone.api".to_string(),
             iat: now_utc().unix_timestamp() as usize,

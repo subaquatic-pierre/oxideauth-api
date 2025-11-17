@@ -6,21 +6,23 @@ use crate::{
     core::{
         ctx::CoreCtx,
         error::{CoreError, CoreResult},
-        models::account::Account,
-        models::workspace::{
-            Workspace, WorkspaceCreateParams, WorkspaceDeleteParams, WorkspaceDescribeParams,
-            WorkspaceListParams, WorkspaceUpdateParams,
+        models::{
+            account::Account,
+            workspace::{
+                Workspace, WorkspaceCreateParams, WorkspaceDeleteParams, WorkspaceDescribeParams,
+                WorkspaceListParams, WorkspaceUpdateParams,
+            },
         },
     },
     store::{
-        dbx::{DbExecutor, PgDbx},
+        dbx::PgDbx,
         entities::{
             account::{AccountFilter, AccountForCreate, AccountMeta},
             workspace::{WorkspaceFilter, WorkspaceForCreate, WorkspaceForUpdate},
         },
         manager::StoreManager,
         stores::workspace::WorkspaceStore,
-        traits::crud::*,
+        traits::{crud::*, dbx::DbExecutor},
     },
 };
 

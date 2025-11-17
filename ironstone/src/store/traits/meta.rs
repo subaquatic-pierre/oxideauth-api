@@ -16,7 +16,7 @@ use modql::filter::{FilterGroups, ListOptions};
 use sea_query::Iden;
 use sqlx::{postgres::PgRow, FromRow};
 
-use crate::store::dbx::DbExecutor;
+use crate::store::traits::dbx::DbExecutor;
 use crate::store::{
     ctx::StoreCtx,
     dbx::PgDbx,

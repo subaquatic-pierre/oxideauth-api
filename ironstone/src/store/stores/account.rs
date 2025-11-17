@@ -5,14 +5,17 @@ use serde_json::json;
 use crate::store::{
     crud::List,
     ctx::StoreCtx,
-    dbx::{DbExecutor, PgDbx},
+    dbx::PgDbx,
     entities::account::{
         AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountRow,
         AccountWithCredentials,
     },
     error::StoreResult,
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
-    traits::meta::{ContainsFilterStore, MutateStore, OneToManyStore, ReadStore, Store},
+    traits::{
+        dbx::DbExecutor,
+        meta::{ContainsFilterStore, MutateStore, OneToManyStore, ReadStore, Store},
+    },
 };
 
 /// The struct for our Account store, holding the database connection wrapper.

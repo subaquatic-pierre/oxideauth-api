@@ -6,7 +6,9 @@ use crate::{
         models::audit::CoreAuditFields,
         models::list::{RequestFilterParams, RequestListOptions},
     },
-    store::entities::account::{AccountFilter, AccountMeta, AccountRow},
+    store::entities::account::{
+        AccountFilter as StoreAccountFilter, AccountMeta as StoreAccountMeta, AccountRow,
+    },
 };
 
 #[derive(Serialize, Debug, Clone)]
@@ -75,16 +77,54 @@ impl Default for Account {
     }
 }
 
+#[derive(Default)]
 pub struct AccountCreateParams {
+    // Basic/Mandatory fields
     pub email: String,
-    pub password: String,
+    pub password: String, // Likely required for creation
+    pub name: String,     // Mandatory from Store struct
+
+    // Optional fields mirroring Store struct (AccountForCreate)
+    pub description: Option<String>,
+    pub avatar_url: Option<String>,
+    pub tags: Option<Vec<String>>,
+    // Note: AccountMeta must be defined elsewhere
+    pub meta: Option<AccountMeta>,
 }
 
+#[derive(Default)]
 pub struct AccountDescribeParams {
-    pub email: String,
+    pub email: Option<String>,
+    pub id: Option<Uuid>,
 }
 
+pub struct AccountDeleteParams {
+    pub email: Option<String>,
+    pub id: Option<Uuid>,
+}
+
+pub struct AccountUpdateParams {
+    // Account Identifier (from initial basic struct)
+    pub email: Option<String>,
+    pub id: Option<Uuid>,
+
+    // Fields to Update (mirroring AccountForUpdate, but omitting ID fields)
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub avatar_url: Option<String>,
+
+    pub enabled: Option<bool>,  // Can be updated by an admin/service call
+    pub verified: Option<bool>, // Can be updated by an admin/service call
+
+    pub tags: Option<Vec<String>>,
+    pub meta: Option<AccountMeta>,
+    // Note: Password update would typically be a separate specialized struct
+    // pub new_password: Option<String>,
+}
 pub struct AccountListParams {
     pub filter: Option<RequestFilterParams<AccountFilter>>,
     pub options: Option<RequestListOptions>,
 }
+
+pub type AccountMeta = StoreAccountMeta;
+pub type AccountFilter = StoreAccountFilter;

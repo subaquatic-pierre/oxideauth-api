@@ -1,13 +1,16 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, PgDbx},
+    dbx::PgDbx,
     entities::token_blacklist::{
         TokenBlacklistFilter, TokenBlacklistForCreate, TokenBlacklistForUpdate, TokenBlacklistIden,
         TokenBlacklistRow,
     },
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{MutateStore, ReadStore, Store},
+    traits::{
+        dbx::DbExecutor,
+        meta::{MutateStore, ReadStore, Store},
+    },
 };
 use modql::field::HasSeaFields;
 

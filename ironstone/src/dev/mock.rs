@@ -37,7 +37,7 @@ macro_rules! create_dbx_mock_unsafe {
         struct $name;
 
         #[axum::async_trait]
-        impl $crate::store::dbx::DbExecutor for $name {
+        impl $crate::store::traits::dbx::DbExecutor for $name {
             async fn fetch_one<'q, O, A>(
                 &self,
                 _query: sqlx::query::QueryAs<'q, sqlx::Postgres, O, A>,

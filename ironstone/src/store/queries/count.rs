@@ -6,11 +6,12 @@ use sqlx::Row;
 use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, query_scalar_with, query_with, Value};
 
-use crate::store::dbx::{DbExecutor, PgDbx};
+use crate::store::dbx::PgDbx;
 use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::{
     ContainsFilter, ContainsFilterQueryMeta, CountManyQueryMeta, ReadQueryMeta,
 };
+use crate::store::traits::dbx::DbExecutor;
 use crate::store::traits::meta::{StoreId, TableIden};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 use crate::store::{traits::meta::Store, utils::ListOptionsValidator};

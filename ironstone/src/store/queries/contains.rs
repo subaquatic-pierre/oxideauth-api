@@ -4,10 +4,13 @@ use serde_json::Value as JsonValue;
 
 use crate::store::{
     ctx::StoreCtx,
-    dbx::{DbExecutor, PgDbx},
+    dbx::PgDbx,
     error::{StoreError, StoreResult},
     queries::meta::{ContainsFilter, ContainsFilterQueryMeta},
-    traits::meta::{StoreRow, TableIden},
+    traits::{
+        dbx::DbExecutor,
+        meta::{StoreRow, TableIden},
+    },
 };
 
 /// Fetches all entities (rows) from a table where a specified column contains

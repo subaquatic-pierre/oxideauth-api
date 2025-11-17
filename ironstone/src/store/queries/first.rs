@@ -5,9 +5,10 @@ use sea_query_binder::SqlxBinder;
 use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, Value};
 
-use crate::store::dbx::{DbExecutor, PgDbx};
+use crate::store::dbx::PgDbx;
 use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::ReadQueryMeta;
+use crate::store::traits::dbx::DbExecutor;
 use crate::store::traits::meta::{StoreRow, TableIden};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 use crate::store::{traits::meta::Store, utils::ListOptionsValidator};

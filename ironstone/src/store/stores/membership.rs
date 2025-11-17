@@ -1,13 +1,16 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, PgDbx},
+    dbx::PgDbx,
     entities::membership::{
         MembershipFilter, MembershipForCreate, MembershipForUpdate, MembershipIden, MembershipRow,
         MembershipWithRoles,
     },
     queries::meta::{ContainsFilterQueryMeta, ManyToManyQueryMeta, MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{ContainsFilterStore, ManyToManyStore, MutateStore, ReadStore, Store},
+    traits::{
+        dbx::DbExecutor,
+        meta::{ContainsFilterStore, ManyToManyStore, MutateStore, ReadStore, Store},
+    },
 };
 
 /// The struct for our Membership store, holding the database connection wrapper.

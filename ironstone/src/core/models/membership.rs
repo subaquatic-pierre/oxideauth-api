@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::core::models::{account::Account, role::Role, workspace::Workspace};
@@ -10,7 +11,25 @@ pub struct Membership {
     roles: Vec<Role>,
 }
 
-impl Membership {}
+impl Membership {
+    pub fn new(account: Account, workspace: Workspace, roles: Vec<Role>) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            account,
+            workspace,
+            roles,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct CachedMembership {
+    pub id: Uuid,
+    pub account_id: Uuid,
+    pub namespace_id: Uuid,
+    pub role_ids: Vec<Uuid>,
+    pub permissions: Vec<String>,
+}
 
 pub struct MembershipCreateParams {}
 

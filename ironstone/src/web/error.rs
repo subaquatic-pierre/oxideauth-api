@@ -14,7 +14,8 @@ use serde::{Deserialize, Serialize};
 use crate::store::error::StoreError;
 use crate::{core::error::CoreError, web::response::WebResponse};
 
-pub type WebResult<T> = Result<Json<T>, WebError>;
+pub type JsonResResult<T> = Result<Json<T>, WebError>;
+pub type JsonReqResult<T> = Result<Json<T>, JsonRejection>;
 
 /// Defines specific, named errors that can occur in the application.
 #[derive(Debug, Display, Clone)]
@@ -99,40 +100,42 @@ impl From<CoreError> for WebError {
                         actual, max
                     ))
                 }
-                StoreError::DataError(msg) => WebError::ValidationError(msg),
+                // StoreError::DataError(msg) => WebError::ValidationError(msg),
 
-                // MAPPING SYSTEM/EXTERNAL ERRORS TO VALIDATION_ERROR (HTTP 400)
-                // This implies any failure in serialization, SQL query structure, or time parsing
-                // is due to user input data being malformed.
-                StoreError::BincodeError(err) => {
-                    WebError::ValidationError(format!("Bincode error: {}", err))
-                }
-                StoreError::FromHexError(err) => {
-                    WebError::ValidationError(format!("Hex conversion error: {}", err))
-                }
-                StoreError::SerdeJsonError(err) => {
-                    WebError::ValidationError(format!("JSON serialization error: {}", err))
-                }
-                StoreError::IntoSeaError(err) => {
-                    WebError::ValidationError(format!("Filter conversion error: {}", err))
-                }
-                StoreError::SqlxError(err) => {
-                    WebError::ValidationError(format!("Database query error: {}", err))
-                }
-                StoreError::SeaQueryError(err) => {
-                    WebError::ValidationError(format!("Query building error: {}", err))
-                }
-                StoreError::TimeParseError(err) => {
-                    WebError::ValidationError(format!("Time parsing error: {}", err))
-                }
-                StoreError::TimeFormatError(err) => {
-                    WebError::ValidationError(format!("Time formatting error: {}", err))
-                }
+                // // MAPPING SYSTEM/EXTERNAL ERRORS TO VALIDATION_ERROR (HTTP 400)
+                // // This implies any failure in serialization, SQL query structure, or time parsing
+                // // is due to user input data being malformed.
+
+                // StoreError::BincodeError(err) => {
+                //     WebError::ValidationError(format!("Bincode error: {}", err))
+                // }
+                // StoreError::FromHexError(err) => {
+                //     WebError::ValidationError(format!("Hex conversion error: {}", err))
+                // }
+                // StoreError::SerdeJsonError(err) => {
+                //     WebError::ValidationError(format!("JSON serialization error: {}", err))
+                // }
+                // StoreError::IntoSeaError(err) => {
+                //     WebError::ValidationError(format!("Filter conversion error: {}", err))
+                // }
+                // StoreError::SqlxError(err) => {
+                //     WebError::ValidationError(format!("Database query error: {}", err))
+                // }
+                // StoreError::SeaQueryError(err) => {
+                //     WebError::ValidationError(format!("Query building error: {}", err))
+                // }
+                // StoreError::TimeParseError(err) => {
+                //     WebError::ValidationError(format!("Time parsing error: {}", err))
+                // }
+                // StoreError::TimeFormatError(err) => {
+                //     WebError::ValidationError(format!("Time formatting error: {}", err))
+                // }
 
                 // 500 Internal Server Errors (System/DB access issues that can't be attributed to bad input)
                 StoreError::CantCreateDataStore(msg) => WebError::InternalServerError,
                 StoreError::WithTxnFalse | StoreError::NoTxn => WebError::InternalServerError,
                 StoreError::MockReturn => WebError::InternalServerError,
+                _ => WebError::ValidationError(format!("{}", store_err)),
             },
 
             // 401 Unauthorized

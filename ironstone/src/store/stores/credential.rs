@@ -1,12 +1,15 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, PgDbx},
+    dbx::PgDbx,
     entities::credential::{
         CredentialFilter, CredentialForCreate, CredentialForUpdate, CredentialIden, CredentialRow,
     },
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{ContainsFilterStore, MutateStore, ReadStore, Store},
+    traits::{
+        dbx::DbExecutor,
+        meta::{ContainsFilterStore, MutateStore, ReadStore, Store},
+    },
 };
 
 /// The struct for our Credential store, holding the database connection wrapper.

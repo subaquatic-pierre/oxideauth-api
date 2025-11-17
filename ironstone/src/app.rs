@@ -4,12 +4,14 @@ use tracing::{debug, info};
 
 use sqlx::Pool;
 
+use crate::cache::manager::CacheManager;
 use crate::cache::redis::RedisChx;
 use crate::cache::traits::CacheExecutor;
 use crate::core::services::factory::ServiceFactory;
 use crate::dev::init::init_dev;
-use crate::store::dbx::{DbExecutor, PgDbx};
+use crate::store::dbx::PgDbx;
 use crate::store::manager::StoreManager;
+use crate::store::traits::dbx::DbExecutor;
 use crate::{
     config::Config,
     store::init::{new_db_pool, PgPool},
@@ -43,12 +45,13 @@ where
     pub dbx: Arc<D>,
     pub chx: Arc<C>,
     pub sm: Arc<StoreManager<D>>,
+    pub cm: Arc<CacheManager<C>>,
     pub svc_build: Arc<ServiceFactory<D, C>>,
 }
 
 pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
     let app_env = AppEnv::from_env();
-    let (sm, dbx, chx, config) = match app_env {
+    let (sm, cm, dbx, chx, config) = match app_env {
         AppEnv::Development => {
             let config = Config::from_env();
             let db: PgPool = new_db_pool(&config.database_url, 1).await;
@@ -63,9 +66,10 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
 
             init_dev(&dbx.pool()).await;
 
-            let chx = RedisChx::new(&config.redis_url).await;
+            let chx = Arc::new(RedisChx::new(&config.redis_url).await);
+            let cm = Arc::new(CacheManager::new(chx.clone()));
 
-            (sm, dbx, chx, config)
+            (sm, cm, dbx, chx, config)
         }
         AppEnv::Production => {
             let config = Config::from_env();
@@ -79,9 +83,10 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
                 "Application started in PRODUCTION mode"
             );
 
-            let chx = RedisChx::new(&config.redis_url).await;
+            let chx = Arc::new(RedisChx::new(&config.redis_url).await);
+            let cm = Arc::new(CacheManager::new(chx.clone()));
 
-            (sm, dbx, chx, config)
+            (sm, cm, dbx, chx, config)
         }
         _ => {
             let config = Config::test_config();
@@ -94,19 +99,20 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
                 "Application started in TEST mode"
             );
 
-            let chx = RedisChx::new(&config.redis_url).await;
+            let chx = Arc::new(RedisChx::new(&config.redis_url).await);
+            let cm = Arc::new(CacheManager::new(chx.clone()));
 
-            (sm, dbx, chx, config)
+            (sm, cm, dbx, chx, config)
         }
     };
 
-    let chx = Arc::new(chx);
-    let svc_build = Arc::new(ServiceFactory::new(sm.clone(), chx.clone()));
+    let svc_build = Arc::new(ServiceFactory::new(sm.clone(), cm.clone()));
 
     AppState {
         dbx: dbx.clone(),
         config,
         chx,
+        cm,
         sm,
         svc_build,
     }

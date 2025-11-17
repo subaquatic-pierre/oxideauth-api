@@ -10,12 +10,15 @@ use jsonwebtoken::{
 use tracing::debug;
 
 use crate::{
-    cache::traits::CacheExecutor,
+    cache::{manager::CacheManager, traits::CacheExecutor},
     core::{
         error::{CoreError, CoreResult},
         models::token::TokenClaims,
     },
-    store::{dbx::DbExecutor, manager::StoreManager, stores::token_blacklist::TokenBlacklistStore},
+    store::{
+        manager::StoreManager, stores::token_blacklist::TokenBlacklistStore,
+        traits::dbx::DbExecutor,
+    },
     utils::time::now_utc,
 };
 
@@ -47,7 +50,7 @@ impl Default for TokenServiceConfig {
 
 pub struct TokenService<D: DbExecutor, C: CacheExecutor> {
     sm: Arc<StoreManager<D>>,
-    cache: Arc<C>,
+    cm: Arc<CacheManager<C>>,
     config: TokenServiceConfig,
 }
 
@@ -56,8 +59,12 @@ where
     D: DbExecutor,
     C: CacheExecutor,
 {
-    pub fn new(sm: Arc<StoreManager<D>>, cache: Arc<C>, config: TokenServiceConfig) -> Self {
-        Self { sm, cache, config }
+    pub fn new(
+        sm: Arc<StoreManager<D>>,
+        cm: Arc<CacheManager<C>>,
+        config: TokenServiceConfig,
+    ) -> Self {
+        Self { sm, cm, config }
     }
 
     pub fn is_blacklisted(&self, token: &TokenClaims) -> bool {
@@ -97,7 +104,7 @@ where
         token.is_expired()
     }
 
-    pub fn token_str_from_req<'b>(headers: &'b HeaderMap) -> Option<&'b str> {
+    pub fn token_str_from_headers<'b>(headers: &'b HeaderMap) -> Option<&'b str> {
         let auth_header = headers.get(AUTHORIZATION).and_then(|h| h.to_str().ok());
 
         let token = match auth_header {

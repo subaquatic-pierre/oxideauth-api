@@ -3,29 +3,35 @@ use std::sync::Arc;
 use serde_json::json;
 
 use crate::{
+    cache::{manager::CacheManager, stores::membership::MembershipCache, traits::CacheExecutor},
     core::{
         ctx::CoreCtx,
         error::{CoreError, CoreResult},
-        models::account::Account,
-        models::membership::{Membership, MembershipCreateParams, MembershipDescribeParams},
+        models::{
+            account::Account,
+            membership::{
+                CachedMembership, Membership, MembershipCreateParams, MembershipDescribeParams,
+            },
+        },
     },
     store::{
-        dbx::{DbExecutor, PgDbx},
+        dbx::PgDbx,
         entities::account::{AccountFilter, AccountForCreate, AccountMeta},
         manager::StoreManager,
         stores::membership::MembershipStore,
-        traits::crud::*,
+        traits::{crud::*, dbx::DbExecutor},
     },
 };
 
-pub struct MembershipService<D: DbExecutor> {
+pub struct MembershipService<D: DbExecutor, C: CacheExecutor> {
     sm: Arc<StoreManager<D>>,
+    cm: Arc<CacheManager<C>>,
     // password_hasher: Arc<dyn PasswordHasher>, // Dependency for hashing
 }
 
-impl<D: DbExecutor> MembershipService<D> {
-    pub fn new(sm: Arc<StoreManager<D>>) -> Self {
-        Self { sm }
+impl<D: DbExecutor, C: CacheExecutor> MembershipService<D, C> {
+    pub fn new(sm: Arc<StoreManager<D>>, cm: Arc<CacheManager<C>>) -> Self {
+        Self { sm, cm }
     }
 
     pub async fn create(
@@ -49,6 +55,15 @@ impl<D: DbExecutor> MembershipService<D> {
         Ok(n)
     }
 
+    pub fn get_cached(&self) -> Option<CachedMembership> {
+        let cache = self.cache();
+        None
+    }
+
+    fn cache(&self) -> &MembershipCache<C> {
+        &self.cm.membership
+    }
+
     fn store(&self) -> &MembershipStore<D> {
         &self.sm.membership
     }
@@ -61,6 +76,8 @@ mod tests {
 
     use super::*;
     use crate::{
+        cache::redis::RedisChx,
+        config::Config,
         create_dbx_mock_unsafe,
         dev::init::init_test,
         store::{
@@ -97,9 +114,16 @@ mod tests {
             execute: { Ok(1) }
         );
 
+        let config = Config::test_config();
+
+        // build store manager
         let dbx = Arc::new(MockDbxAccountRegister);
         let sm = Arc::new(StoreManager::new(dbx));
-        let svc = MembershipService::new(sm);
+
+        // build cache manager
+        let redis_cache = Arc::new(RedisChx::new(&config.redis_url).await);
+        let cm = Arc::new(CacheManager::new(redis_cache));
+        let svc = MembershipService::new(sm, cm);
 
         Ok(())
     }
@@ -125,10 +149,17 @@ mod tests {
             },
             execute: { Ok(1) }
         );
+
+        let config = Config::test_config();
+
+        // build store manager
         let dbx = Arc::new(MockDbxAccountRegister);
         let sm = Arc::new(StoreManager::new(dbx));
-        let svc = MembershipService::new(sm);
-        let ctx = CoreCtx::new_test();
+
+        // build cache manager
+        let redis_cache = Arc::new(RedisChx::new(&config.redis_url).await);
+        let cm = Arc::new(CacheManager::new(redis_cache));
+        let svc = MembershipService::new(sm, cm);
 
         Ok(())
     }

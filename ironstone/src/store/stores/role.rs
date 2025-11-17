@@ -1,12 +1,15 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, PgDbx},
+    dbx::PgDbx,
     entities::role::{
         RoleFilter, RoleForCreate, RoleForUpdate, RoleIden, RoleRow, RoleWithPermissions,
     },
     queries::meta::{ContainsFilterQueryMeta, ManyToManyQueryMeta, MutateQueryMeta, ReadQueryMeta},
-    traits::meta::{ContainsFilterStore, ManyToManyStore, MutateStore, ReadStore, Store},
+    traits::{
+        dbx::DbExecutor,
+        meta::{ContainsFilterStore, ManyToManyStore, MutateStore, ReadStore, Store},
+    },
 };
 /// The struct for our Role store, holding the database connection wrapper.
 pub struct RoleStore<D: DbExecutor> {

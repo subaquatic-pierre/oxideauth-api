@@ -11,9 +11,8 @@ use crate::{
         services::{account::AccountService, factory::ServiceFactory, token::TokenService},
     },
     store::{
-        dbx::{DbExecutor, PgDbx},
-        manager::StoreManager,
-        stores::token_blacklist::TokenBlacklistStore,
+        dbx::PgDbx, manager::StoreManager, stores::token_blacklist::TokenBlacklistStore,
+        traits::dbx::DbExecutor,
     },
 };
 
@@ -37,7 +36,7 @@ where
     }
 
     pub async fn resolve_ctx(&self, headers: &HeaderMap) -> CoreResult<CoreCtx> {
-        let token = match TokenService::<D, C>::token_str_from_req(&headers) {
+        let token = match TokenService::<D, C>::token_str_from_headers(&headers) {
             Some(t) => {
                 let token_svc = self.svc_build.token();
                 // decode token, will cause method to error if token signature or deserialization of claims fails, this means that request will return UNAUTHORIZED response. this is preferred behavior because token is on header. this means that request is malicious or has been tampered with, in which case return early

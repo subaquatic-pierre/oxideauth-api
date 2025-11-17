@@ -21,10 +21,7 @@ use crate::{
     core::services::ctx::{CtxConfig, CtxService},
     web::error::ErrorBody,
 };
-use crate::{
-    core::services::token::TokenService,
-    store::dbx::{DbExecutor, PgDbx},
-}; // Use Axum's body type
+use crate::{core::services::token::TokenService, store::dbx::PgDbx}; // Use Axum's body type
 
 #[derive(Clone)]
 pub struct CtxLayer {

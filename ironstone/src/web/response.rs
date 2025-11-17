@@ -9,7 +9,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::web::error::{WebError, WebResult};
+use crate::web::error::{JsonResResult, WebError};
 
 #[derive(Debug, Serialize)]
 pub struct WebResponse<T>
@@ -25,7 +25,7 @@ where
 }
 
 impl<T: Serialize> WebResponse<T> {
-    pub fn json(data: T) -> WebResult<Self> {
+    pub fn json(data: T) -> JsonResResult<Self> {
         let data = Self {
             success: true,
             status: StatusCode::OK.as_u16(),
@@ -35,7 +35,7 @@ impl<T: Serialize> WebResponse<T> {
         Ok(Json(data))
     }
 
-    pub fn json_flat(data: T) -> WebResult<T> {
+    pub fn json_flat(data: T) -> JsonResResult<T> {
         // let data = Self {
         //     success: true,
         //     status: StatusCode::OK.as_u16(),
@@ -45,7 +45,7 @@ impl<T: Serialize> WebResponse<T> {
         Ok(Json(data))
     }
 
-    pub fn with_status(data: T, status: StatusCode) -> WebResult<Self> {
+    pub fn with_status(data: T, status: StatusCode) -> JsonResResult<Self> {
         Ok(Json(Self {
             success: true,
             status: status.as_u16(),

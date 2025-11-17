@@ -9,13 +9,16 @@ use sqlx::{postgres::PgRow, FromRow};
 
 use crate::store::{
     ctx::StoreCtx,
-    dbx::{DbExecutor, PgDbx},
+    dbx::PgDbx,
     error::{StoreError, StoreResult},
     queries::{
         count::{count, count_many},
         meta::{CountManyQueryMeta, ManyToManyQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
     },
-    traits::meta::{HasId, StoreId, StoreRow, TableIden},
+    traits::{
+        dbx::DbExecutor,
+        meta::{HasId, StoreId, StoreRow, TableIden},
+    },
     utils::{pg_type_of, ListOptionsValidator, LIST_LIMIT_MAX},
 };
 

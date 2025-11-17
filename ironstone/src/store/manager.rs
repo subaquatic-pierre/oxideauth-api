@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use crate::store::{
-    dbx::{DbExecutor, PgDbx},
+    dbx::PgDbx,
     init::PgPool,
     stores::{
         account::AccountStore, credential::CredentialStore, membership::MembershipStore,
         permission::PermissionStore, project::ProjectStore, role::RoleStore,
         token_blacklist::TokenBlacklistStore, workspace::WorkspaceStore,
     },
+    traits::dbx::DbExecutor,
 };
 
 pub struct StoreManager<D: DbExecutor> {

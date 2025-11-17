@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use crate::{
     app::AppState,
-    cache::traits::CacheExecutor,
+    cache::{manager::CacheManager, traits::CacheExecutor},
     core::services::{
         account::AccountService,
         auth::AuthorizeService,
         token::{TokenService, TokenServiceConfig},
         workspace::WorkspaceService,
     },
-    store::{dbx::DbExecutor, manager::StoreManager},
+    store::{manager::StoreManager, traits::dbx::DbExecutor},
 };
 
 pub struct ServiceFactory<D, C>
@@ -18,7 +18,7 @@ where
     C: CacheExecutor,
 {
     sm: Arc<StoreManager<D>>,
-    cache: Arc<C>,
+    cm: Arc<CacheManager<C>>,
 }
 
 impl<D, C> ServiceFactory<D, C>
@@ -26,8 +26,8 @@ where
     D: DbExecutor,
     C: CacheExecutor,
 {
-    pub fn new(sm: Arc<StoreManager<D>>, cache: Arc<C>) -> Self {
-        Self { sm, cache }
+    pub fn new(sm: Arc<StoreManager<D>>, cm: Arc<CacheManager<C>>) -> Self {
+        Self { sm, cm }
     }
 
     pub fn account(&self) -> AccountService<D> {
@@ -49,7 +49,7 @@ where
     pub fn token(&self) -> TokenService<D, C> {
         // TODO: get config from storage, first check cache, if not found then check database and update cache
         let config = TokenServiceConfig::default();
-        let svc = TokenService::new(self.sm.clone(), self.cache.clone(), config);
+        let svc = TokenService::new(self.sm.clone(), self.cm.clone(), config);
         svc
     }
 }

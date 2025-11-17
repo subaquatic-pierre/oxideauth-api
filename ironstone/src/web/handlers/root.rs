@@ -9,13 +9,13 @@ use tracing::info;
 use crate::{
     app::{App, AppState},
     core::{ctx::CoreCtx, error::CoreError},
-    web::{error::WebResult, middlewares::cors::build_cors, response::WebResponse},
+    web::{error::JsonResResult, middlewares::cors::build_cors, response::WebResponse},
 };
 
 pub async fn index_handler(
     ctx: Extension<CoreCtx>,
     app: Extension<App>,
-) -> WebResult<WebResponse<String>> {
+) -> JsonResResult<WebResponse<String>> {
     info!("root_handler - CTX: {ctx:#?}");
     WebResponse::json("Hello, World".to_string())
 }
@@ -23,7 +23,7 @@ pub async fn index_handler(
 pub async fn health_check_handler(
     ctx: Extension<CoreCtx>,
     app: Extension<App>,
-) -> WebResult<WebResponse<String>> {
+) -> JsonResResult<WebResponse<String>> {
     info!("health_check_handler - CTX: {ctx:#?}");
     WebResponse::json("Healthy".to_string())
 }
