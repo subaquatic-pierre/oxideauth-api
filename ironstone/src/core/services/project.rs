@@ -24,7 +24,7 @@ use crate::{
         error::StoreError,
         manager::StoreManager,
         stores::project::ProjectStore,
-        traits::{crud::*, dbx::DbExecutor},
+        traits::{contains::FilterByContains, crud::*, dbx::DbExecutor},
         utils::ListOptionsValidator,
     },
 };
@@ -46,10 +46,8 @@ impl<D: DbExecutor> ProjectService<D> {
     pub async fn create(&self, ctx: &CoreCtx, params: ProjectCreateParams) -> CoreResult<Project> {
         let store = self.store();
 
-        // 1. Validate and fetch the associated Workspace (ensures it exists and context is valid)
         let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
 
-        // 2. Check if code already exists within this workspace scope
         if let Some(code) = &params.code {
             if store
                 .get_by_code(&ctx.into(), code, &params.workspace_id.into())
@@ -63,7 +61,6 @@ impl<D: DbExecutor> ProjectService<D> {
             }
         }
 
-        // 3. Map Core Params to Store ForCreate struct
         let n_project = ProjectForCreate {
             workspace_id: params.workspace_id,
             name: params.name,
@@ -74,14 +71,11 @@ impl<D: DbExecutor> ProjectService<D> {
             meta: params.meta,
         };
 
-        // 4. Execute store creation
         let project_row = store.create(&ctx.into(), n_project).await?;
 
-        // 5. Hydrate and return
         Project::from_row_with_workspace(project_row, workspace)
     }
 
-    /// Retrieves a single Project, scoped by the CoreCtx workspace ID.
     pub async fn describe(
         &self,
         ctx: &CoreCtx,
@@ -96,25 +90,21 @@ impl<D: DbExecutor> ProjectService<D> {
             .get_project_id(ctx, params.id, params.code, ws_id)
             .await?;
 
-        // 2. Fetch Project Row (Scoped lookup is ensured by the store/SQL)
         let project_row = store.get(&ctx.into(), &id_db).await?;
 
         Project::from_row_with_workspace(project_row, workspace)
     }
 
-    /// Updates an existing Project, scoped by the CoreCtx workspace ID.
     pub async fn update(&self, ctx: &CoreCtx, params: ProjectUpdateParams) -> CoreResult<Project> {
         let store = self.store();
 
         let ws_id = ctx.workspace_id();
         let workspace = self.get_project_workspace(ctx, ws_id).await?;
 
-        // 1. Resolve Project ID (Scoped lookup)
         let id_db = self
             .get_project_id(ctx, params.id, params.code.clone(), ws_id)
             .await?;
 
-        // 2. Check for new_code collision (if changing code)
         if let Some(new_code) = &params.new_code {
             if store
                 .get_by_code(&ctx.into(), new_code, &ws_id.into())
@@ -129,7 +119,6 @@ impl<D: DbExecutor> ProjectService<D> {
             }
         }
 
-        // 3. Map Core Params to Store ForUpdate struct
         let update_data = ProjectForUpdate {
             name: params.name,
             code: params.new_code, // Use the potentially changed code
@@ -139,10 +128,8 @@ impl<D: DbExecutor> ProjectService<D> {
             meta: params.meta,
         };
 
-        // 4. Execute store update
         let project_row = store.update(&ctx.into(), &id_db, update_data).await?;
 
-        // 5. Hydrate and return
         Project::from_row_with_workspace(project_row, workspace)
     }
 
@@ -166,44 +153,63 @@ impl<D: DbExecutor> ProjectService<D> {
         params: ProjectListParams,
     ) -> CoreResult<ListResponse<Project>> {
         let store = self.store();
+        let store_ctx: StoreCtx = ctx.into();
 
-        let ws_id = ctx.workspace_id();
-        let workspace = self.get_project_workspace(&ctx, ws_id).await?;
+        // 1. Validate and fetch the associated Workspace (required for hydration)
+        let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
 
-        let ctx: StoreCtx = ctx.into();
-
-        // 1. Prepare List Options and Filter
         let options = params.options.unwrap_or_else(ListOptionsValidator::default);
 
-        // Filter must enforce workspace ID scoping
-        let mut filter: ProjectFilter = params
-            .filter
-            .map(|f| f.validate())
-            .transpose()?
-            .map(|(_, f)| f)
-            .flatten()
-            .unwrap_or_default();
+        // 2. Validate and separate tags from filter nodes
+        let (tags, filter_nodes) = match params.filter {
+            Some(filter) => filter.validate()?,
+            None => (None, None),
+        };
 
-        // IMPLICIT SCOPING: Ensure the filter only returns projects in the current workspace
-        filter.workspace_id = Some(
-            filter
-                .workspace_id
-                .unwrap_or_default()
-                .eq(ws_id.to_string()),
-        );
+        // 3. Handle Tag-based Filtering (Requires specialized store methods)
+        if let Some(tags) = tags {
+            // Note: Assuming your store implements filter_by_tags_contain scoped by workspace_id
+            let data = store
+                .filter_by_tags_contain(&store_ctx, params.workspace_id, tags.clone())
+                .await?;
+            let total = store
+                .count_by_tags_contain(&store_ctx, params.workspace_id, tags)
+                .await?;
 
-        let data = store
-            .list(&ctx, Some(filter.clone()), Some(options.clone()))
-            .await?;
-        let total = store.count(&ctx, Some(filter)).await?;
+            // Hydrate results
+            let projects: Vec<Project> = data
+                .into_iter()
+                .map(|row| Project::from_row_with_workspace(row, workspace.clone()))
+                .collect::<CoreResult<Vec<Project>>>()?;
 
-        // 3. Hydrate all rows
-        let projects: Vec<Project> = data
-            .into_iter()
-            .map(|row| Project::from_row_with_workspace(row, workspace.clone()))
-            .collect::<CoreResult<Vec<Project>>>()?; // Collect results, propagating any hydration error
+            Ok(ListResponse::new(projects, total, options))
+        }
+        // 4. Handle Standard ModQL Filtering
+        else {
+            // Filter nodes must still enforce workspace_id scoping if it's not handled by the store method implicitly
+            let mut filter = filter_nodes.unwrap_or_default();
 
-        Ok(ListResponse::new(projects, total, options))
+            // Explicitly enforce scoping on the filter object
+            filter.workspace_id = Some(
+                filter
+                    .workspace_id
+                    .unwrap_or_default()
+                    .eq(params.workspace_id.to_string()),
+            );
+
+            let data = store
+                .list(&store_ctx, Some(filter.clone()), Some(options.clone()))
+                .await?;
+            let total = store.count(&store_ctx, Some(filter)).await?;
+
+            // Hydrate results
+            let projects: Vec<Project> = data
+                .into_iter()
+                .map(|row| Project::from_row_with_workspace(row, workspace.clone()))
+                .collect::<CoreResult<Vec<Project>>>()?;
+
+            Ok(ListResponse::new(projects, total, options))
+        }
     }
 
     // --- HELPER METHODS ---
