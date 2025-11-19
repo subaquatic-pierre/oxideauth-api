@@ -106,6 +106,8 @@ pub async fn filter_by_value_contains<E: DbExecutor, T: StoreRow, I: TableIden>(
 mod tests {
     use anyhow::Result;
     use env_logger::filter;
+    use modql::filter::{OrderBy, OrderBys};
+    use sea_query::Order;
     use serde_json::{from_value, json};
     use serial_test::serial;
 
@@ -420,6 +422,103 @@ mod tests {
             5,
             results_unscoped.len(),
             "Unscoped query should return all 5 records."
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_filter_by_contains_with_list_options() -> StoreResult<()> {
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+        let store = PermissionStore::new(dbx.clone());
+        let ctx = StoreCtx::new_root(); // Use unscoped context for simplicity
+
+        // 1. Setup Data
+
+        // Helper to create permissions with different 'name' values for ordering
+        let c_perm = |i: u32, name_prefix: &str| -> PermissionForCreate {
+            let name = format!("{}_{:03}", name_prefix, i);
+
+            PermissionForCreate {
+                workspace_id: ctx.ws_id,
+                name, // e.g., "P_005", "P_001"
+                meta: PermissionMeta {
+                    schema_version: "test_opts".to_string(), // Common meta for filtering
+                },
+                ..Default::default()
+            }
+        };
+
+        // Create 5 permissions, all matching the filter, with specific names for sorting
+        let names_to_create = vec![5, 1, 3, 4, 2];
+        for i in names_to_create {
+            store.create(&ctx, c_perm(i, "P")).await?;
+        }
+
+        // Total records created: 5.
+
+        // 2. Define Query Metadata and Filter Value (all 5 records match)
+        let meta = ContainsFilterQueryMeta {
+            table: PermissionIden::Table,
+            col: PermissionIden::Meta,
+            has_audit: false, // Assuming false for this test
+        };
+
+        let filter_value = ContainsFilter::Json(json!({"schema_version":"test_opts"}));
+
+        // 3. Test Ordering (Descending by 'name')
+
+        let opts_desc = Some(ListOptions {
+            limit: Some(5),
+            offset: None,
+            order_bys: Some(OrderBys::new(vec![OrderBy::Desc("name".to_string())])),
+            ..Default::default()
+        });
+
+        let results_desc: Vec<PermissionRow> =
+            filter_by_value_contains(&ctx, &dbx, filter_value.clone(), opts_desc, &meta).await?;
+
+        assert_eq!(5, results_desc.len(), "Should find all 5 records.");
+        // Check if the results are sorted 'P_005', 'P_004', 'P_003', 'P_002', 'P_001'
+        assert_eq!(
+            "P_005", results_desc[0].name,
+            "First result should be P_005 (DESC)"
+        );
+        assert_eq!(
+            "P_001", results_desc[4].name,
+            "Last result should be P_001 (DESC)"
+        );
+
+        // 4. Test Limit and Offset (Limit 2, Offset 1, Ascending by 'name')
+
+        let opts_limit_offset = Some(ListOptions {
+            limit: Some(2),
+            offset: Some(1),
+            order_bys: Some(OrderBys::new(vec![OrderBy::Asc("name".to_string())])),
+            ..Default::default()
+        });
+
+        let results_limited: Vec<PermissionRow> =
+            filter_by_value_contains(&ctx, &dbx, filter_value.clone(), opts_limit_offset, &meta)
+                .await?;
+
+        // Expected sort order: 'P_001', 'P_002', 'P_003', 'P_004', 'P_005'
+        // Limit 2, Offset 1 should return: 'P_002' and 'P_003'
+
+        assert_eq!(
+            2,
+            results_limited.len(),
+            "Limit should restrict results to 2."
+        );
+        assert_eq!(
+            "P_002", results_limited[0].name,
+            "First result should be P_002 (Offset 1 on ASC list)"
+        );
+        assert_eq!(
+            "P_003", results_limited[1].name,
+            "Second result should be P_003"
         );
 
         Ok(())
