@@ -14,6 +14,7 @@ use crate::{
             },
             list::ListResponse,
         },
+        traits::list::RequestListParams,
     },
     store::{
         contains::FilterByContains,
@@ -94,18 +95,16 @@ impl<D: DbExecutor> AccountService<D> {
 
         let ctx: StoreCtx = ctx.into();
 
-        let options = match params.options {
-            Some(options) => options,
-            None => ListOptionsValidator::default(),
-        };
+        let options = params.list_options();
 
-        let (tags, filter) = match params.filter {
-            Some(filter) => filter.validate()?,
-            None => (None, None),
-        };
+        let (tags, filter) = params.validate_filter_tags()?;
+
+        // NOTE: Account can never be workspace scoped, like other services such as ProjectService, because the model does not have a workspace_id field on it. This means Accounts are always global scoped. We have to find a different way to scope accounts by workspace, or only reserve account::list permission to memberships in the global namespace
 
         if let Some(tags) = tags {
-            let data = store.filter_by_tags_contain(&ctx, tags.clone()).await?;
+            let data = store
+                .filter_by_tags_contain(&ctx, tags.clone(), Some(options.clone()))
+                .await?;
             let total = store.count_by_tags_contain(&ctx, tags).await?;
 
             let accounts: Vec<Account> = data.into_iter().map(|el| el.into()).collect();

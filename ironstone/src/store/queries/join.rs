@@ -749,7 +749,7 @@ mod tests {
         let c = |i| {
             let mut cred = CredentialForCreate::default();
             cred.account_id = ctx.user_id;
-            cred.workspace_id = ctx.ns_id;
+            cred.workspace_id = ctx.ws_id;
             cred.provider_id = Some("TEST".to_string());
 
             cred
@@ -810,7 +810,7 @@ mod tests {
         let c = |acc_id| {
             let mut cred = CredentialForCreate::default();
             cred.account_id = acc_id;
-            cred.workspace_id = ctx.ns_id;
+            cred.workspace_id = ctx.ws_id;
             cred
         };
 
@@ -859,14 +859,14 @@ mod tests {
 
         let c_perm = |i| {
             let mut perm = PermissionForCreate::default();
-            perm.workspace_id = ctx.ns_id;
+            perm.workspace_id = ctx.ws_id;
             perm.name = format!("PERMISSION_GET_MANY_TEST_i_i_i_i{i}_iii_ii_iii___{i}__{i}");
             perm
         };
 
         let c_role = |i| {
             let mut role = RoleForCreate::default();
-            role.workspace_id = ctx.ns_id;
+            role.workspace_id = ctx.ws_id;
             role.name = format!("ROLE_GET_MANY_TEST_i_i_i_i{i}_iii_ii_iii___{i}__{i}");
             role
         };
@@ -962,14 +962,14 @@ mod tests {
 
         let c_perm = |i, name: String| {
             let mut perm = PermissionForCreate::default();
-            perm.workspace_id = ctx.ns_id;
+            perm.workspace_id = ctx.ws_id;
             perm.name = format!("PERMISSION_GET_MANY_TEST_{i}_{name}");
             perm
         };
 
         let c_role = |i| {
             let mut role = RoleForCreate::default();
-            role.workspace_id = ctx.ns_id;
+            role.workspace_id = ctx.ws_id;
             role.name = format!("ROLE_GET_MANY_TEST_{i}");
             role
         };
@@ -1063,7 +1063,7 @@ mod tests {
             .create(
                 &ctx,
                 RoleForCreate {
-                    workspace_id: ctx.ns_id,
+                    workspace_id: ctx.ws_id,
                     name: "ROLE_FOR_ATTACH_DETACH".to_string(),
                     ..Default::default()
                 },
@@ -1074,7 +1074,7 @@ mod tests {
             .create(
                 &ctx,
                 PermissionForCreate {
-                    workspace_id: ctx.ns_id,
+                    workspace_id: ctx.ws_id,
                     name: "PERMISSION_1_FOR_ATTACH_DETACH".to_string(),
                     ..Default::default()
                 },
@@ -1085,7 +1085,7 @@ mod tests {
             .create(
                 &ctx,
                 PermissionForCreate {
-                    workspace_id: ctx.ns_id,
+                    workspace_id: ctx.ws_id,
                     name: "PERMISSION_2_FOR_ATTACH_DETACH".to_string(),
                     ..Default::default()
                 },

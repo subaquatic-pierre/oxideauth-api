@@ -72,6 +72,7 @@ pub struct CountManyQueryMeta<I: TableIden> {
     pub fk: I,
 }
 /// Defines the value type for PostgreSQL containment queries (`@>`) used on array or JSONB columns.
+#[derive(Clone)]
 pub enum ContainsFilter {
     /// Represents an array of strings to check for containment within a PostgreSQL array column.
     Array(Vec<String>),
@@ -85,4 +86,6 @@ pub struct ContainsFilterQueryMeta<I: TableIden> {
     pub table: I,
     /// The column identifier that holds the array or JSONB data to be checked.
     pub col: I,
+    /// Audit flag for the parent table.
+    pub has_audit: bool,
 }

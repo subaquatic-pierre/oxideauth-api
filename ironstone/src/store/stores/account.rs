@@ -105,6 +105,7 @@ impl<D: DbExecutor> ContainsFilterStore for AccountStore<D> {
         ContainsFilterQueryMeta {
             table: AccountIden::Table,
             col: AccountIden::Tags,
+            has_audit: true,
         }
     }
 
@@ -112,6 +113,7 @@ impl<D: DbExecutor> ContainsFilterStore for AccountStore<D> {
         ContainsFilterQueryMeta {
             table: AccountIden::Table,
             col: AccountIden::Meta,
+            has_audit: true,
         }
     }
 }
@@ -276,13 +278,13 @@ mod tests {
         // Manually insert related credentials
         let mut n_cred = CredentialForCreate::default();
         n_cred.account_id = account.id.into();
-        n_cred.workspace_id = ctx.ns_id;
+        n_cred.workspace_id = ctx.ws_id;
         n_cred.provider = CredentialProvider::Google;
         app.sm.credential.create(&ctx, n_cred).await?;
 
         let mut n_cred = CredentialForCreate::default();
         n_cred.account_id = account.id.into();
-        n_cred.workspace_id = ctx.ns_id;
+        n_cred.workspace_id = ctx.ws_id;
         n_cred.provider = CredentialProvider::Local;
         app.sm.credential.create(&ctx, n_cred).await?;
 
@@ -344,7 +346,7 @@ mod tests {
 
         // -- Execute & Assert
         let system_accounts = store
-            .filter_by_tags_contain(&ctx, vec!["system".into()])
+            .filter_by_tags_contain(&ctx, vec!["system".into()], None)
             .await?;
         assert_eq!(
             system_accounts.len(),
@@ -354,7 +356,7 @@ mod tests {
         assert_eq!(system_accounts[0].email, "tags-a@example.com");
 
         let general_accounts = store
-            .filter_by_tags_contain(&ctx, vec!["general".into()])
+            .filter_by_tags_contain(&ctx, vec!["general".into()], None)
             .await?;
         assert_eq!(
             general_accounts.len(),

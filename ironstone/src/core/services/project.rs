@@ -14,6 +14,7 @@ use crate::{
             workspace::{Workspace, WorkspaceDescribeParams},
         },
         services::workspace::WorkspaceService,
+        traits::list::RequestListParams,
     },
     store::{
         ctx::StoreCtx,
@@ -153,63 +154,62 @@ impl<D: DbExecutor> ProjectService<D> {
         params: ProjectListParams,
     ) -> CoreResult<ListResponse<Project>> {
         let store = self.store();
-        let store_ctx: StoreCtx = ctx.into();
+        let mut store_ctx: StoreCtx = ctx.into();
 
-        // 1. Validate and fetch the associated Workspace (required for hydration)
-        let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
+        let options = params.list_options();
 
-        let options = params.options.unwrap_or_else(ListOptionsValidator::default);
+        let (tags, filter) = params.validate_filter_tags()?;
 
-        // 2. Validate and separate tags from filter nodes
-        let (tags, filter_nodes) = match params.filter {
-            Some(filter) => filter.validate()?,
-            None => (None, None),
-        };
-
-        // 3. Handle Tag-based Filtering (Requires specialized store methods)
         if let Some(tags) = tags {
+            // check if workspace exists on params
+
+            // if exists on params then scope to params.workspace_id
+            // store_ctx.set_workspace_scope(params.workspace_id)
+
             // Note: Assuming your store implements filter_by_tags_contain scoped by workspace_id
-            let data = store
-                .filter_by_tags_contain(&store_ctx, params.workspace_id, tags.clone())
-                .await?;
-            let total = store
-                .count_by_tags_contain(&store_ctx, params.workspace_id, tags)
-                .await?;
+            // let data = store
+            //     .filter_by_tags_contain(&store_ctx, params.workspace_id, tags.clone())
+            //     .await?;
+            // let total = store
+            //     .count_by_tags_contain(&store_ctx, params.workspace_id, tags)
+            //     .await?;
 
-            // Hydrate results
-            let projects: Vec<Project> = data
-                .into_iter()
-                .map(|row| Project::from_row_with_workspace(row, workspace.clone()))
-                .collect::<CoreResult<Vec<Project>>>()?;
+            // // Hydrate results
+            // let projects: Vec<Project> = data
+            //     .into_iter()
+            //     .map(|row| Project::from_row_with_workspace(row, workspace.clone()))
+            //     .collect::<CoreResult<Vec<Project>>>()?;
 
-            Ok(ListResponse::new(projects, total, options))
+            // Ok(ListResponse::new(projects, total, options))
         }
         // 4. Handle Standard ModQL Filtering
         else {
             // Filter nodes must still enforce workspace_id scoping if it's not handled by the store method implicitly
-            let mut filter = filter_nodes.unwrap_or_default();
+            // let mut filter = filter_nodes.unwrap_or_default();
 
-            // Explicitly enforce scoping on the filter object
-            filter.workspace_id = Some(
-                filter
-                    .workspace_id
-                    .unwrap_or_default()
-                    .eq(params.workspace_id.to_string()),
-            );
+            // // Explicitly enforce scoping on the filter object
+            // filter.workspace_id = Some(
+            //     filter
+            //         .workspace_id
+            //         .unwrap_or_default()
+            //         .eq(params.workspace_id.to_string()),
+            // );
 
-            let data = store
-                .list(&store_ctx, Some(filter.clone()), Some(options.clone()))
-                .await?;
-            let total = store.count(&store_ctx, Some(filter)).await?;
+            // let data = store
+            //     .list(&store_ctx, Some(filter.clone()), Some(options.clone()))
+            //     .await?;
+            // let total = store.count(&store_ctx, Some(filter)).await?;
 
-            // Hydrate results
-            let projects: Vec<Project> = data
-                .into_iter()
-                .map(|row| Project::from_row_with_workspace(row, workspace.clone()))
-                .collect::<CoreResult<Vec<Project>>>()?;
+            // // Hydrate results
+            // let projects: Vec<Project> = data
+            //     .into_iter()
+            //     .map(|row| Project::from_row_with_workspace(row, workspace.clone()))
+            //     .collect::<CoreResult<Vec<Project>>>()?;
 
-            Ok(ListResponse::new(projects, total, options))
+            // Ok(ListResponse::new(projects, total, options))
         }
+
+        todo!()
     }
 
     // --- HELPER METHODS ---

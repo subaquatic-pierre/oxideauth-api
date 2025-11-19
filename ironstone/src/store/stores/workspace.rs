@@ -106,6 +106,7 @@ impl<D: DbExecutor> ContainsFilterStore for WorkspaceStore<D> {
         ContainsFilterQueryMeta {
             table: WorkspaceIden::Table,
             col: WorkspaceIden::Tags,
+            has_audit: true,
         }
     }
 
@@ -113,6 +114,7 @@ impl<D: DbExecutor> ContainsFilterStore for WorkspaceStore<D> {
         ContainsFilterQueryMeta {
             table: WorkspaceIden::Table,
             col: WorkspaceIden::Meta,
+            has_audit: true,
         }
     }
 }
@@ -351,7 +353,7 @@ mod tests {
 
         // -- Execute & Assert
         let org_workspaces = store
-            .filter_by_tags_contain(&ctx, vec!["org".into()])
+            .filter_by_tags_contain(&ctx, vec!["org".into()], None)
             .await?;
         assert_eq!(
             org_workspaces.len(),
@@ -361,7 +363,7 @@ mod tests {
         assert_eq!(org_workspaces[0].name, "tags-ns-a");
 
         let personal_workspaces = store
-            .filter_by_tags_contain(&ctx, vec!["personal".into()])
+            .filter_by_tags_contain(&ctx, vec!["personal".into()], None)
             .await?;
         assert_eq!(
             personal_workspaces.len(),

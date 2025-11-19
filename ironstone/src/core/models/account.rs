@@ -3,8 +3,11 @@ use uuid::Uuid;
 
 use crate::{
     core::{
-        models::audit::CoreAuditFields,
-        models::list::{RequestFilterParams, RequestListOptions},
+        models::{
+            audit::CoreAuditFields,
+            list::{RequestFilterParams, RequestListOptions},
+        },
+        traits::list::RequestListParams,
     },
     store::entities::account::{
         AccountFilter as StoreAccountFilter, AccountMeta as StoreAccountMeta, AccountRow,
@@ -124,6 +127,20 @@ pub struct AccountUpdateParams {
 pub struct AccountListParams {
     pub filter: Option<RequestFilterParams<AccountFilter>>,
     pub options: Option<RequestListOptions>,
+}
+
+impl RequestListParams<AccountFilter> for AccountListParams {
+    fn filter(&self) -> Option<RequestFilterParams<AccountFilter>> {
+        self.filter.clone()
+    }
+
+    fn options(&self) -> Option<RequestListOptions> {
+        self.options.clone()
+    }
+
+    fn workspace_id(&self) -> Option<Uuid> {
+        todo!()
+    }
 }
 
 pub type AccountMeta = StoreAccountMeta;

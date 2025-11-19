@@ -4,12 +4,17 @@ use uuid::Uuid;
 
 pub struct StoreCtx {
     pub user_id: Uuid,
-    pub ns_id: Uuid,
+    pub ws_id: Uuid,
+    pub workspace_scope: Option<Uuid>,
 }
 
 impl StoreCtx {
-    pub fn new(user_id: Uuid, ns_id: Uuid) -> Self {
-        Self { user_id, ns_id }
+    pub fn new(user_id: Uuid, ws_id: Uuid) -> Self {
+        Self {
+            user_id,
+            ws_id,
+            workspace_scope: None,
+        }
     }
 
     pub fn new_root() -> Self {
@@ -19,7 +24,16 @@ impl StoreCtx {
 
         Self {
             user_id: root_user_id,
-            ns_id: root_workspace_id,
+            ws_id: root_workspace_id,
+            workspace_scope: None,
         }
+    }
+
+    pub fn workspace_scope(&self) -> Option<Uuid> {
+        self.workspace_scope
+    }
+
+    pub fn set_workspace_scope(&mut self, id: Uuid) {
+        self.workspace_scope = Some(id);
     }
 }

@@ -91,6 +91,7 @@ impl<D: DbExecutor> ContainsFilterStore for ProjectStore<D> {
         ContainsFilterQueryMeta {
             table: ProjectIden::Table,
             col: ProjectIden::Tags,
+            has_audit: true,
         }
     }
 
@@ -98,6 +99,7 @@ impl<D: DbExecutor> ContainsFilterStore for ProjectStore<D> {
         ContainsFilterQueryMeta {
             table: ProjectIden::Table,
             col: ProjectIden::Meta,
+            has_audit: true,
         }
     }
 }
@@ -308,7 +310,7 @@ mod tests {
 
         // -- Execute & Assert
         let frontend_projects = store
-            .filter_by_tags_contain(&ctx, vec!["frontend".into()])
+            .filter_by_tags_contain(&ctx, vec!["frontend".into()], None)
             .await?;
         assert_eq!(
             frontend_projects.len(),
@@ -318,7 +320,7 @@ mod tests {
         assert_eq!(frontend_projects[0].name, "tags-proj-a");
 
         let api_projects = store
-            .filter_by_tags_contain(&ctx, vec!["api".into()])
+            .filter_by_tags_contain(&ctx, vec!["api".into()], None)
             .await?;
         assert_eq!(
             api_projects.len(),

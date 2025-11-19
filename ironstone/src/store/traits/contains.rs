@@ -1,3 +1,4 @@
+use modql::filter::ListOptions;
 use serde_json::Value as JsonValue;
 
 use crate::store::ctx::StoreCtx;
@@ -27,11 +28,12 @@ pub trait FilterByContains: ContainsFilterStore {
         &self,
         ctx: &StoreCtx,
         tags: Vec<String>,
+        opts: Option<ListOptions>,
     ) -> StoreResult<Vec<Self::Row>> {
         let dbx = self.dbx();
         let meta = self.contains_tags_meta();
         let value = ContainsFilter::Array(tags);
-        filter_by_value_contains(ctx, &dbx, value, &meta).await
+        filter_by_value_contains(ctx, &dbx, value, opts, &meta).await
     }
 
     /// Returns a count of all records where the designated array column (e.g., `tags`)
@@ -72,10 +74,11 @@ pub trait FilterByContains: ContainsFilterStore {
         &self,
         ctx: &StoreCtx,
         json: JsonValue,
+        opts: Option<ListOptions>,
     ) -> StoreResult<Vec<Self::Row>> {
         let dbx = self.dbx();
         let meta = self.contains_json_meta();
         let value = ContainsFilter::Json(json);
-        filter_by_value_contains(ctx, &dbx, value, &meta).await
+        filter_by_value_contains(ctx, &dbx, value, opts, &meta).await
     }
 }

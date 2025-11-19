@@ -26,7 +26,7 @@ impl Membership {
 pub struct CachedMembership {
     pub id: Uuid,
     pub account_id: Uuid,
-    pub namespace_id: Uuid,
+    pub workspace_id: Uuid,
     pub role_ids: Vec<Uuid>,
     pub permissions: Vec<String>,
 }

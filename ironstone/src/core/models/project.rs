@@ -1,3 +1,4 @@
+use modql::filter::ListOptions;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -9,10 +10,14 @@ use crate::{
             list::{RequestFilterParams, RequestListOptions},
             workspace::Workspace,
         },
+        traits::list::RequestListParams,
     },
-    store::entities::project::{
-        ProjectConfig as StoreProjectConfig, ProjectFilter as StoreProjectFilter,
-        ProjectMeta as StoreProjectMeta, ProjectRow,
+    store::{
+        entities::project::{
+            ProjectConfig as StoreProjectConfig, ProjectFilter as StoreProjectFilter,
+            ProjectMeta as StoreProjectMeta, ProjectRow,
+        },
+        utils::ListOptionsValidator,
     },
 };
 
@@ -106,6 +111,50 @@ pub struct ProjectDeleteParams {
 pub struct ProjectListParams {
     pub filter: Option<RequestFilterParams<ProjectFilter>>,
     pub options: Option<RequestListOptions>,
+}
+
+impl RequestListParams<ProjectFilter> for ProjectListParams {
+    fn filter(&self) -> Option<RequestFilterParams<ProjectFilter>> {
+        self.filter.clone()
+    }
+
+    fn options(&self) -> Option<RequestListOptions> {
+        self.options.clone()
+    }
+
+    fn workspace_id(&self) -> Option<Uuid> {
+        if let Some(filter) = &self.filter {
+            if let Some(fields) = &filter.fields {
+                if let Some(op_vals) = &fields.workspace_id {
+                    // let str = op_vals.0.into_strings();
+
+                    // Uuid::try_parse(val)
+                    // if let Some(op_str) = workspace_id.0.into_iter().next() {
+                    //     let val: String = op_str.into();
+
+                    // }
+                }
+            }
+        }
+        None
+    }
+
+    // fn list_options(&self) -> RequestListOptions {
+    //     let options = self
+    //         .options
+    //         .clone()
+    //         .unwrap_or_else(ListOptionsValidator::default);
+    //     options
+    // }
+
+    // fn validate_filter_tags(&self) -> CoreResult<(Option<Vec<String>>, Option<ProjectFilter>)> {
+    //     let (tags, filter_nodes) = match &self.filter {
+    //         Some(filter) => filter.validate()?,
+    //         None => (None, None),
+    //     };
+
+    //     Ok((tags, filter_nodes))
+    // }
 }
 
 pub type ProjectConfig = StoreProjectConfig;

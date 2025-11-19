@@ -87,6 +87,7 @@ impl<D: DbExecutor> ContainsFilterStore for RoleStore<D> {
         ContainsFilterQueryMeta {
             table: RoleIden::Table,
             col: RoleIden::Tags,
+            has_audit: true,
         }
     }
 
@@ -94,6 +95,7 @@ impl<D: DbExecutor> ContainsFilterStore for RoleStore<D> {
         ContainsFilterQueryMeta {
             table: RoleIden::Table,
             col: RoleIden::Meta,
+            has_audit: true,
         }
     }
 }
@@ -390,7 +392,7 @@ mod tests {
 
         // -- Execute & Assert
         let billing_roles = store
-            .filter_by_tags_contain(&ctx, vec!["billing".into()])
+            .filter_by_tags_contain(&ctx, vec!["billing".into()], None)
             .await?;
         assert_eq!(
             billing_roles.len(),
@@ -400,7 +402,7 @@ mod tests {
         assert_eq!(billing_roles[0].name, "tags-role-a");
 
         let editor_roles = store
-            .filter_by_tags_contain(&ctx, vec!["editor".into()])
+            .filter_by_tags_contain(&ctx, vec!["editor".into()], None)
             .await?;
         assert_eq!(
             editor_roles.len(),

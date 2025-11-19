@@ -89,6 +89,7 @@ impl<D: DbExecutor> ContainsFilterStore for MembershipStore<D> {
         ContainsFilterQueryMeta {
             table: MembershipIden::Table,
             col: MembershipIden::Tags,
+            has_audit: true,
         }
     }
 
@@ -96,6 +97,7 @@ impl<D: DbExecutor> ContainsFilterStore for MembershipStore<D> {
         ContainsFilterQueryMeta {
             table: MembershipIden::Table,
             col: MembershipIden::Meta,
+            has_audit: true,
         }
     }
 }
@@ -411,7 +413,7 @@ mod tests {
 
         // -- Execute & Assert
         let system_memberships = store
-            .filter_by_tags_contain(&ctx, vec!["system".into()])
+            .filter_by_tags_contain(&ctx, vec!["system".into()], None)
             .await?;
         assert_eq!(
             system_memberships.len(),
@@ -421,7 +423,7 @@ mod tests {
         assert!(system_memberships[0].tags.contains(&"system".to_string()));
 
         let general_memberships = store
-            .filter_by_tags_contain(&ctx, vec!["general".into()])
+            .filter_by_tags_contain(&ctx, vec!["general".into()], None)
             .await?;
         assert_eq!(
             general_memberships.len(),

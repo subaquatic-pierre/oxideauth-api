@@ -68,6 +68,7 @@ impl<D: DbExecutor> ContainsFilterStore for PermissionStore<D> {
         ContainsFilterQueryMeta {
             table: PermissionIden::Table,
             col: PermissionIden::Tags,
+            has_audit: true,
         }
     }
 
@@ -75,6 +76,7 @@ impl<D: DbExecutor> ContainsFilterStore for PermissionStore<D> {
         ContainsFilterQueryMeta {
             table: PermissionIden::Table,
             col: PermissionIden::Meta,
+            has_audit: true,
         }
     }
 }
@@ -111,7 +113,7 @@ mod tests {
 
         let data = PermissionForCreate {
             name: "project:create".to_string(),
-            workspace_id: ctx.ns_id,
+            workspace_id: ctx.ws_id,
             ..Default::default()
         };
 
@@ -140,7 +142,7 @@ mod tests {
             .create(
                 &ctx,
                 PermissionForCreate {
-                    workspace_id: ctx.ns_id,
+                    workspace_id: ctx.ws_id,
                     ..Default::default()
                 },
             )
@@ -177,7 +179,7 @@ mod tests {
             .create(
                 &ctx,
                 PermissionForCreate {
-                    workspace_id: ctx.ns_id,
+                    workspace_id: ctx.ws_id,
                     ..Default::default()
                 },
             )
@@ -209,12 +211,12 @@ mod tests {
         let perms_to_create = vec![
             PermissionForCreate {
                 name: "perm:list:a".to_string(),
-                workspace_id: ctx.ns_id,
+                workspace_id: ctx.ws_id,
                 ..Default::default()
             },
             PermissionForCreate {
                 name: "perm:list:b".to_string(),
-                workspace_id: ctx.ns_id,
+                workspace_id: ctx.ws_id,
                 ..Default::default()
             },
         ];
@@ -247,7 +249,7 @@ mod tests {
                 PermissionForCreate {
                     name: "tags-perm-a".into(),
                     tags: vec!["resource".into(), "project".into()],
-                    workspace_id: ctx.ns_id,
+                    workspace_id: ctx.ws_id,
                     ..Default::default()
                 },
             )
@@ -258,7 +260,7 @@ mod tests {
                 PermissionForCreate {
                     name: "tags-perm-b".into(),
                     tags: vec!["action".into(), "delete".into()],
-                    workspace_id: ctx.ns_id,
+                    workspace_id: ctx.ws_id,
                     ..Default::default()
                 },
             )
@@ -266,7 +268,7 @@ mod tests {
 
         // -- Execute & Assert
         let project_perms = store
-            .filter_by_tags_contain(&ctx, vec!["project".into()])
+            .filter_by_tags_contain(&ctx, vec!["project".into()], None)
             .await?;
         assert_eq!(
             project_perms.len(),
@@ -276,7 +278,7 @@ mod tests {
         assert_eq!(project_perms[0].name, "tags-perm-a");
 
         let delete_perms = store
-            .filter_by_tags_contain(&ctx, vec!["delete".into()])
+            .filter_by_tags_contain(&ctx, vec!["delete".into()], None)
             .await?;
         assert_eq!(
             delete_perms.len(),
