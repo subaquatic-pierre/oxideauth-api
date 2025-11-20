@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     core::{
         error::{CoreError, CoreResult},
-        traits::modql::OpValIsString,
+        traits::filter::OpValIsString,
     },
     store::{
         filter::HasActiveFilter,
@@ -153,7 +153,7 @@ impl OpValIsString for OpValString {
 mod tests {
     use crate::core::{
         models::project::{ProjectFilter, ProjectListParams},
-        traits::{list::RequestListParams, modql::OpValIsString},
+        traits::{filter::OpValIsString, list::RequestListParams},
     };
 
     use super::*;

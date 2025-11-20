@@ -5,18 +5,12 @@ use crate::{
     core::{
         error::CoreResult,
         models::list::{RequestFilterParams, RequestListOptions},
-        traits::modql::OpValIsString,
+        traits::filter::{OpValIsString, OpValWorkspaceId},
     },
     store::utils::ListOptionsValidator,
 };
 
-// 1. Define the requirement for a filter structure
-pub trait HasWorkspaceId {
-    /// Must return a reference to the Option<OpValsString> for workspace_id.
-    fn get_workspace_id_opvals(&self) -> Option<&OpValsString>;
-}
-
-pub trait RequestListParams<F: IntoFilterNodes + Clone + HasWorkspaceId> {
+pub trait RequestListParams<F: IntoFilterNodes + Clone + OpValWorkspaceId> {
     fn filter(&self) -> Option<RequestFilterParams<F>>;
     fn options(&self) -> Option<RequestListOptions>;
 
@@ -39,11 +33,7 @@ pub trait RequestListParams<F: IntoFilterNodes + Clone + HasWorkspaceId> {
         self.filter()
             .as_ref()
             .and_then(|filter| filter.fields.as_ref())
-            .and_then(|fields| fields.get_workspace_id_opvals()) // Use the new trait method
-            .and_then(|op_vals| {
-                // We only care about the first operator value (op_vals.0 is Vec<OpValString>)
-                op_vals.0.first()
-            })
+            .and_then(|fields| fields.get_workspace_id_opval()) // Use the new trait method
             // Only proceed if the operator is OpValString::Eq and contains a string
             .and_then(|op_val_string| op_val_string.as_eq_string()) // Assuming OpValString::as_eq_string() exists
             // Attempt to parse the resulting string as a Uuid

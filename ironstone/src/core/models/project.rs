@@ -1,4 +1,4 @@
-use modql::filter::{op_val_string, ListOptions, OpValsString};
+use modql::filter::{op_val_string, ListOptions, OpValString, OpValsString};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -11,8 +11,8 @@ use crate::{
             workspace::Workspace,
         },
         traits::{
-            list::{HasWorkspaceId, RequestListParams},
-            modql::OpValIsString,
+            filter::{OpValIsString, OpValWorkspaceId},
+            list::RequestListParams,
         },
     },
     store::{
@@ -124,29 +124,16 @@ impl RequestListParams<ProjectFilter> for ProjectListParams {
     fn options(&self) -> Option<RequestListOptions> {
         self.options.clone()
     }
-
-    fn workspace_id(&self) -> Option<Uuid> {
-        self.filter
-            .as_ref() // Option<RequestFilterParams<ProjectFilter>> -> Option<&RequestFilterParams<ProjectFilter>>
-            .and_then(|filter| filter.fields.as_ref()) // Option<&ProjectFilter>
-            .and_then(|fields| fields.workspace_id.as_ref()) // Option<&OpValsString>
-            .and_then(|op_vals| {
-                // We only care about the first operator value (op_vals.0 is Vec<OpValString>)
-                op_vals.0.first()
-            })
-            // Only proceed if the operator is OpValString::Eq and contains a string
-            .and_then(|op_val_string| op_val_string.as_eq_string())
-            // Attempt to parse the resulting string as a Uuid
-            .and_then(|val_str| Uuid::try_parse(val_str).ok())
-    }
 }
 
 pub type ProjectConfig = StoreProjectConfig;
 pub type ProjectMeta = StoreProjectMeta;
 pub type ProjectFilter = StoreProjectFilter;
 
-impl HasWorkspaceId for ProjectFilter {
-    fn get_workspace_id_opvals(&self) -> Option<&OpValsString> {
-        self.workspace_id.as_ref()
+impl OpValWorkspaceId for ProjectFilter {
+    fn get_workspace_id_opval(&self) -> Option<&OpValString> {
+        self.workspace_id
+            .as_ref()
+            .and_then(|op_vals| op_vals.0.first())
     }
 }
