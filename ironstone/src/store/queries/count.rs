@@ -227,6 +227,8 @@ mod tests {
     use crate::store::entities::permission::{
         PermissionFilter, PermissionForCreate, PermissionRow,
     };
+    use crate::store::entities::workspace::WorkspaceForCreate;
+    use crate::store::stores::workspace::WorkspaceStore;
     use crate::store::traits::meta::MutateStore;
 
     use crate::{
@@ -523,32 +525,43 @@ mod tests {
         let dbx = app.sm.dbx().clone();
         let store = PermissionStore::new(dbx.clone());
 
+        let ws_store = WorkspaceStore::new(dbx.clone());
+
         // Use AccountStore and PermissionStore to simulate a parent-child relationship
         // where Account is the parent, and Permission has a FK to Account (simulated)
         let acc_store = AccountStore::new(dbx.clone());
         let acc_mutate_meta = acc_store.mutate_meta();
 
+        let root_ctx = StoreCtx::new_root();
+
         // 1. Define two distinct workspace IDs
-        let ws_a = Workspace::global_ws_id();
-        let ws_b = Workspace::default_ws_id();
+        let new_ws_a = WorkspaceForCreate {
+            ..Default::default()
+        };
+        let new_ws_b = WorkspaceForCreate {
+            ..Default::default()
+        };
+        let ws_a = ws_store.create(&root_ctx, new_ws_a).await?;
+        let ws_b = ws_store.create(&root_ctx, new_ws_b).await?;
 
         // 2. Create a parent account in WS_A (The target parent ID)
         let mut parent_dto = AccountForCreate::default();
         parent_dto.email = "parent_ws_a@example.com".to_string();
-        let parent_a: AccountRow =
-            create(&StoreCtx::new_root(), &dbx, parent_dto, &acc_mutate_meta).await?;
+        let parent_a: AccountRow = create(&root_ctx, &dbx, parent_dto, &acc_mutate_meta).await?;
 
         // 3. Create 3 child permissions linked to Parent A in WS_A (Target)
         for i in 0..3 {
-            let _ = create_permission_in_ws(&store, ws_a, &format!("CHILD_A_{i}")).await?;
+            let _ =
+                create_permission_in_ws(&store, ws_a.id.into(), &format!("CHILD_A_{i}")).await?;
         }
 
         // 4. Create 2 child permissions linked to Parent A in WS_B (Ignored by scope)
         for i in 0..2 {
-            let _ = create_permission_in_ws(&store, ws_b, &format!("CHILD_B_{i}")).await?;
+            let _ =
+                create_permission_in_ws(&store, ws_b.id.into(), &format!("CHILD_B_{i}")).await?;
         }
 
-        let parent_id: DbId = ws_a.into();
+        let parent_id: DbId = ws_a.id.into();
 
         // 5. Create a CountManyQueryMeta using 'name' as a simulated FK column
         // We use the tag COUNT_MANY_WS as the filter value (the parent ID)
@@ -558,20 +571,20 @@ mod tests {
         };
 
         // 6. Create scoped context for WS_A
-        let mut scoped_ctx = StoreCtx::new(Uuid::new_v4(), ws_a);
-        scoped_ctx.set_workspace_scope(ws_a);
+        let mut scoped_ctx = StoreCtx::new(Uuid::new_v4(), ws_a.id.into());
+        scoped_ctx.set_workspace_scope(ws_a.id.into());
 
         // Act
         // This query counts permissions WHERE name = 'CHILD_A/B...' AND workspace_id = WS_A
         let count_a = count_many(&scoped_ctx, &dbx, &parent_id, &count_many_meta).await?;
 
-        assert_eq!(count_a, 6);
+        assert_eq!(count_a, 3);
 
         // Re-run the count with a root context (should be the same if no other permissions exist)
-        let parent_id: DbId = ws_b.into();
+        let parent_id: DbId = ws_b.id.into();
         let root_ctx = StoreCtx::new_root();
         let total_root = count_many(&root_ctx, &dbx, &parent_id, &count_many_meta).await?;
-        assert_eq!(total_root, 4);
+        assert_eq!(total_root, 2);
 
         Ok(())
     }

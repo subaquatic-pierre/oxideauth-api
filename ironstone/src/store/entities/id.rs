@@ -45,3 +45,9 @@ impl From<DbId> for Uuid {
         value.0
     }
 }
+
+impl From<&DbId> for Uuid {
+    fn from(value: &DbId) -> Self {
+        value.0
+    }
+}
