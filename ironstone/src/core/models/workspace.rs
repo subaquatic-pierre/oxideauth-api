@@ -16,6 +16,10 @@ use crate::{
     },
 };
 
+// TODO: better way to define global workspace id
+pub const GLOBAL_WS_ID: &'static str = "10000000-0000-0000-0000-000000000001";
+pub const DEFAULT_WS_ID: &'static str = "10000000-0000-0000-0000-000000000002";
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Workspace {
     pub id: Uuid,
@@ -33,6 +37,16 @@ pub struct Workspace {
 
     // Audit Fields (timestamps, creators, updaters)
     pub audit: CoreAuditFields,
+}
+
+impl Workspace {
+    pub fn global_ws_id() -> Uuid {
+        Uuid::try_parse(GLOBAL_WS_ID).unwrap()
+    }
+
+    pub fn default_ws_id() -> Uuid {
+        Uuid::try_parse(DEFAULT_WS_ID).unwrap()
+    }
 }
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]

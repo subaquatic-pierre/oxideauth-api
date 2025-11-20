@@ -4,7 +4,13 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    core::models::{account::Account, workspace::Workspace},
+    core::{
+        error::CoreResult,
+        models::{
+            account::Account,
+            workspace::{Workspace, GLOBAL_WS_ID},
+        },
+    },
     store::ctx::StoreCtx,
     utils::time::now_utc,
 };
@@ -31,6 +37,11 @@ impl CoreCtx {
 
     pub fn workspace_id(&self) -> Uuid {
         self.workspace.id
+    }
+
+    pub fn is_global_workspace(&self) -> CoreResult<bool> {
+        let global_ws_id = Uuid::try_parse(GLOBAL_WS_ID)?;
+        Ok(self.workspace.id == global_ws_id)
     }
 }
 

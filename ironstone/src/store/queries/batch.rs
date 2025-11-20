@@ -11,12 +11,13 @@ use sqlx::{query_as_with, Postgres, QueryBuilder, Value};
 use uuid::Uuid;
 
 use crate::store::dbx::PgDbx;
+use crate::store::entities::workspace::WorkspaceIden;
 use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::MutateQueryMeta;
 use crate::store::traits::dbx::DbExecutor;
 use crate::store::traits::meta::{Store, StoreId, StoreRow, TableIden};
-use crate::store::utils::ListOptionsValidator;
 use crate::store::utils::{pg_type_of, prepare_audit_fields, push_sq_value};
+use crate::store::utils::{prepare_workspace_scope, ListOptionsValidator};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 
 /// Inserts multiple new entities into the database in a single batch operation
@@ -80,6 +81,8 @@ pub async fn create_many<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableId
         if meta.has_audit {
             prepare_audit_fields(&mut fields, user_id, true);
         }
+
+        let fields = prepare_workspace_scope(fields, ctx.workspace_scope());
 
         let (cols, vals) = fields.for_sea_insert();
 
@@ -152,6 +155,8 @@ pub async fn update_many<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableId
             prepare_audit_fields(&mut fields, ctx.user_id, false);
         }
 
+        let fields = prepare_workspace_scope(fields, ctx.workspace_scope());
+
         let fields = fields.for_sea_update();
 
         let query = query
@@ -209,6 +214,12 @@ pub async fn delete_many<E: DbExecutor, T: StoreRow, I: TableIden>(
     ListOptionsValidator::validate_limit(ids.len() as i64)?;
 
     let mut query = Query::delete();
+
+    if let Some(ws_id) = ctx.workspace_scope() {
+        // Add WHERE clause for workspace_id
+        let workspace_id_expr = Expr::col(WorkspaceIden::WorkspaceId).eq(ws_id);
+        query.and_where(workspace_id_expr);
+    }
 
     query
         .from_table(meta.table)

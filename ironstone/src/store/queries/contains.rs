@@ -81,9 +81,10 @@ pub async fn filter_by_value_contains<E: DbExecutor, T: StoreRow, I: TableIden>(
 
     if let Some(ws_id) = ctx.workspace_scope() {
         // Add WHERE clause for workspace_id
-        // Assuming 'workspace_id' is a column name identifier and ctx.workspace_id holds the value
-        let workspace_id_expr = Expr::col(Alias::new("workspace_id")).eq(ws_id);
-        query.and_where(workspace_id_expr);
+        let enforced_condition =
+            Condition::all().add(Expr::col(Alias::new("workspace_id")).eq(ws_id));
+
+        query.cond_where(enforced_condition);
     }
 
     // validate list options

@@ -5,7 +5,7 @@ use crate::{
     cache::{manager::CacheManager, traits::CacheExecutor},
     core::services::{
         account::AccountService,
-        auth::AuthorizeService,
+        auth::AuthService,
         token::{TokenService, TokenServiceConfig},
         workspace::WorkspaceService,
     },
@@ -40,9 +40,9 @@ where
         svc
     }
 
-    pub fn auth(&self) -> AuthorizeService<D> {
+    pub fn auth(&self) -> AuthService<D> {
         let acc_svc = self.account();
-        let svc = AuthorizeService::new(acc_svc);
+        let svc = AuthService::new(acc_svc);
         svc
     }
 

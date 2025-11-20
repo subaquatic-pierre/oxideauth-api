@@ -20,6 +20,8 @@ pub enum CoreError {
     NotFound(String),
 
     #[from]
+    UuidError(#[serde_as(as = "DisplayFromStr")] uuid::Error),
+    #[from]
     ReqwestError(#[serde_as(as = "DisplayFromStr")] reqwest::Error),
     #[from]
     StoreError(#[serde_as(as = "DisplayFromStr")] crate::store::error::StoreError),

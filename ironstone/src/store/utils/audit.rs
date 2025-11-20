@@ -1,8 +1,9 @@
 use modql::field::{SeaField, SeaFields};
+use sea_query::Iden;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::store::entities::audit::AuditIden;
+use crate::store::entities::{audit::AuditIden, workspace::WorkspaceIden};
 
 pub fn prepare_audit_fields(fields: &mut SeaFields, user_id: Uuid, is_create: bool) {
     let now = OffsetDateTime::now_utc();

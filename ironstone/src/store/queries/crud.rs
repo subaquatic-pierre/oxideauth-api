@@ -10,12 +10,13 @@ use sqlx::{query_as_with, Value};
 use uuid::Uuid;
 
 use crate::store::dbx::PgDbx;
+use crate::store::entities::workspace::WorkspaceIden;
 use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::{MutateQueryMeta, ReadQueryMeta};
 use crate::store::traits::dbx::DbExecutor;
 use crate::store::traits::meta::{Store, StoreId, StoreRow, TableIden};
-use crate::store::utils::prepare_audit_fields;
 use crate::store::utils::ListOptionsValidator;
+use crate::store::utils::{prepare_audit_fields, prepare_workspace_scope};
 use crate::store::{ctx::StoreCtx, manager::StoreManager};
 
 /// Inserts a single new entity into the database and returns the fully created row.
@@ -53,6 +54,11 @@ pub async fn create<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIden>(
     if meta.has_audit {
         prepare_audit_fields(&mut fields, user_id, true);
     }
+
+    // This uses the "Consumes and Returns" method, which is the standard Rust way
+    // to perform a mutable transformation when the inner data is private.
+    // It is functionally equivalent to an in-place modification of the `fields` variable.
+    let fields = prepare_workspace_scope(fields, ctx.workspace_scope());
 
     let (cols, vals) = fields.for_sea_insert();
     let mut query = Query::insert();
@@ -101,6 +107,12 @@ pub async fn get_opt<E: DbExecutor, T: StoreRow, I: TableIden>(
     meta: &ReadQueryMeta<I>,
 ) -> StoreResult<Option<T>> {
     let mut query = Query::select();
+
+    if let Some(ws_id) = ctx.workspace_scope() {
+        // Add WHERE clause for workspace_id
+        let workspace_id_expr = Expr::col(WorkspaceIden::WorkspaceId).eq(ws_id);
+        query.and_where(workspace_id_expr);
+    }
 
     query
         .from(meta.table)
@@ -191,7 +203,39 @@ pub async fn list<E: DbExecutor, T: StoreRow, F: Into<FilterGroups>, I: TableIde
     // FROM {DB::TABLE_NAME} SELECT *
     query.column(Asterisk).from(meta.table);
 
-    // apply filter to query
+    // 1. Context Scoping (The Security Guardrail)
+    if let Some(ws_id) = ctx.workspace_scope() {
+        // SCENARIO 1: CONTEXT IS SCOPED (Standard User Token)
+        // Enforce the workspace boundary unconditionally. This condition is added
+        // first and will be ANDed with the user's explicit filter (Step 2).
+        //
+        // 🔑 Key Security Takeaway (The Guardrail):
+        // If the context is scoped (e.g., ws_id = 'A'), the condition workspace_id = 'A' is added first.
+        // If the user's filter also contained a workspace_id (e.g., trying to search for workspace_id = 'B'),
+        // the final query becomes:
+        // $$\text{WHERE} \ (\text{workspace\_id} = 'A') \ \mathbf{AND} \ (\text{workspace\_id} = 'B' \ \text{AND} \ \text{name} = 'Some') \ldots$$
+        // Since $\text{workspace\_id} = 'A' \ \mathbf{AND} \ \text{workspace\_id} = 'B'$ (where $A \neq B$)
+        // is a logically false condition, the query will return zero results, thus preventing
+        // the standard user from escaping their assigned workspace.
+        // The context clause acts as a secure, enforced prefix to the user-provided filter,
+        // ensuring the security boundary is never breached. The clauses are **ANDed**, not overridden.
+
+        let enforced_condition =
+            Condition::all().add(Expr::col(WorkspaceIden::WorkspaceId).eq(ws_id));
+
+        query.cond_where(enforced_condition);
+    }
+
+    // SCENARIO 2 & 3: CONTEXT IS GLOBAL (Admin/Global Token)
+    // If the context is global, we do not enforce a scope here. The query will
+    // rely entirely on the user-provided filter in Step 2. If the user provided
+    // a workspace_id in the filter DTO (Scenario 2), it will be used. If not
+    // (Scenario 3), all data will be retrieved.
+
+    // 2. Apply User Filters
+    // The user's filters (from the handler FilterParam) are applied. Due to sea-query's
+    // internal logic, this condition is always ANDed with any preceding
+    // cond_where clauses (like the context scope from Step 1).
     if let Some(filter) = filter {
         let filters: FilterGroups = filter.into();
         let cond: Condition = filters.try_into()?;
@@ -260,6 +304,12 @@ pub async fn update_opt<E: DbExecutor, T: StoreRow, D: HasSeaFields, I: TableIde
     }
 
     let fields = fields.for_sea_update();
+
+    if let Some(ws_id) = ctx.workspace_scope() {
+        // Add WHERE clause for workspace_id
+        let workspace_id_expr = Expr::col(WorkspaceIden::WorkspaceId).eq(ws_id);
+        query.and_where(workspace_id_expr);
+    }
 
     let query = query
         .table(meta.table)
@@ -354,6 +404,12 @@ pub async fn delete_opt<E: DbExecutor, T: StoreRow, I: TableIden>(
     let id_str = id.to_string();
     let mut query = Query::delete();
 
+    if let Some(ws_id) = ctx.workspace_scope() {
+        // Add WHERE clause for workspace_id
+        let workspace_id_expr = Expr::col(WorkspaceIden::WorkspaceId).eq(ws_id);
+        query.and_where(workspace_id_expr);
+    }
+
     query
         .from_table(meta.table)
         .and_where(Expr::col(meta.pk).eq(id.clone()))
@@ -418,15 +474,19 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
+        core::models::workspace::GLOBAL_WS_ID,
         dev::init::init_test,
         store::{
-            entities::account::{
-                AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountMeta,
-                AccountRow,
+            entities::{
+                account::{
+                    AccountFilter, AccountForCreate, AccountForUpdate, AccountIden, AccountMeta,
+                    AccountRow,
+                },
+                permission::{PermissionForCreate, PermissionRow},
             },
             error::StoreError,
             queries::batch::create_many,
-            stores::account::AccountStore,
+            stores::{account::AccountStore, permission::PermissionStore},
             traits::{
                 crud::{Create, CreateMany, Delete, Get, List, Update},
                 meta::{MutateStore, ReadStore},
@@ -922,6 +982,61 @@ mod tests {
             .unwrap();
         assert!(idx1 < idx2, "expected loca-1 before loca-2 with ctime ASC");
         assert!(r1.audit.created_at <= r2.audit.created_at);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_create_enforces_workspace_scope() -> StoreResult<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+
+        let store = PermissionStore::new(dbx.clone());
+        let mutate_meta = store.mutate_meta();
+
+        // 1. Define the official, enforced workspace ID from the context (WS_A)
+        let enforced_ws_id = Uuid::try_parse(GLOBAL_WS_ID).unwrap();
+        let user_id = Uuid::new_v4();
+        let mut scoped_ctx = StoreCtx::new(user_id, enforced_ws_id);
+        scoped_ctx.set_workspace_scope(enforced_ws_id);
+
+        // 2. Define the forged workspace ID in the DTO (WS_B)
+        let forged_ws_id = Uuid::new_v4();
+        assert_ne!(enforced_ws_id, forged_ws_id, "Test IDs must be distinct");
+
+        // 3. Prepare DTO with the forged ID
+        let mut data = PermissionForCreate::default();
+        data.workspace_id = forged_ws_id;
+        data.name = "Scoped_Permission_Test".to_string();
+
+        // Act
+        // The create function should now call prepare_workspace_scope and overwrite
+        // data.workspace_id with scoped_ctx.workspace_scope().
+        let created_row: PermissionRow = create(&scoped_ctx, &dbx, data, &mutate_meta).await?;
+
+        // Assert
+
+        // 1. Verify the returned row contains the enforced ID
+        assert_eq!(
+            created_row.workspace_id, enforced_ws_id,
+            "Created row must have the context's enforced workspace_id."
+        );
+
+        // 2. Verify by fetching from the database (most rigorous check)
+        let fetched_row: PermissionRow = store.get(&scoped_ctx, &created_row.id).await?;
+
+        assert_eq!(
+            fetched_row.workspace_id, enforced_ws_id,
+            "Fetched row from DB must confirm the context's enforced workspace_id."
+        );
+
+        // Ensure the forged ID was NOT used
+        assert_ne!(
+            fetched_row.workspace_id, forged_ws_id,
+            "The forged DTO workspace_id must have been overridden."
+        );
 
         Ok(())
     }

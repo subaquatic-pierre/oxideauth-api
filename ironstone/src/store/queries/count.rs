@@ -7,6 +7,7 @@ use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, query_scalar_with, query_with, Value};
 
 use crate::store::dbx::PgDbx;
+use crate::store::entities::workspace::WorkspaceIden;
 use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::{
     ContainsFilter, ContainsFilterQueryMeta, CountManyQueryMeta, ReadQueryMeta,
@@ -50,7 +51,7 @@ use crate::store::{traits::meta::Store, utils::ListOptionsValidator};
 /// * `Ok(count)`: The total number of rows matching the optional filters.
 /// * `Err(StoreError)`: If there is an issue converting the filters or executing the query.
 pub async fn count<E: DbExecutor, F: Into<FilterGroups>, I: TableIden>(
-    _ctx: &StoreCtx,
+    ctx: &StoreCtx,
     dbx: &E,
     filter: Option<F>,
     meta: &ReadQueryMeta<I>,
@@ -61,6 +62,12 @@ pub async fn count<E: DbExecutor, F: Into<FilterGroups>, I: TableIden>(
     query
         .expr_as(Func::count(Expr::col(Asterisk)), "count")
         .from(meta.table);
+
+    if let Some(ws_id) = ctx.workspace_scope() {
+        // Add WHERE clause for workspace_id
+        let workspace_id_expr = Expr::col(WorkspaceIden::WorkspaceId).eq(ws_id);
+        query.and_where(workspace_id_expr);
+    }
 
     // apply filter
     if let Some(filter) = filter {
@@ -122,6 +129,12 @@ pub async fn count_many<E: DbExecutor, I: TableIden>(
 ) -> StoreResult<i64> {
     let mut query = Query::select();
 
+    if let Some(ws_id) = ctx.workspace_scope() {
+        // Add WHERE clause for workspace_id
+        let workspace_id_expr = Expr::col(WorkspaceIden::WorkspaceId).eq(ws_id);
+        query.and_where(workspace_id_expr);
+    }
+
     // SELECT COUNT(*) FROM {many_table}
     query
         .expr(Func::count(Expr::col(Asterisk)))
@@ -151,7 +164,7 @@ pub async fn count_many<E: DbExecutor, I: TableIden>(
 /// # Returns
 /// A StoreResult containing the count (i64).
 pub async fn count_contains<E, I>(
-    _ctx: &StoreCtx,
+    ctx: &StoreCtx,
     dbx: &E,
     value: ContainsFilter,
     meta: &ContainsFilterQueryMeta<I>,
@@ -161,6 +174,12 @@ where
     I: TableIden,
 {
     let mut query = Query::select();
+
+    if let Some(ws_id) = ctx.workspace_scope() {
+        // Add WHERE clause for workspace_id
+        let workspace_id_expr = Expr::col(WorkspaceIden::WorkspaceId).eq(ws_id);
+        query.and_where(workspace_id_expr);
+    }
 
     // SELECT COUNT(*)
     query
@@ -196,19 +215,32 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use anyhow::Result;
     use serde_json::{from_value, json};
     use serial_test::serial;
+    use uuid::Uuid;
+
+    use crate::core::models::workspace::Workspace;
+    use crate::store::entities::id::DbId;
+    use crate::store::entities::permission::{
+        PermissionFilter, PermissionForCreate, PermissionRow,
+    };
+    use crate::store::traits::meta::MutateStore;
 
     use crate::{
         dev::init::init_test,
         store::{
             contains::FilterByContains,
             ctx::StoreCtx,
-            entities::account::{AccountFilter, AccountForCreate, AccountRow},
+            entities::{
+                account::{AccountFilter, AccountForCreate, AccountRow},
+                permission::PermissionIden,
+            },
             meta::ContainsFilterStore,
             queries::crud::create,
-            stores::account::AccountStore,
+            stores::{account::AccountStore, permission::PermissionStore},
             traits::{
                 crud::{Create, Get},
                 meta::ReadStore,
@@ -373,6 +405,173 @@ mod tests {
 
         let total = count_contains(&ctx, &dbx, contains_filter, &meta).await?;
         assert_eq!(total as usize, 3, "Should include 3");
+
+        Ok(())
+    }
+
+    // Helper to create a row in a specific workspace
+    async fn create_permission_in_ws(
+        store: &PermissionStore<PgDbx>,
+        ws_id: Uuid,
+        name: &str,
+    ) -> StoreResult<PermissionRow> {
+        let ctx = StoreCtx::new_root(); // Use root context for creation to simplify
+        let mut data = PermissionForCreate::default();
+        data.workspace_id = ws_id;
+        data.name = name.to_string();
+        store.create(&ctx, data).await
+    }
+
+    // --- New Workspace Scoping Tests ---
+
+    #[tokio::test]
+    #[serial]
+    async fn test_count_scoped_pass() -> StoreResult<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+        let store = PermissionStore::new(dbx.clone());
+        let meta = store.read_meta();
+
+        // 1. Define two distinct workspace IDs
+        let ws_a = Workspace::global_ws_id();
+        let ws_b = Workspace::default_ws_id();
+        let tag = "COUNT_SCOPED_PASS";
+
+        // 2. Create 3 entities in WS_A (Target)
+        for i in 0..3 {
+            create_permission_in_ws(&store, ws_a, &format!("{tag}_A_{i}")).await?;
+        }
+
+        // 3. Create 2 entities in WS_B (Ignored)
+        for i in 0..2 {
+            create_permission_in_ws(&store, ws_b, &format!("{tag}_B_{i}")).await?;
+        }
+
+        // 4. Create scoped context for WS_A
+        let mut scoped_ctx = StoreCtx::new(Uuid::new_v4(), ws_a);
+        scoped_ctx.set_workspace_scope(ws_a);
+
+        // Filter for the tag (which exists in both A and B), but the scope should restrict the count.
+        let filter: PermissionFilter = from_value(json!({"name":{"$contains": tag}})).unwrap();
+
+        // Act
+        // The count function should internally AND the user's filter with 'workspace_id = WS_A'
+        let count_a = count(&scoped_ctx, &dbx, Some(filter), &meta).await?;
+
+        // Assert
+        assert_eq!(
+            count_a, 3,
+            "Scoped count must only include entities in WS_A."
+        );
+
+        // Clean-up/Sanity Check: Count as root (should be 5)
+        let root_ctx = StoreCtx::new_root();
+        let filter_all: PermissionFilter = from_value(json!({"name":{"$contains": tag}})).unwrap();
+        let total_root = count(&root_ctx, &dbx, Some(filter_all), &meta).await?;
+        assert_eq!(total_root, 5, "Root count must include all entities.");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_count_scoped_fail_other_ws() -> StoreResult<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+        let store = PermissionStore::new(dbx.clone());
+        let meta = store.read_meta();
+
+        // 1. Define workspace IDs
+        let ws_enforced = Workspace::global_ws_id(); // User's actual scope
+        let ws_target = Workspace::default_ws_id(); // Target workspace user is trying to count
+        let tag = "COUNT_SCOPED_FAIL";
+
+        // 2. Create 3 entities in WS_Target
+        for i in 0..3 {
+            create_permission_in_ws(&store, ws_target, &format!("{tag}_{i}")).await?;
+        }
+
+        // 3. Create scoped context for WS_ENFORCED
+        let mut scoped_ctx = StoreCtx::new(Uuid::new_v4(), ws_enforced);
+        scoped_ctx.set_workspace_scope(ws_enforced);
+
+        // 4. Filter attempts to explicitly count the other workspace (WS_Target)
+        let filter: PermissionFilter =
+            from_value(json!({"name":{"$contains": tag}, "workspace_id": ws_target.to_string()}))
+                .unwrap();
+
+        // Act
+        // The query will be: WHERE (workspace_id = WS_ENFORCED) AND (workspace_id = WS_TARGET)
+        let count_fail = count(&scoped_ctx, &dbx, Some(filter), &meta).await?;
+
+        // Assert
+        assert_eq!(
+            count_fail, 0,
+            "Scoped count must be 0 when user tries to filter for a different workspace ID."
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_count_many_scoped_pass() -> StoreResult<()> {
+        // Arrange
+        let app = init_test().await;
+        let dbx = app.sm.dbx().clone();
+        let store = PermissionStore::new(dbx.clone());
+
+        // Use AccountStore and PermissionStore to simulate a parent-child relationship
+        // where Account is the parent, and Permission has a FK to Account (simulated)
+        let acc_store = AccountStore::new(dbx.clone());
+        let acc_mutate_meta = acc_store.mutate_meta();
+
+        // 1. Define two distinct workspace IDs
+        let ws_a = Workspace::global_ws_id();
+        let ws_b = Workspace::default_ws_id();
+
+        // 2. Create a parent account in WS_A (The target parent ID)
+        let mut parent_dto = AccountForCreate::default();
+        parent_dto.email = "parent_ws_a@example.com".to_string();
+        let parent_a: AccountRow =
+            create(&StoreCtx::new_root(), &dbx, parent_dto, &acc_mutate_meta).await?;
+
+        // 3. Create 3 child permissions linked to Parent A in WS_A (Target)
+        for i in 0..3 {
+            let _ = create_permission_in_ws(&store, ws_a, &format!("CHILD_A_{i}")).await?;
+        }
+
+        // 4. Create 2 child permissions linked to Parent A in WS_B (Ignored by scope)
+        for i in 0..2 {
+            let _ = create_permission_in_ws(&store, ws_b, &format!("CHILD_B_{i}")).await?;
+        }
+
+        let parent_id: DbId = ws_a.into();
+
+        // 5. Create a CountManyQueryMeta using 'name' as a simulated FK column
+        // We use the tag COUNT_MANY_WS as the filter value (the parent ID)
+        let count_many_meta = CountManyQueryMeta {
+            table: PermissionIden::Table,
+            fk: PermissionIden::WorkspaceId, // Simulating FK column name = Name
+        };
+
+        // 6. Create scoped context for WS_A
+        let mut scoped_ctx = StoreCtx::new(Uuid::new_v4(), ws_a);
+        scoped_ctx.set_workspace_scope(ws_a);
+
+        // Act
+        // This query counts permissions WHERE name = 'CHILD_A/B...' AND workspace_id = WS_A
+        let count_a = count_many(&scoped_ctx, &dbx, &parent_id, &count_many_meta).await?;
+
+        assert_eq!(count_a, 6);
+
+        // Re-run the count with a root context (should be the same if no other permissions exist)
+        let parent_id: DbId = ws_b.into();
+        let root_ctx = StoreCtx::new_root();
+        let total_root = count_many(&root_ctx, &dbx, &parent_id, &count_many_meta).await?;
+        assert_eq!(total_root, 4);
 
         Ok(())
     }

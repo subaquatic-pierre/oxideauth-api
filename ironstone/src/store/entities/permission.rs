@@ -21,6 +21,7 @@ pub enum PermissionIden {
     Id, // TABLE_PK
     Meta,
     Tags,
+    WorkspaceId,
 }
 
 // --- Row (DB-facing) ---
