@@ -1,3 +1,4 @@
+use modql::filter::OpValsString;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -8,7 +9,7 @@ use crate::{
             list::{RequestFilterParams, RequestListOptions},
             oath::AuthProvider,
         },
-        traits::list::RequestListParams,
+        traits::list::{HasWorkspaceId, RequestListParams},
     },
     store::entities::workspace::{
         WorkspaceConfig as StoreWorkspaceConfig, WorkspaceFilter as StoreWorkspaceFilter,
@@ -112,10 +113,6 @@ impl RequestListParams<WorkspaceFilter> for WorkspaceListParams {
     fn options(&self) -> Option<RequestListOptions> {
         self.options.clone()
     }
-
-    fn workspace_id(&self) -> Option<Uuid> {
-        None
-    }
 }
 
 #[derive(Default, Clone, Debug)]
@@ -146,3 +143,9 @@ pub struct WorkspaceDescribeParams {
 
 pub type WorkspaceMeta = StoreWorkspaceMeta;
 pub type WorkspaceFilter = StoreWorkspaceFilter;
+
+impl HasWorkspaceId for WorkspaceFilter {
+    fn get_workspace_id_opvals(&self) -> Option<&OpValsString> {
+        None
+    }
+}

@@ -1,3 +1,4 @@
+use modql::filter::OpValsString;
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -7,7 +8,7 @@ use crate::{
             audit::CoreAuditFields,
             list::{RequestFilterParams, RequestListOptions},
         },
-        traits::list::RequestListParams,
+        traits::list::{HasWorkspaceId, RequestListParams},
     },
     store::entities::account::{
         AccountFilter as StoreAccountFilter, AccountMeta as StoreAccountMeta, AccountRow,
@@ -137,11 +138,13 @@ impl RequestListParams<AccountFilter> for AccountListParams {
     fn options(&self) -> Option<RequestListOptions> {
         self.options.clone()
     }
-
-    fn workspace_id(&self) -> Option<Uuid> {
-        None
-    }
 }
 
 pub type AccountMeta = StoreAccountMeta;
 pub type AccountFilter = StoreAccountFilter;
+
+impl HasWorkspaceId for AccountFilter {
+    fn get_workspace_id_opvals(&self) -> Option<&OpValsString> {
+        None
+    }
+}

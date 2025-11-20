@@ -153,7 +153,7 @@ impl OpValIsString for OpValString {
 mod tests {
     use crate::core::{
         models::project::{ProjectFilter, ProjectListParams},
-        traits::list::RequestListParams,
+        traits::{list::RequestListParams, modql::OpValIsString},
     };
 
     use super::*;
@@ -162,7 +162,7 @@ mod tests {
     use uuid::Uuid;
 
     #[test]
-    fn test_op_val_string_in_list_options() -> Result<()> {
+    fn test_op_val_string_in_list_filter() -> Result<()> {
         let filter_id = Uuid::new_v4();
         let filter: RequestFilterParams<ProjectFilter> = serde_json::from_value(
             json!({"tags":[],"fields":{"workspace_id":filter_id.to_string()}}),
@@ -173,6 +173,43 @@ mod tests {
             filter: Some(filter),
             options: None,
         };
+
+        let filter = params.filter().unwrap();
+        let fields = filter.fields.unwrap();
+
+        let fields_ws_id = fields
+            .workspace_id
+            .unwrap()
+            .0
+            .first()
+            .unwrap()
+            .as_eq_string()
+            .unwrap()
+            .to_string();
+        assert_eq!(filter_id.to_string(), fields_ws_id);
+
+        let id = params.workspace_id().unwrap();
+        assert_eq!(filter_id, id);
+        Ok(())
+    }
+
+    #[test]
+    fn test_list_options() -> Result<()> {
+        let filter_id = Uuid::new_v4();
+        let filter: RequestFilterParams<ProjectFilter> = serde_json::from_value(
+            json!({"tags":[],"fields":{"workspace_id":filter_id.to_string()}}),
+        )
+        .unwrap();
+        let options_input: RequestListOptions =
+            serde_json::from_value(json!({"limit":2,"offset":1,"order_bys":["created_at"]}))
+                .unwrap();
+
+        let params = ProjectListParams {
+            filter: Some(filter),
+            options: Some(options_input),
+        };
+
+        let options_expected = params.options();
 
         let id = params.workspace_id();
         assert_eq!(Some(filter_id), id);

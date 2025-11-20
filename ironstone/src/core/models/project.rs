@@ -1,4 +1,4 @@
-use modql::filter::{op_val_string, ListOptions};
+use modql::filter::{op_val_string, ListOptions, OpValsString};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -10,7 +10,10 @@ use crate::{
             list::{RequestFilterParams, RequestListOptions},
             workspace::Workspace,
         },
-        traits::{list::RequestListParams, modql::OpValIsString},
+        traits::{
+            list::{HasWorkspaceId, RequestListParams},
+            modql::OpValIsString,
+        },
     },
     store::{
         entities::project::{
@@ -141,3 +144,9 @@ impl RequestListParams<ProjectFilter> for ProjectListParams {
 pub type ProjectConfig = StoreProjectConfig;
 pub type ProjectMeta = StoreProjectMeta;
 pub type ProjectFilter = StoreProjectFilter;
+
+impl HasWorkspaceId for ProjectFilter {
+    fn get_workspace_id_opvals(&self) -> Option<&OpValsString> {
+        self.workspace_id.as_ref()
+    }
+}
