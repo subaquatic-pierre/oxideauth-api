@@ -22,13 +22,26 @@ impl Membership {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Debug, Clone, Deserialize)]
 pub struct CachedMembership {
     pub id: Uuid,
     pub account_id: Uuid,
     pub workspace_id: Uuid,
     pub role_ids: Vec<Uuid>,
     pub permissions: Vec<String>,
+}
+
+impl Default for CachedMembership {
+    fn default() -> Self {
+        let permissions = vec!["projects:list".to_string()];
+        Self {
+            id: Default::default(),
+            account_id: Default::default(),
+            workspace_id: Default::default(),
+            role_ids: Default::default(),
+            permissions,
+        }
+    }
 }
 
 pub struct MembershipCreateParams {}

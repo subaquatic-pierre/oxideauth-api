@@ -201,15 +201,38 @@ mod tests {
         )
         .unwrap();
         let options_input: RequestListOptions =
-            serde_json::from_value(json!({"limit":2,"offset":1,"order_bys":["created_at"]}))
+            serde_json::from_value(json!({"limit":2,"offset":1,"order_bys":"!created_at"}))
                 .unwrap();
 
         let params = ProjectListParams {
             filter: Some(filter),
-            options: Some(options_input),
+            options: Some(options_input.clone()),
         };
 
-        let options_expected = params.options();
+        let options_expected = params.options().unwrap();
+
+        assert_eq!(options_expected.limit, options_input.limit);
+        assert_eq!(options_expected.offset, options_input.offset);
+
+        let expected_order_bys: Vec<String> = options_expected
+            .order_bys
+            .unwrap()
+            .order_bys()
+            .iter()
+            .map(|el| el.to_string())
+            .collect();
+
+        let input_order_bys: Vec<String> = options_input
+            .order_bys
+            .unwrap()
+            .order_bys()
+            .iter()
+            .map(|el| el.to_string())
+            .collect();
+
+        println!("EXPECTED: {expected_order_bys:#?}, INPUT: {expected_order_bys:#?}");
+
+        assert_eq!(expected_order_bys, input_order_bys);
 
         let id = params.workspace_id();
         assert_eq!(Some(filter_id), id);

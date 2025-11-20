@@ -27,7 +27,7 @@ impl Role {
         self.permissions.remove(perms);
     }
 
-    pub fn build_permission_checker(&self) -> PermissionChecker<'_> {
+    pub fn build_permission_checker(&self) -> PermissionChecker {
         self.permissions.build_checker()
     }
 }
@@ -59,7 +59,7 @@ impl RolePermissions {
         }
     }
 
-    pub fn build_checker(&self) -> PermissionChecker<'_> {
+    pub fn build_checker(&self) -> PermissionChecker {
         let size = self.perms.len();
         let mut perms: Vec<PermissionCheck> = Vec::with_capacity(size);
         for perm in self.perms.iter() {
@@ -67,7 +67,7 @@ impl RolePermissions {
             perms.push(perm_check)
         }
 
-        PermissionChecker::new(&perms)
+        PermissionChecker::new(perms)
     }
 }
 

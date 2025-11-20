@@ -7,6 +7,7 @@ use crate::{
         error::{CoreError, CoreResult},
         models::{
             list::{ListResponse, RequestFilterParams},
+            permission::PermissionChecker,
             project::{
                 Project, ProjectCreateParams, ProjectDeleteParams, ProjectDescribeParams,
                 ProjectFilter, ProjectListParams, ProjectUpdateParams,
@@ -158,13 +159,19 @@ impl<D: DbExecutor> ProjectService<D> {
 
         let options = params.list_options();
 
+        // validate params
         let tags_filter = params.validate_filter_tags()?;
 
-        let workspace = AuthValidator::validate_workspace(ctx, params.workspace_id());
-
-        // validate workspace scope
+        // set workspace context
+        if let Some(workspace_id) = AuthValidator::validate_workspace(&ctx, params.workspace_id())?
+        {
+            store_ctx.set_workspace_scope(workspace_id);
+        }
 
         // validate permissions
+        let required_perms = PermissionChecker::new_perms(&["projects:list"])?;
+        let granted = ctx.permission_checker()?;
+        let _ = AuthValidator::validate_perms(granted, &required_perms)?;
 
         // filter by tags
         if let Some(tags) = tags_filter.tags() {
