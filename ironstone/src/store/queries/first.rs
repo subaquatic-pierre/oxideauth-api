@@ -1,11 +1,12 @@
 use modql::filter::{FilterGroups, ListOptions};
-use sea_query::Iden;
 use sea_query::{Asterisk, Condition, PostgresQueryBuilder, Query};
+use sea_query::{Expr, Iden};
 use sea_query_binder::SqlxBinder;
 use sqlx::{postgres::PgRow, FromRow};
 use sqlx::{query_as_with, Value};
 
 use crate::store::dbx::PgDbx;
+use crate::store::entities::workspace::WorkspaceIden;
 use crate::store::error::{StoreError, StoreResult};
 use crate::store::queries::meta::ReadQueryMeta;
 use crate::store::traits::dbx::DbExecutor;
@@ -56,6 +57,13 @@ pub async fn first_opt<E: DbExecutor, T: StoreRow, F: Into<FilterGroups>, I: Tab
 
     // FROM {DB::TABLE_NAME} SELECT *
     query.from(meta.table).column(Asterisk);
+
+    if let Some(ws_id) = ctx.workspace_scope() {
+        let enforced_condition =
+            Condition::all().add(Expr::col(WorkspaceIden::WorkspaceId).eq(ws_id));
+
+        query.cond_where(enforced_condition);
+    }
 
     // apply filter
     if let Some(filter) = filter {
