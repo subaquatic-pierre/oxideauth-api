@@ -1,4 +1,4 @@
-use modql::filter::ListOptions;
+use modql::filter::{op_val_string, ListOptions};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -10,7 +10,7 @@ use crate::{
             list::{RequestFilterParams, RequestListOptions},
             workspace::Workspace,
         },
-        traits::list::RequestListParams,
+        traits::{list::RequestListParams, modql::OpValIsString},
     },
     store::{
         entities::project::{
@@ -123,20 +123,18 @@ impl RequestListParams<ProjectFilter> for ProjectListParams {
     }
 
     fn workspace_id(&self) -> Option<Uuid> {
-        if let Some(filter) = &self.filter {
-            if let Some(fields) = &filter.fields {
-                if let Some(op_vals) = &fields.workspace_id {
-                    // let str = op_vals.0.into_strings();
-
-                    // Uuid::try_parse(val)
-                    // if let Some(op_str) = workspace_id.0.into_iter().next() {
-                    //     let val: String = op_str.into();
-
-                    // }
-                }
-            }
-        }
-        None
+        self.filter
+            .as_ref() // Option<RequestFilterParams<ProjectFilter>> -> Option<&RequestFilterParams<ProjectFilter>>
+            .and_then(|filter| filter.fields.as_ref()) // Option<&ProjectFilter>
+            .and_then(|fields| fields.workspace_id.as_ref()) // Option<&OpValsString>
+            .and_then(|op_vals| {
+                // We only care about the first operator value (op_vals.0 is Vec<OpValString>)
+                op_vals.0.first()
+            })
+            // Only proceed if the operator is OpValString::Eq and contains a string
+            .and_then(|op_val_string| op_val_string.as_eq_string())
+            // Attempt to parse the resulting string as a Uuid
+            .and_then(|val_str| Uuid::try_parse(val_str).ok())
     }
 }
 

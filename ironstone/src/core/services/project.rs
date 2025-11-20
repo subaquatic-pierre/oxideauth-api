@@ -13,7 +13,7 @@ use crate::{
             },
             workspace::{Workspace, WorkspaceDescribeParams},
         },
-        services::workspace::WorkspaceService,
+        services::{auth::AuthValidator, workspace::WorkspaceService},
         traits::list::RequestListParams,
     },
     store::{
@@ -159,6 +159,8 @@ impl<D: DbExecutor> ProjectService<D> {
         let options = params.list_options();
 
         let tags_filter = params.validate_filter_tags()?;
+
+        let workspace = AuthValidator::validate_workspace(ctx, params.workspace_id());
 
         // validate workspace scope
 

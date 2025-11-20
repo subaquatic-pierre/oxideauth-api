@@ -1,9 +1,12 @@
 use ironauth_macros::{HasActiveFilter, HasId};
-use modql::filter::{IntoFilterNodes, ListOptions, OrderBys};
+use modql::filter::{IntoFilterNodes, ListOptions, OpValString, OrderBys};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core::error::{CoreError, CoreResult},
+    core::{
+        error::{CoreError, CoreResult},
+        traits::modql::OpValIsString,
+    },
     store::{
         filter::HasActiveFilter,
         utils::{LIST_LIMIT_DEFAULT, LIST_LIMIT_MAX},
@@ -133,5 +136,46 @@ impl<T> ListResponse<T> {
         };
 
         ListResponse { data, metadata }
+    }
+}
+
+impl OpValIsString for OpValString {
+    /// Attempts to extract the inner String value if the variant is OpValString::Eq.
+    fn as_eq_string(&self) -> Option<&str> {
+        if let OpValString::Eq(s) = self {
+            Some(s)
+        } else {
+            None
+        }
+    }
+}
+
+mod tests {
+    use crate::core::{
+        models::project::{ProjectFilter, ProjectListParams},
+        traits::list::RequestListParams,
+    };
+
+    use super::*;
+    use anyhow::Result;
+    use serde_json::json;
+    use uuid::Uuid;
+
+    #[test]
+    fn test_op_val_string_in_list_options() -> Result<()> {
+        let filter_id = Uuid::new_v4();
+        let filter: RequestFilterParams<ProjectFilter> = serde_json::from_value(
+            json!({"tags":[],"fields":{"workspace_id":filter_id.to_string()}}),
+        )
+        .unwrap();
+
+        let params = ProjectListParams {
+            filter: Some(filter),
+            options: None,
+        };
+
+        let id = params.workspace_id();
+        assert_eq!(Some(filter_id), id);
+        Ok(())
     }
 }
