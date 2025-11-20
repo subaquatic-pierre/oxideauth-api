@@ -21,7 +21,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Project {
     pub id: Uuid,
     pub workspace: Workspace,
@@ -138,23 +138,6 @@ impl RequestListParams<ProjectFilter> for ProjectListParams {
         }
         None
     }
-
-    // fn list_options(&self) -> RequestListOptions {
-    //     let options = self
-    //         .options
-    //         .clone()
-    //         .unwrap_or_else(ListOptionsValidator::default);
-    //     options
-    // }
-
-    // fn validate_filter_tags(&self) -> CoreResult<(Option<Vec<String>>, Option<ProjectFilter>)> {
-    //     let (tags, filter_nodes) = match &self.filter {
-    //         Some(filter) => filter.validate()?,
-    //         None => (None, None),
-    //     };
-
-    //     Ok((tags, filter_nodes))
-    // }
 }
 
 pub type ProjectConfig = StoreProjectConfig;

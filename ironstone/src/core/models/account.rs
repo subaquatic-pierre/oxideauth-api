@@ -139,7 +139,7 @@ impl RequestListParams<AccountFilter> for AccountListParams {
     }
 
     fn workspace_id(&self) -> Option<Uuid> {
-        todo!()
+        None
     }
 }
 

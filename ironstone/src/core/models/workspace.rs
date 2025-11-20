@@ -2,10 +2,13 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    core::models::{
-        audit::CoreAuditFields,
-        list::{RequestFilterParams, RequestListOptions},
-        oath::AuthProvider,
+    core::{
+        models::{
+            audit::CoreAuditFields,
+            list::{RequestFilterParams, RequestListOptions},
+            oath::AuthProvider,
+        },
+        traits::list::RequestListParams,
     },
     store::entities::workspace::{
         WorkspaceConfig as StoreWorkspaceConfig, WorkspaceFilter as StoreWorkspaceFilter,
@@ -85,6 +88,20 @@ pub struct WorkspaceCreateParams {
 pub struct WorkspaceListParams {
     pub filter: Option<RequestFilterParams<WorkspaceFilter>>,
     pub options: Option<RequestListOptions>,
+}
+
+impl RequestListParams<WorkspaceFilter> for WorkspaceListParams {
+    fn filter(&self) -> Option<RequestFilterParams<WorkspaceFilter>> {
+        self.filter.clone()
+    }
+
+    fn options(&self) -> Option<RequestListOptions> {
+        self.options.clone()
+    }
+
+    fn workspace_id(&self) -> Option<Uuid> {
+        None
+    }
 }
 
 #[derive(Default, Clone, Debug)]

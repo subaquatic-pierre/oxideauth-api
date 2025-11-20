@@ -12,7 +12,7 @@ use crate::{
                 Account, AccountCreateParams, AccountDeleteParams, AccountDescribeParams,
                 AccountListParams, AccountUpdateParams,
             },
-            list::ListResponse,
+            list::{ListResponse, ListResponseMeta},
         },
         traits::list::RequestListParams,
     },
@@ -97,26 +97,34 @@ impl<D: DbExecutor> AccountService<D> {
 
         let options = params.list_options();
 
-        let (tags, filter) = params.validate_filter_tags()?;
+        let tags_filter = params.validate_filter_tags()?;
 
         // NOTE: Account can never be workspace scoped, like other services such as ProjectService, because the model does not have a workspace_id field on it. This means Accounts are always global scoped. We have to find a different way to scope accounts by workspace, or only reserve account::list permission to memberships in the global namespace
 
-        if let Some(tags) = tags {
+        // filter by tags
+        if let Some(tags) = tags_filter.tags() {
             let data = store
                 .filter_by_tags_contain(&ctx, tags.clone(), Some(options.clone()))
                 .await?;
             let total = store.count_by_tags_contain(&ctx, tags).await?;
 
             let accounts: Vec<Account> = data.into_iter().map(|el| el.into()).collect();
-            Ok(ListResponse::new(accounts, total, options))
-        } else {
+            return Ok(ListResponse::new(accounts, total, options));
+        }
+
+        // filter by filter
+        if let Some(filter) = tags_filter.filter() {
+            let filter = Some(filter);
             let data = store
                 .list(&ctx, filter.clone(), Some(options.clone()))
                 .await?;
             let total = store.count(&ctx, filter).await?;
             let accounts: Vec<Account> = data.into_iter().map(|el| el.into()).collect();
-            Ok(ListResponse::new(accounts, total, options))
+            return Ok(ListResponse::new(accounts, total, options));
         }
+
+        // empty result
+        Ok(ListResponse::default())
     }
 
     pub async fn delete(&self, ctx: &CoreCtx, params: AccountDeleteParams) -> CoreResult<Account> {

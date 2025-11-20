@@ -15,6 +15,7 @@ use crate::{
                 WorkspaceListParams, WorkspaceUpdateParams,
             },
         },
+        traits::list::RequestListParams,
     },
     store::{
         ctx::StoreCtx,
@@ -30,7 +31,7 @@ use crate::{
         error::StoreError,
         manager::StoreManager,
         stores::workspace::WorkspaceStore,
-        traits::{crud::*, dbx::DbExecutor},
+        traits::{contains::FilterByContains, crud::*, dbx::DbExecutor},
         utils::ListOptionsValidator,
     },
 };
@@ -152,24 +153,34 @@ impl<D: DbExecutor> WorkspaceService<D> {
         let store = self.store();
         let ctx: StoreCtx = ctx.into();
 
-        let options = params.options.unwrap_or(ListOptionsValidator::default());
+        let options = params.list_options();
 
-        let filter = params
-            .filter
-            .map(|f| f.validate())
-            .transpose()?
-            .map(|(t, f)| f)
-            .flatten(); // Simplified filter extraction
+        let tags_filter = params.validate_filter_tags()?;
 
-        // Execute store list and count
-        let data = store
-            .list(&ctx, filter.clone(), Some(options.clone()))
-            .await?;
-        let total = store.count(&ctx, filter).await?;
+        // filter by tags
+        if let Some(tags) = tags_filter.tags() {
+            let data = store
+                .filter_by_tags_contain(&ctx, tags.clone(), Some(options.clone()))
+                .await?;
+            let total = store.count_by_tags_contain(&ctx, tags).await?;
 
-        let workspaces: Vec<Workspace> = data.into_iter().map(Workspace::from).collect();
+            let accounts: Vec<Workspace> = data.into_iter().map(|el| el.into()).collect();
+            return Ok(ListResponse::new(accounts, total, options));
+        }
 
-        Ok(ListResponse::new(workspaces, total, options))
+        // filter by filter
+        if let Some(filter) = tags_filter.filter() {
+            let filter = Some(filter);
+            let data = store
+                .list(&ctx, filter.clone(), Some(options.clone()))
+                .await?;
+            let total = store.count(&ctx, filter).await?;
+            let accounts: Vec<Workspace> = data.into_iter().map(|el| el.into()).collect();
+            return Ok(ListResponse::new(accounts, total, options));
+        }
+
+        // empty result
+        Ok(ListResponse::default())
     }
 
     fn store(&self) -> &WorkspaceStore<D> {

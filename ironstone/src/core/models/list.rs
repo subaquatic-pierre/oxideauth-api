@@ -34,6 +34,20 @@ impl<F> RequestFilterParams<F>
 where
     F: Clone,
 {
+    pub fn new(tags: Option<Vec<String>>, filter: Option<F>) -> Self {
+        Self {
+            fields: filter,
+            tags,
+        }
+    }
+    pub fn tags(&self) -> Option<Vec<String>> {
+        self.tags.clone()
+    }
+
+    pub fn filter(&self) -> Option<F> {
+        self.fields.clone()
+    }
+
     /// Validates the request parameters, ensuring that the request does not contain both
     /// a `tags` filter and a flattened `filter` struct simultaneously.
     ///
@@ -41,14 +55,14 @@ where
     ///
     /// A `CoreResult` containing `Ok((Option<Vec<String>>, Option<F>))` if validation succeeds,
     /// or `Err(CoreError::InvalidParams)` if both filters are present.
-    pub fn validate(&self) -> CoreResult<(Option<Vec<String>>, Option<F>)> {
+    pub fn validate(&self) -> CoreResult<RequestFilterParams<F>> {
         if self.tags.is_some() && self.fields.is_some() {
             return Err(CoreError::InvalidParams(
                 "cannot have both filter and tags on params".to_string(),
             ));
         }
 
-        Ok((self.tags.clone(), self.fields.clone()))
+        Ok(Self::new(self.tags.clone(), self.fields.clone()))
     }
 }
 
@@ -56,7 +70,7 @@ where
 pub type RequestListOptions = ListOptions;
 
 /// Metadata detailing the list query result.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct ListResponseMeta {
     /// The total number of items available for the current filter criteria (ignoring pagination).
     pub total: i64,
@@ -72,7 +86,7 @@ pub struct ListResponseMeta {
 
 /// A standard structure used for returning list results, combining the retrieved data
 /// with metadata about the total count and pagination.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct ListResponse<T> {
     /// The vector of entities retrieved for the current page/query.
     pub data: Vec<T>,

@@ -158,9 +158,14 @@ impl<D: DbExecutor> ProjectService<D> {
 
         let options = params.list_options();
 
-        let (tags, filter) = params.validate_filter_tags()?;
+        let tags_filter = params.validate_filter_tags()?;
 
-        if let Some(tags) = tags {
+        // validate workspace scope
+
+        // validate permissions
+
+        // filter by tags
+        if let Some(tags) = tags_filter.tags() {
             // check if workspace exists on params
 
             // if exists on params then scope to params.workspace_id
@@ -183,7 +188,9 @@ impl<D: DbExecutor> ProjectService<D> {
             // Ok(ListResponse::new(projects, total, options))
         }
         // 4. Handle Standard ModQL Filtering
-        else {
+
+        // filter by filter
+        if let Some(filter) = tags_filter.filter() {
             // Filter nodes must still enforce workspace_id scoping if it's not handled by the store method implicitly
             // let mut filter = filter_nodes.unwrap_or_default();
 
@@ -209,7 +216,8 @@ impl<D: DbExecutor> ProjectService<D> {
             // Ok(ListResponse::new(projects, total, options))
         }
 
-        todo!()
+        // empty response
+        Ok(ListResponse::default())
     }
 
     // --- HELPER METHODS ---

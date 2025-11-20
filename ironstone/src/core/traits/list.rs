@@ -19,13 +19,13 @@ pub trait RequestListParams<F: IntoFilterNodes + Clone> {
         options
     }
 
-    fn validate_filter_tags(&self) -> CoreResult<(Option<Vec<String>>, Option<F>)> {
+    fn validate_filter_tags(&self) -> CoreResult<RequestFilterParams<F>> {
         let filter = self.filter();
-        let (tags, filter_nodes) = match filter {
+        let params = match filter {
             Some(filter) => filter.validate()?,
-            None => (None, None),
+            None => RequestFilterParams::new(None, None),
         };
 
-        Ok((tags, filter_nodes))
+        Ok(params)
     }
 }
