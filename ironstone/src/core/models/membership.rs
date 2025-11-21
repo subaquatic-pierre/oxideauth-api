@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::core::models::{account::Account, role::Role, workspace::Workspace};
+use crate::core::models::{
+    account::Account, permission::ALL_PERMISSIONS, role::Role, workspace::Workspace,
+};
 
 #[derive(Default)]
 pub struct Membership {
@@ -33,7 +35,8 @@ pub struct CachedMembership {
 
 impl Default for CachedMembership {
     fn default() -> Self {
-        let permissions = vec!["projects:list".to_string()];
+        let permissions = ALL_PERMISSIONS.iter().map(|el| el.to_string()).collect();
+
         Self {
             id: Default::default(),
             account_id: Default::default(),

@@ -9,7 +9,7 @@ use crate::{
         models::permission::{PermissionCheck, PermissionChecker},
         services::account::AccountService,
     },
-    store::{dbx::PgDbx, manager::StoreManager, traits::dbx::DbExecutor},
+    store::{ctx::StoreCtx, dbx::PgDbx, manager::StoreManager, traits::dbx::DbExecutor},
 };
 
 pub struct AuthService<D>
@@ -45,9 +45,15 @@ impl<D: DbExecutor> AuthService<D> {
     }
 }
 
-pub struct AuthValidator {}
+pub struct AuthValidator<'a> {
+    ctx: &'a CoreCtx,
+}
 
-impl AuthValidator {
+impl<'a> AuthValidator<'a> {
+    pub fn new(ctx: &'a CoreCtx) -> Self {
+        Self { ctx }
+    }
+
     pub fn validate_perms<'b>(
         granted: PermissionChecker,
         required: &[PermissionCheck],
@@ -58,6 +64,27 @@ impl AuthValidator {
         } else {
             Err(CoreError::Auth("invalid permissions".to_string()))
         }
+    }
+
+    pub fn validate_ctx_perms<'b>(&self, required: &[&str]) -> CoreResult<()> {
+        let ctx = self.ctx;
+        let required_perms = PermissionChecker::new_perms(required)?;
+        let granted = ctx.permission_checker()?;
+
+        Ok(())
+    }
+
+    pub fn scope_store_workspace(
+        &self,
+        requested_workspace_id: Option<Uuid>,
+    ) -> CoreResult<StoreCtx> {
+        let ctx = self.ctx;
+        let mut store_ctx: StoreCtx = ctx.into();
+        // set workspace context
+        if let Some(workspace_id) = self.validate_workspace(requested_workspace_id)? {
+            store_ctx.set_workspace_scope(workspace_id);
+        }
+        Ok(store_ctx)
     }
 
     /// Validates the requested workspace ID against the user's operational context.
@@ -91,10 +118,11 @@ impl AuthValidator {
     /// * `Ok(Some(Uuid))`: If validation succeeds (either global or matched scoped).
     /// * `Ok(None)`: Only if in a global context and no ID was requested.
     /// * `Err(CoreError::Auth)`: If the user is scoped and fails the validation checks.
-    pub fn validate_workspace<'b>(
-        ctx: &CoreCtx,
+    pub fn validate_workspace(
+        &self,
         requested_workspace_id: Option<Uuid>,
     ) -> CoreResult<Option<Uuid>> {
+        let ctx = self.ctx;
         let is_global_context = ctx.is_global_workspace()?;
 
         if is_global_context {

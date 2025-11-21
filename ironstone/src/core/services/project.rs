@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use uuid::Uuid;
 
 use crate::{
@@ -84,39 +84,51 @@ impl<D: DbExecutor> ProjectService<D> {
         params: ProjectDescribeParams,
     ) -> CoreResult<Project> {
         let store = self.store();
+        let auth_validator = self.validator(&ctx);
 
-        let ws_id = ctx.workspace_id();
-        let workspace = self.get_project_workspace(ctx, ws_id).await?;
+        // validate permissions
+        auth_validator.validate_ctx_perms(&["project:describe"])?;
+
+        let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
+
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
 
         let id_db = self
-            .get_project_id(ctx, params.id, params.code, ws_id)
+            .get_project_id(ctx, params.id, params.code, workspace.id)
             .await?;
 
-        let project_row = store.get(&ctx.into(), &id_db).await?;
+        let project_row = store.get(&store_ctx, &id_db).await?;
 
         Project::from_row_with_workspace(project_row, workspace)
     }
 
     pub async fn update(&self, ctx: &CoreCtx, params: ProjectUpdateParams) -> CoreResult<Project> {
         let store = self.store();
+        let auth_validator = self.validator(&ctx);
 
-        let ws_id = ctx.workspace_id();
-        let workspace = self.get_project_workspace(ctx, ws_id).await?;
+        // validate permissions
+        auth_validator.validate_ctx_perms(&["project:update"])?;
+
+        let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
+
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
 
         let id_db = self
-            .get_project_id(ctx, params.id, params.code.clone(), ws_id)
+            .get_project_id(ctx, params.id, params.code.clone(), workspace.id)
             .await?;
 
         if let Some(new_code) = &params.new_code {
             if store
-                .get_by_code(&ctx.into(), new_code, &ws_id.into())
+                .get_by_code(&ctx.into(), new_code, &workspace.id.into())
                 .await?
                 .filter(|p| p.id != id_db) // Filter out the current project
                 .is_some()
             {
                 return Err(CoreError::AlreadyExists(format!(
                     "Project code '{}' already exists in workspace {}",
-                    new_code, ws_id
+                    new_code, workspace.id
                 )));
             }
         }
@@ -130,21 +142,28 @@ impl<D: DbExecutor> ProjectService<D> {
             meta: params.meta,
         };
 
-        let project_row = store.update(&ctx.into(), &id_db, update_data).await?;
+        let project_row = store.update(&store_ctx, &id_db, update_data).await?;
 
         Project::from_row_with_workspace(project_row, workspace)
     }
 
     pub async fn delete(&self, ctx: &CoreCtx, params: ProjectDeleteParams) -> CoreResult<Project> {
         let store = self.store();
+        let auth_validator = self.validator(&ctx);
+
+        // validate permissions
+        auth_validator.validate_ctx_perms(&["project:delete"])?;
 
         let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
 
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
+
         let id_db = self
-            .get_project_id(ctx, params.id, params.code, params.workspace_id)
+            .get_project_id(ctx, params.id, params.code, workspace.id)
             .await?;
 
-        let deleted_row = store.delete(&ctx.into(), &id_db).await?;
+        let deleted_row = store.delete(&store_ctx, &id_db).await?;
 
         Project::from_row_with_workspace(deleted_row, workspace)
     }
@@ -155,74 +174,40 @@ impl<D: DbExecutor> ProjectService<D> {
         params: ProjectListParams,
     ) -> CoreResult<ListResponse<Project>> {
         let store = self.store();
-        let mut store_ctx: StoreCtx = ctx.into();
-
-        let options = params.list_options();
+        let auth_validator = self.validator(&ctx);
 
         // validate params
+        let list_options = params.list_options();
         let tags_filter = params.validate_filter_tags()?;
 
-        // set workspace context
-        if let Some(workspace_id) = AuthValidator::validate_workspace(&ctx, params.workspace_id())?
-        {
-            store_ctx.set_workspace_scope(workspace_id);
-        }
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(params.workspace_id())?;
 
         // validate permissions
-        let required_perms = PermissionChecker::new_perms(&["projects:list"])?;
-        let granted = ctx.permission_checker()?;
-        let _ = AuthValidator::validate_perms(granted, &required_perms)?;
+        auth_validator.validate_ctx_perms(&["project:list"])?;
 
         // filter by tags
         if let Some(tags) = tags_filter.tags() {
-            // check if workspace exists on params
+            let data = store
+                .filter_by_tags_contain(&store_ctx, tags.clone(), Some(list_options.clone()))
+                .await?;
+            let total = store.count_by_tags_contain(&store_ctx, tags).await?;
 
-            // if exists on params then scope to params.workspace_id
-            // store_ctx.set_workspace_scope(params.workspace_id)
+            let projects = self.hydrate_projects(&ctx, data).await?;
 
-            // Note: Assuming your store implements filter_by_tags_contain scoped by workspace_id
-            // let data = store
-            //     .filter_by_tags_contain(&store_ctx, params.workspace_id, tags.clone())
-            //     .await?;
-            // let total = store
-            //     .count_by_tags_contain(&store_ctx, params.workspace_id, tags)
-            //     .await?;
-
-            // // Hydrate results
-            // let projects: Vec<Project> = data
-            //     .into_iter()
-            //     .map(|row| Project::from_row_with_workspace(row, workspace.clone()))
-            //     .collect::<CoreResult<Vec<Project>>>()?;
-
-            // Ok(ListResponse::new(projects, total, options))
+            return Ok(ListResponse::new(projects, total, list_options));
         }
-        // 4. Handle Standard ModQL Filtering
 
         // filter by filter
         if let Some(filter) = tags_filter.filter() {
-            // Filter nodes must still enforce workspace_id scoping if it's not handled by the store method implicitly
-            // let mut filter = filter_nodes.unwrap_or_default();
+            let data = store
+                .list(&store_ctx, Some(filter.clone()), Some(list_options.clone()))
+                .await?;
+            let total = store.count(&store_ctx, Some(filter)).await?;
 
-            // // Explicitly enforce scoping on the filter object
-            // filter.workspace_id = Some(
-            //     filter
-            //         .workspace_id
-            //         .unwrap_or_default()
-            //         .eq(params.workspace_id.to_string()),
-            // );
+            let projects = self.hydrate_projects(&ctx, data).await?;
 
-            // let data = store
-            //     .list(&store_ctx, Some(filter.clone()), Some(options.clone()))
-            //     .await?;
-            // let total = store.count(&store_ctx, Some(filter)).await?;
-
-            // // Hydrate results
-            // let projects: Vec<Project> = data
-            //     .into_iter()
-            //     .map(|row| Project::from_row_with_workspace(row, workspace.clone()))
-            //     .collect::<CoreResult<Vec<Project>>>()?;
-
-            // Ok(ListResponse::new(projects, total, options))
+            return Ok(ListResponse::new(projects, total, list_options));
         }
 
         // empty response
@@ -235,6 +220,39 @@ impl<D: DbExecutor> ProjectService<D> {
         &self.sm.project
     }
 
+    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
+        AuthValidator::new(&ctx)
+    }
+
+    async fn hydrate_projects(
+        &self,
+        ctx: &CoreCtx,
+        rows: Vec<ProjectRow>,
+    ) -> CoreResult<Vec<Project>> {
+        let mut workspaces: HashMap<Uuid, Workspace> = HashMap::new();
+
+        let mut projects: Vec<Project> = Vec::with_capacity(rows.len());
+
+        // // Hydrate results
+        for row in rows.into_iter() {
+            let workspace_id: Uuid = row.workspace_id;
+            let workspace = match workspaces.get(&workspace_id) {
+                Some(ws) => ws,
+                None => {
+                    let ws = self.get_project_workspace(&ctx, workspace_id).await?;
+                    let ws_id = ws.id;
+                    workspaces.insert(ws_id, ws);
+                    // SAFETY: can unwrap as insert occurs directly above
+                    workspaces.get(&ws_id).unwrap()
+                }
+            };
+            let project = Project::from_row_with_workspace(row, workspace.clone())?;
+            projects.push(project);
+        }
+
+        Ok(projects)
+    }
+
     /// Fetches the required Workspace entity for hydration and confirms context validity.
     async fn get_project_workspace(
         &self,
@@ -245,6 +263,10 @@ impl<D: DbExecutor> ProjectService<D> {
             id: Some(workspace_id),
             slug: None,
         };
+
+        // TODO: need a way to enable workspace:describe permission for user that only has project:describe, because the call below requires workspace:describe permission, which the current user may not have. this means that project:describe will also fail
+
+        // possible solution would be to just add workspace:describe permission to current ctx
 
         self.ws_svc.describe(ctx, params).await
     }

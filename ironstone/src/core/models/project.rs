@@ -87,6 +87,13 @@ pub struct ProjectCreateParams {
 pub struct ProjectDescribeParams {
     pub id: Option<Uuid>,
     pub code: Option<String>,
+    pub workspace_id: Uuid,
+}
+
+impl ProjectDescribeParams {
+    pub fn validate(&self) -> CoreResult<()> {
+        Ok(())
+    }
 }
 
 #[derive(Debug, Deserialize)]
