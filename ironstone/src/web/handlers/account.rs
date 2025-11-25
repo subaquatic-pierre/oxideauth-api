@@ -75,7 +75,7 @@ pub async fn list_accounts(
 
 #[axum::debug_handler]
 pub async fn create_account(
-    ctx: Extension<CoreCtx>,
+    mut ctx: Extension<CoreCtx>,
     app: Extension<App>,
     body: JsonReqResult<AccountCreateReq>,
 ) -> JsonResResult<WebResponse<AccountDescribeRes>> {
@@ -83,12 +83,12 @@ pub async fn create_account(
     let svc = app.svc_build.account();
 
     let params: AccountCreateParams = body.into();
+    info!("create_account - CTX: {ctx:#?}");
 
-    let acc = svc.create(&ctx, params).await?;
+    let acc = svc.create(&mut ctx, params).await?;
 
     let acc_res = acc.into();
 
-    info!("create_account - CTX: {ctx:#?}");
     WebResponse::json(acc_res)
 }
 

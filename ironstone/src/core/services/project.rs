@@ -15,7 +15,7 @@ use crate::{
             workspace::{Workspace, WorkspaceDescribeParams},
         },
         services::{auth::AuthValidator, workspace::WorkspaceService},
-        traits::list::RequestListParams,
+        traits::{list::RequestListParams, service::CoreService},
     },
     store::{
         ctx::StoreCtx,
@@ -34,6 +34,18 @@ use crate::{
 pub struct ProjectService<D: DbExecutor> {
     sm: Arc<StoreManager<D>>,
     ws_svc: WorkspaceService<D>,
+}
+
+impl<D: DbExecutor> CoreService for ProjectService<D> {
+    type ServiceStore = ProjectStore<D>;
+
+    fn store(&self) -> &Self::ServiceStore {
+        &self.sm.project
+    }
+
+    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
+        AuthValidator::new(&ctx)
+    }
 }
 
 impl<D: DbExecutor> ProjectService<D> {
@@ -231,14 +243,6 @@ impl<D: DbExecutor> ProjectService<D> {
 
         // empty response
         Ok(ListResponse::default())
-    }
-
-    fn store(&self) -> &ProjectStore<D> {
-        &self.sm.project
-    }
-
-    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
-        AuthValidator::new(&ctx)
     }
 
     async fn hydrate_projects(

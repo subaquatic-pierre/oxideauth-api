@@ -14,7 +14,8 @@ use crate::{
             },
             list::{ListResponse, ListResponseMeta},
         },
-        traits::list::RequestListParams,
+        services::auth::AuthValidator,
+        traits::{list::RequestListParams, service::CoreService},
     },
     store::{
         contains::FilterByContains,
@@ -38,12 +39,28 @@ pub struct AccountService<D: DbExecutor> {
     // password_hasher: Arc<dyn PasswordHasher>, // Dependency for hashing
 }
 
+impl<D: DbExecutor> CoreService for AccountService<D> {
+    type ServiceStore = AccountStore<D>;
+
+    fn store(&self) -> &Self::ServiceStore {
+        &self.sm.account
+    }
+
+    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
+        AuthValidator::new(&ctx)
+    }
+}
+
 impl<D: DbExecutor> AccountService<D> {
     pub fn new(sm: Arc<StoreManager<D>>) -> Self {
         Self { sm }
     }
 
-    pub async fn create(&self, ctx: &CoreCtx, params: AccountCreateParams) -> CoreResult<Account> {
+    pub async fn create(
+        &self,
+        ctx: &mut CoreCtx,
+        params: AccountCreateParams,
+    ) -> CoreResult<Account> {
         let store = self.store();
 
         if store
@@ -188,10 +205,6 @@ impl<D: DbExecutor> AccountService<D> {
 
         Ok(id)
     }
-
-    fn store(&self) -> &AccountStore<D> {
-        &self.sm.account
-    }
 }
 
 #[cfg(test)]
@@ -240,10 +253,10 @@ mod tests {
         let dbx = Arc::new(MockDbxAccountRegister);
         let sm = Arc::new(StoreManager::new(dbx));
         let svc = AccountService::new(sm);
-        let ctx = CoreCtx::new_test()?;
+        let mut ctx = CoreCtx::new_test()?;
         let params = AccountCreateParams::default();
 
-        let new_acc = svc.create(&ctx, params).await?;
+        let new_acc = svc.create(&mut ctx, params).await?;
 
         let expected = Account::default();
 
@@ -280,9 +293,9 @@ mod tests {
         let dbx = Arc::new(MockDbxAccountRegister);
         let sm = Arc::new(StoreManager::new(dbx));
         let svc = AccountService::new(sm);
-        let ctx = CoreCtx::new_test()?;
+        let mut ctx = CoreCtx::new_test()?;
         let params = AccountCreateParams::default();
-        let new_acc = svc.create(&ctx, params).await;
+        let new_acc = svc.create(&mut ctx, params).await;
 
         assert!(
             matches!(new_acc, Err(CoreError::AlreadyExists(..))),
