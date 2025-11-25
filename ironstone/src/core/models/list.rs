@@ -150,6 +150,7 @@ impl OpValIsString for OpValString {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use crate::core::{
         models::project::{ProjectFilter, ProjectListParams},

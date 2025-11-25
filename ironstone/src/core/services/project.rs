@@ -7,7 +7,7 @@ use crate::{
         error::{CoreError, CoreResult},
         models::{
             list::{ListResponse, RequestFilterParams},
-            permission::PermissionChecker,
+            permission::{Permission, PermissionChecker},
             project::{
                 Project, ProjectCreateParams, ProjectDeleteParams, ProjectDescribeParams,
                 ProjectFilter, ProjectListParams, ProjectUpdateParams,
@@ -45,10 +45,21 @@ impl<D: DbExecutor> ProjectService<D> {
     }
 
     /// Creates a new Project, scoped to the provided workspace ID.
-    pub async fn create(&self, ctx: &CoreCtx, params: ProjectCreateParams) -> CoreResult<Project> {
+    pub async fn create(
+        &self,
+        ctx: &mut CoreCtx,
+        params: ProjectCreateParams,
+    ) -> CoreResult<Project> {
         let store = self.store();
-
         let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
+
+        let auth_validator = self.validator(&ctx);
+
+        // validate permissions
+        auth_validator.validate_ctx_perms(&["project:create"])?;
+
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
 
         if let Some(code) = &params.code {
             if store
@@ -80,16 +91,16 @@ impl<D: DbExecutor> ProjectService<D> {
 
     pub async fn describe(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: ProjectDescribeParams,
     ) -> CoreResult<Project> {
         let store = self.store();
+        let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
+
         let auth_validator = self.validator(&ctx);
 
         // validate permissions
         auth_validator.validate_ctx_perms(&["project:describe"])?;
-
-        let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
 
         // scope store_ctx
         let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
@@ -103,14 +114,18 @@ impl<D: DbExecutor> ProjectService<D> {
         Project::from_row_with_workspace(project_row, workspace)
     }
 
-    pub async fn update(&self, ctx: &CoreCtx, params: ProjectUpdateParams) -> CoreResult<Project> {
+    pub async fn update(
+        &self,
+        ctx: &mut CoreCtx,
+        params: ProjectUpdateParams,
+    ) -> CoreResult<Project> {
         let store = self.store();
+        let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
+
         let auth_validator = self.validator(&ctx);
 
         // validate permissions
         auth_validator.validate_ctx_perms(&["project:update"])?;
-
-        let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
 
         // scope store_ctx
         let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
@@ -147,14 +162,18 @@ impl<D: DbExecutor> ProjectService<D> {
         Project::from_row_with_workspace(project_row, workspace)
     }
 
-    pub async fn delete(&self, ctx: &CoreCtx, params: ProjectDeleteParams) -> CoreResult<Project> {
+    pub async fn delete(
+        &self,
+        ctx: &mut CoreCtx,
+        params: ProjectDeleteParams,
+    ) -> CoreResult<Project> {
         let store = self.store();
+        let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
+
         let auth_validator = self.validator(&ctx);
 
         // validate permissions
         auth_validator.validate_ctx_perms(&["project:delete"])?;
-
-        let workspace = self.get_project_workspace(ctx, params.workspace_id).await?;
 
         // scope store_ctx
         let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
@@ -170,7 +189,7 @@ impl<D: DbExecutor> ProjectService<D> {
 
     pub async fn list(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: ProjectListParams,
     ) -> CoreResult<ListResponse<Project>> {
         let store = self.store();
@@ -193,7 +212,7 @@ impl<D: DbExecutor> ProjectService<D> {
                 .await?;
             let total = store.count_by_tags_contain(&store_ctx, tags).await?;
 
-            let projects = self.hydrate_projects(&ctx, data).await?;
+            let projects = self.hydrate_projects(ctx, data).await?;
 
             return Ok(ListResponse::new(projects, total, list_options));
         }
@@ -205,7 +224,7 @@ impl<D: DbExecutor> ProjectService<D> {
                 .await?;
             let total = store.count(&store_ctx, Some(filter)).await?;
 
-            let projects = self.hydrate_projects(&ctx, data).await?;
+            let projects = self.hydrate_projects(ctx, data).await?;
 
             return Ok(ListResponse::new(projects, total, list_options));
         }
@@ -213,8 +232,6 @@ impl<D: DbExecutor> ProjectService<D> {
         // empty response
         Ok(ListResponse::default())
     }
-
-    // --- HELPER METHODS ---
 
     fn store(&self) -> &ProjectStore<D> {
         &self.sm.project
@@ -226,7 +243,7 @@ impl<D: DbExecutor> ProjectService<D> {
 
     async fn hydrate_projects(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         rows: Vec<ProjectRow>,
     ) -> CoreResult<Vec<Project>> {
         let mut workspaces: HashMap<Uuid, Workspace> = HashMap::new();
@@ -239,7 +256,7 @@ impl<D: DbExecutor> ProjectService<D> {
             let workspace = match workspaces.get(&workspace_id) {
                 Some(ws) => ws,
                 None => {
-                    let ws = self.get_project_workspace(&ctx, workspace_id).await?;
+                    let ws = self.get_project_workspace(ctx, workspace_id).await?;
                     let ws_id = ws.id;
                     workspaces.insert(ws_id, ws);
                     // SAFETY: can unwrap as insert occurs directly above
@@ -256,7 +273,7 @@ impl<D: DbExecutor> ProjectService<D> {
     /// Fetches the required Workspace entity for hydration and confirms context validity.
     async fn get_project_workspace(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         workspace_id: Uuid,
     ) -> CoreResult<Workspace> {
         let params = WorkspaceDescribeParams {
@@ -264,9 +281,8 @@ impl<D: DbExecutor> ProjectService<D> {
             slug: None,
         };
 
-        // TODO: need a way to enable workspace:describe permission for user that only has project:describe, because the call below requires workspace:describe permission, which the current user may not have. this means that project:describe will also fail
-
-        // possible solution would be to just add workspace:describe permission to current ctx
+        let added_perms = vec![Permission::try_from("workspace:describe")?];
+        ctx.perm_checker.extend(added_perms);
 
         self.ws_svc.describe(ctx, params).await
     }

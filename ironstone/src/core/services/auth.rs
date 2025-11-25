@@ -6,7 +6,7 @@ use crate::{
     core::{
         ctx::CoreCtx,
         error::{CoreError, CoreResult},
-        models::permission::{PermissionCheck, PermissionChecker},
+        models::permission::{Permission, PermissionChecker},
         services::account::AccountService,
     },
     store::{ctx::StoreCtx, dbx::PgDbx, manager::StoreManager, traits::dbx::DbExecutor},
@@ -54,24 +54,26 @@ impl<'a> AuthValidator<'a> {
         Self { ctx }
     }
 
-    pub fn validate_perms<'b>(
-        granted: PermissionChecker,
-        required: &[PermissionCheck],
-    ) -> CoreResult<bool> {
-        let all_required_match_granted = granted.has_subset(required);
+    pub fn validate_perms<'b>(granted: &PermissionChecker, required: &[&str]) -> CoreResult<()> {
+        let required = Permission::perms_from_str_slice(required)?;
+        let all_required_match_granted = granted.has_subset(&required);
         if (all_required_match_granted) {
-            Ok(true)
+            Ok(())
         } else {
             Err(CoreError::Auth("invalid permissions".to_string()))
         }
     }
 
     pub fn validate_ctx_perms<'b>(&self, required: &[&str]) -> CoreResult<()> {
-        let ctx = self.ctx;
-        let required_perms = PermissionChecker::new_perms(required)?;
-        let granted = ctx.permission_checker()?;
+        let required = Permission::perms_from_str_slice(required)?;
+        let granted = self.ctx.permission_checker()?;
 
-        Ok(())
+        let all_required_match_granted = granted.has_subset(&required);
+        if (all_required_match_granted) {
+            Ok(())
+        } else {
+            Err(CoreError::Auth("invalid permissions".to_string()))
+        }
     }
 
     pub fn scope_store_workspace(

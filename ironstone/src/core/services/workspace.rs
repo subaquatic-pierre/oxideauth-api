@@ -198,7 +198,7 @@ impl<D: DbExecutor> WorkspaceService<D> {
         let id: DbId = match (id, slug) {
             (Some(id), _) => id.into(),
             (None, Some(slug)) => match store.get_by_slug(&ctx.into(), &slug).await? {
-                Some(acc) => acc.id,
+                Some(ws) => ws.id,
                 None => {
                     return Err(CoreError::StoreError(StoreError::EntityNotFound {
                         entity: "workspace".to_string(),

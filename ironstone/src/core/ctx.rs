@@ -10,7 +10,7 @@ use crate::{
         models::{
             account::Account,
             membership::CachedMembership,
-            permission::{PermissionCheck, PermissionChecker},
+            permission::PermissionChecker,
             workspace::{Workspace, GLOBAL_WS_ID},
         },
     },
@@ -23,26 +23,35 @@ pub struct CoreCtx {
     pub cached_mem: CachedMembership,
     pub account: Account,
     pub workspace: Workspace,
+    pub perm_checker: PermissionChecker,
 }
 
 impl CoreCtx {
-    pub fn new(cached_mem: CachedMembership, account: Account, workspace: Workspace) -> Self {
-        Self {
+    pub fn new(
+        cached_mem: CachedMembership,
+        account: Account,
+        workspace: Workspace,
+    ) -> CoreResult<Self> {
+        let perm_checker = PermissionChecker::from_string_vec(cached_mem.permissions.clone())?;
+        Ok(Self {
             cached_mem,
             account,
             workspace,
-        }
+            perm_checker,
+        })
     }
 
-    pub fn new_test() -> Self {
+    pub fn new_test() -> CoreResult<Self> {
         let ctx_acc = Account::default();
         let ctx_ns = Workspace::default();
         let cm = CachedMembership::default();
-        Self {
+        let perm_checker = PermissionChecker::from_string_vec(cm.permissions.clone())?;
+        Ok(Self {
             cached_mem: cm,
             account: ctx_acc,
             workspace: ctx_ns,
-        }
+            perm_checker,
+        })
     }
 
     pub fn permission_checker(&self) -> CoreResult<PermissionChecker> {
@@ -83,6 +92,12 @@ impl From<CoreCtx> for StoreCtx {
 
 impl From<&CoreCtx> for StoreCtx {
     fn from(ctx: &CoreCtx) -> Self {
+        Self::new(ctx.account.id, ctx.workspace.id)
+    }
+}
+
+impl From<&mut CoreCtx> for StoreCtx {
+    fn from(ctx: &mut CoreCtx) -> Self {
         Self::new(ctx.account.id, ctx.workspace.id)
     }
 }

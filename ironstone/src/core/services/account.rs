@@ -240,7 +240,7 @@ mod tests {
         let dbx = Arc::new(MockDbxAccountRegister);
         let sm = Arc::new(StoreManager::new(dbx));
         let svc = AccountService::new(sm);
-        let ctx = CoreCtx::new_test();
+        let ctx = CoreCtx::new_test()?;
         let params = AccountCreateParams::default();
 
         let new_acc = svc.create(&ctx, params).await?;
@@ -280,7 +280,7 @@ mod tests {
         let dbx = Arc::new(MockDbxAccountRegister);
         let sm = Arc::new(StoreManager::new(dbx));
         let svc = AccountService::new(sm);
-        let ctx = CoreCtx::new_test();
+        let ctx = CoreCtx::new_test()?;
         let params = AccountCreateParams::default();
         let new_acc = svc.create(&ctx, params).await;
 

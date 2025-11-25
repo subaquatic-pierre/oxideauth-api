@@ -55,6 +55,6 @@ where
         info!("TOKEN {token:?} - resolve_ctx");
 
         // TODO: return correct built context
-        Ok(CoreCtx::new_test())
+        CoreCtx::new_test()
     }
 }

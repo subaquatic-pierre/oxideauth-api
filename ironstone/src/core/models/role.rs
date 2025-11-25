@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::core::models::permission::{Permission, PermissionCheck, PermissionChecker};
+use crate::core::models::permission::{Permission, PermissionChecker};
 
 pub struct Role {
     name: String,
@@ -61,10 +61,9 @@ impl RolePermissions {
 
     pub fn build_checker(&self) -> PermissionChecker {
         let size = self.perms.len();
-        let mut perms: Vec<PermissionCheck> = Vec::with_capacity(size);
+        let mut perms: Vec<Permission> = Vec::with_capacity(size);
         for perm in self.perms.iter() {
-            let perm_check: PermissionCheck = perm.to_check();
-            perms.push(perm_check)
+            perms.push(perm.clone())
         }
 
         PermissionChecker::new(perms)
