@@ -83,11 +83,12 @@ pub async fn create_account(
     let svc = app.svc_build.account();
 
     let params: AccountCreateParams = body.into();
-    info!("create_account - CTX: {ctx:#?}");
 
     let acc = svc.create(&mut ctx, params).await?;
 
     let acc_res = acc.into();
+
+    info!("create_account - CTX: {ctx:#?}");
 
     WebResponse::json(acc_res)
 }
