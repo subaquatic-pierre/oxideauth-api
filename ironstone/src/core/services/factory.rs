@@ -6,6 +6,7 @@ use crate::{
     core::services::{
         account::AccountService,
         auth::AuthService,
+        project::ProjectService,
         token::{TokenService, TokenServiceConfig},
         workspace::WorkspaceService,
     },
@@ -37,6 +38,11 @@ where
 
     pub fn workspace(&self) -> WorkspaceService<D> {
         let svc = WorkspaceService::new(self.sm.clone());
+        svc
+    }
+
+    pub fn project(&self) -> ProjectService<D> {
+        let svc = ProjectService::new(self.sm.clone());
         svc
     }
 
