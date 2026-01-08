@@ -8,6 +8,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::store::entities::id::DbId;
+use crate::store::entities::permission::PermissionMeta;
 use crate::store::traits::meta::HasId;
 use ironauth_macros::HasId;
 
@@ -71,6 +72,7 @@ pub struct JoinedPermissionOnRole {
     pub description: Option<String>,
 
     pub tags: Vec<String>,
+    pub meta: PermissionMeta,
     pub created_by: DbId,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,

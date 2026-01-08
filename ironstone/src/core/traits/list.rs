@@ -5,7 +5,10 @@ use crate::{
     core::{
         error::CoreResult,
         models::list::{RequestFilterParams, RequestListOptions},
-        traits::filter::{OpValIsString, OpValWorkspaceId},
+        traits::{
+            filter::{OpValIsString, OpValWorkspaceId},
+            params::ValidateParams,
+        },
     },
     store::utils::ListOptionsValidator,
 };

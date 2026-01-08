@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     core::{
         error::{CoreError, CoreResult},
-        traits::filter::OpValIsString,
+        traits::{filter::OpValIsString, params::ValidateParams},
     },
     store::{
         filter::HasActiveFilter,
@@ -50,7 +50,12 @@ where
     pub fn filter(&self) -> Option<F> {
         self.fields.clone()
     }
+}
 
+impl<F> ValidateParams for RequestFilterParams<F>
+where
+    F: Clone,
+{
     /// Validates the request parameters, ensuring that the request does not contain both
     /// a `tags` filter and a flattened `filter` struct simultaneously.
     ///
@@ -58,7 +63,7 @@ where
     ///
     /// A `CoreResult` containing consumed self if validation succeeds,
     /// or `Err(CoreError::InvalidParams)` if both filters are present.
-    pub fn validate(self) -> CoreResult<RequestFilterParams<F>> {
+    fn validate(self) -> CoreResult<Self> {
         if self.tags.is_some() && self.fields.is_some() {
             return Err(CoreError::InvalidParams(
                 "cannot have both filter and tags on params".to_string(),

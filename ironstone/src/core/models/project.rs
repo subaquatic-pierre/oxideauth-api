@@ -13,6 +13,7 @@ use crate::{
         traits::{
             filter::{OpValIsString, OpValWorkspaceId},
             list::RequestListParams,
+            params::ValidateParams,
         },
     },
     store::{
@@ -90,9 +91,10 @@ pub struct ProjectDescribeParams {
     pub workspace_id: Uuid,
 }
 
-impl ProjectDescribeParams {
-    pub fn validate(&self) -> CoreResult<()> {
-        Ok(())
+impl ValidateParams for ProjectDescribeParams {
+    fn validate(self) -> CoreResult<Self> {
+        // TODO: ensure params are correct
+        Ok(self)
     }
 }
 

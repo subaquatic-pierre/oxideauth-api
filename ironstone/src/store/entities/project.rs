@@ -24,8 +24,6 @@ pub enum ProjectIden {
     Meta,
 }
 
-// --- Row (DB-facing) ---
-/// Maps to the `project` SQL table.
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct ProjectRow {
     pub id: DbId,
@@ -48,8 +46,6 @@ pub struct ProjectRow {
     pub audit: AuditFields,
 }
 
-// --- Create (store input) ---
-/// Input for creating a new `project`.
 #[derive(Debug, Fields)]
 pub struct ProjectForCreate {
     pub workspace_id: Uuid,
@@ -61,8 +57,6 @@ pub struct ProjectForCreate {
     pub meta: ProjectMeta,
 }
 
-// --- Update (store input) ---
-/// Input for updating an existing `project`.
 #[derive(Debug, Fields, Clone)]
 pub struct ProjectForUpdate {
     pub name: Option<String>,
@@ -120,11 +114,6 @@ pub struct ProjectFilter {
     pub code: Option<OpValsString>,
     pub description: Option<OpValsString>,
 
-    // NOTE: Filtering on JSONB fields like `config` and `meta` would require custom modql logic.
-    // pub config: Option<OpValsValue>,
-    // pub tags: Option<OpValsValue>,
-    // pub meta: Option<OpValsValue>,
-
     // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]
     pub created_by: Option<OpValsString>,
@@ -145,7 +134,6 @@ impl TryFrom<JsonValue> for ProjectFilter {
     }
 }
 
-// --- Defaults for testing ---
 #[cfg(test)]
 impl Default for ProjectForCreate {
     fn default() -> Self {

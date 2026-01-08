@@ -8,7 +8,7 @@ use crate::{
             account::Account,
             audit::CoreAuditFields,
             list::{RequestFilterParams, RequestListOptions},
-            role::Role,
+            role::{Role, RoleCheck},
             workspace::Workspace,
         },
         traits::{
@@ -43,11 +43,12 @@ pub struct Membership {
 
 impl Membership {
     pub fn from_row_with_entities(
-        row_with_roles: MembershipWithRoles,
+        membership: MembershipRow,
+        roles: Vec<Role>,
         account: Account,
         workspace: Workspace,
     ) -> CoreResult<Self> {
-        let row = row_with_roles.membership;
+        let row = membership;
 
         if Uuid::from(row.account_id) != account.id {
             return Err(CoreError::InvalidParams("Account ID mismatch".into()));
@@ -55,13 +56,6 @@ impl Membership {
         if Uuid::from(row.workspace_id) != workspace.id {
             return Err(CoreError::InvalidParams("Workspace ID mismatch".into()));
         }
-
-        // TODO: need to get permission of each role
-        let roles = row_with_roles
-            .roles
-            .into_iter()
-            .map(|el| Role::new(&el.name, &[]))
-            .collect();
 
         Ok(Self {
             id: row.id.into(),
