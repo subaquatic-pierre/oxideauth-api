@@ -1,25 +1,157 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::core::models::{
-    account::Account, permission::ALL_PERMISSIONS, role::Role, workspace::Workspace,
+use crate::{
+    core::{
+        error::{CoreError, CoreResult},
+        models::{
+            account::Account,
+            audit::CoreAuditFields,
+            list::{RequestFilterParams, RequestListOptions},
+            role::Role,
+            workspace::Workspace,
+        },
+        traits::{
+            filter::{OpValAccountId, OpValWorkspaceId},
+            list::RequestListParams,
+        },
+    },
+    store::entities::membership::{
+        MembershipFilter as StoreMembershipFilter, MembershipMeta as StoreMembershipMeta,
+        MembershipRow, MembershipScope, MembershipStatus, MembershipWithRoles,
+    },
 };
 
-#[derive(Default)]
+pub type MembershipMeta = StoreMembershipMeta;
+pub type MembershipFilter = StoreMembershipFilter;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Membership {
     pub id: Uuid,
-    account: Account,
-    workspace: Workspace,
-    roles: Vec<Role>,
+    pub account: Account,
+    pub workspace: Workspace,
+    pub project_id: Option<Uuid>,
+
+    pub scope: MembershipScope,
+    pub status: MembershipStatus,
+    pub roles: Vec<Role>,
+
+    pub tags: Vec<String>,
+    pub meta: MembershipMeta,
+    pub audit: CoreAuditFields,
 }
 
 impl Membership {
-    pub fn new(account: Account, workspace: Workspace, roles: Vec<Role>) -> Self {
-        Self {
-            id: Uuid::new_v4(),
+    pub fn from_row_with_entities(
+        row_with_roles: MembershipWithRoles,
+        account: Account,
+        workspace: Workspace,
+    ) -> CoreResult<Self> {
+        let row = row_with_roles.membership;
+
+        if Uuid::from(row.account_id) != account.id {
+            return Err(CoreError::InvalidParams("Account ID mismatch".into()));
+        }
+        if Uuid::from(row.workspace_id) != workspace.id {
+            return Err(CoreError::InvalidParams("Workspace ID mismatch".into()));
+        }
+
+        // TODO: need to get permission of each role
+        let roles = row_with_roles
+            .roles
+            .into_iter()
+            .map(|el| Role::new(&el.name, &[]))
+            .collect();
+
+        Ok(Self {
+            id: row.id.into(),
             account,
             workspace,
+            project_id: row.project_id,
+            scope: row.scope,
+            status: row.status,
             roles,
+            tags: row.tags,
+            meta: row.meta,
+            audit: row.audit.into(),
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MembershipCreateParams {
+    pub account_id: Uuid,
+    pub workspace_id: Uuid,
+    pub scope: MembershipScope,
+    pub status: MembershipStatus,
+    pub project_id: Option<Uuid>,
+    pub role_ids: Vec<Uuid>,
+    pub tags: Vec<String>,
+    pub meta: MembershipMeta,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MembershipDescribeParams {
+    pub id: Option<Uuid>,
+    pub account_id: Option<Uuid>,
+    pub workspace_id: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MembershipUpdateParams {
+    pub id: Uuid,
+    pub status: Option<MembershipStatus>,
+    pub scope: Option<MembershipScope>,
+    pub project_id: Option<Uuid>,
+    pub tags: Option<Vec<String>>,
+    pub meta: Option<MembershipMeta>,
+}
+
+pub struct MembershipListParams {
+    pub filter: Option<RequestFilterParams<MembershipFilter>>,
+    pub options: Option<RequestListOptions>,
+}
+
+impl RequestListParams<MembershipFilter> for MembershipListParams {
+    fn filter(&self) -> Option<RequestFilterParams<MembershipFilter>> {
+        self.filter.clone()
+    }
+    fn options(&self) -> Option<RequestListOptions> {
+        self.options.clone()
+    }
+}
+
+impl OpValWorkspaceId for MembershipFilter {
+    fn get_workspace_id_opval(&self) -> Option<&modql::filter::OpValString> {
+        self.workspace_id
+            .as_ref()
+            .and_then(|op_vals| op_vals.0.first())
+    }
+}
+
+impl OpValAccountId for MembershipFilter {
+    fn get_account_id_opval(&self) -> Option<&modql::filter::OpValString> {
+        self.account_id
+            .as_ref()
+            .and_then(|op_vals| op_vals.0.first())
+    }
+}
+
+impl Default for Membership {
+    fn default() -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            account: Account::default(),
+            workspace: Workspace::default(),
+            project_id: None,
+            scope: MembershipScope::Workspace,
+            status: MembershipStatus::Active,
+            roles: vec![],
+            tags: vec![],
+            meta: MembershipMeta {
+                schema_version: "1".to_string(),
+            },
+            audit: CoreAuditFields::default(),
         }
     }
 }
@@ -29,24 +161,21 @@ pub struct CachedMembership {
     pub id: Uuid,
     pub account_id: Uuid,
     pub workspace_id: Uuid,
+    pub project_id: Option<Uuid>,
     pub role_ids: Vec<Uuid>,
     pub permissions: Vec<String>,
 }
 
 impl Default for CachedMembership {
     fn default() -> Self {
-        let permissions = ALL_PERMISSIONS.iter().map(|el| el.to_string()).collect();
-
         Self {
-            id: Default::default(),
-            account_id: Default::default(),
-            workspace_id: Default::default(),
-            role_ids: Default::default(),
-            permissions,
+            id: Uuid::nil(),
+            account_id: Uuid::nil(),
+            workspace_id: Uuid::nil(),
+            project_id: None,
+            role_ids: vec![],
+            // Usually defaults to empty to deny access unless explicitly populated
+            permissions: vec![],
         }
     }
 }
-
-pub struct MembershipCreateParams {}
-
-pub struct MembershipDescribeParams {}

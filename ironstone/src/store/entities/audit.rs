@@ -37,18 +37,15 @@ pub struct AuditMeta {
     pub schema_version: String,
 }
 
-// Add this manual implementation
 impl Default for AuditFields {
     fn default() -> Self {
         Self {
             // Use the Unix epoch (1970-01-01 00:00:00 UTC) as the default time
             created_at: OffsetDateTime::UNIX_EPOCH,
 
-            // These fields also need defaults:
-            created_by: DbId::default(), // This assumes DbId implements Default
-            meta: AuditMeta::default(),  // This assumes AuditMeta implements Default
+            created_by: DbId::default(),
+            meta: AuditMeta::default(),
 
-            // Option<T> fields default to None
             updated_by: None,
             updated_at: None,
         }

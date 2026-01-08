@@ -6,7 +6,7 @@ use crate::{
     core::{
         ctx::CoreCtx,
         error::{CoreError, CoreResult},
-        models::permission::{Permission, PermissionChecker},
+        models::permission::{PermissionCheck, PermissionChecker},
         services::account::AccountService,
     },
     store::{ctx::StoreCtx, dbx::PgDbx, manager::StoreManager, traits::dbx::DbExecutor},
@@ -55,7 +55,7 @@ impl<'a> AuthValidator<'a> {
     }
 
     pub fn validate_perms<'b>(granted: &PermissionChecker, required: &[&str]) -> CoreResult<()> {
-        let required = Permission::perms_from_str_slice(required)?;
+        let required = PermissionCheck::perms_from_str_slice(required)?;
         let all_required_match_granted = granted.has_subset(&required);
         if (all_required_match_granted) {
             Ok(())
@@ -65,7 +65,7 @@ impl<'a> AuthValidator<'a> {
     }
 
     pub fn validate_ctx_perms<'b>(&self, required: &[&str]) -> CoreResult<()> {
-        let required = Permission::perms_from_str_slice(required)?;
+        let required = PermissionCheck::perms_from_str_slice(required)?;
         let granted = self.ctx.permission_checker()?;
 
         let all_required_match_granted = granted.has_subset(&required);

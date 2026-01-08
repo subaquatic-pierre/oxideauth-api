@@ -143,7 +143,7 @@ impl From<AccountMeta> for SeaValue {
 pub struct AccountFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<OpValsString>,
-    // TODO: server limitation on derive(FilterNodes), if filter is used on any join queries need to define base table_name here on the rel attribute. if base table is not defined then could cause ambiguous WHERE query on JOIN statement.
+    // NOTE: server limitation on derive(FilterNodes), if filter is used on any join queries need to define base table_name here on the rel attribute. if base table is not defined then could cause ambiguous WHERE query on JOIN statement.
     #[modql(rel = "account")]
     pub email: Option<OpValsString>,
     pub name: Option<OpValsString>,
@@ -168,21 +168,6 @@ pub struct AccountFilter {
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub updated_at: Option<OpValsValue>,
 }
-
-// impl_has_active_filter! {
-//     AccountFilter,
-//     id,
-//     email,
-//     name,
-//     description,
-//     avatar_url,
-//     verified,
-//     enabled,
-//     created_by,
-//     created_at,
-//     updated_by,
-//     updated_at
-// }
 
 impl TryFrom<JsonValue> for AccountFilter {
     type Error = StoreError;

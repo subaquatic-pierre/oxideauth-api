@@ -1,14 +1,17 @@
 use std::collections::HashSet;
 
-use crate::core::models::permission::{Permission, PermissionChecker};
+use serde::{Deserialize, Serialize};
 
+use crate::core::models::permission::{PermissionCheck, PermissionChecker};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Role {
     name: String,
     permissions: RolePermissions,
 }
 
 impl Role {
-    pub fn new(name: &str, perms: &[Permission]) -> Self {
+    pub fn new(name: &str, perms: &[PermissionCheck]) -> Self {
         Self {
             name: name.to_string(),
             permissions: RolePermissions::new(perms),
@@ -19,11 +22,11 @@ impl Role {
         &self.permissions
     }
 
-    pub fn extend_permissions(&mut self, perms: &[Permission]) {
+    pub fn extend_permissions(&mut self, perms: &[PermissionCheck]) {
         self.permissions.extend(perms);
     }
 
-    pub fn remove_permissions(&mut self, perms: &[Permission]) {
+    pub fn remove_permissions(&mut self, perms: &[PermissionCheck]) {
         self.permissions.remove(perms);
     }
 
@@ -32,12 +35,13 @@ impl Role {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RolePermissions {
-    perms: HashSet<Permission>,
+    perms: HashSet<PermissionCheck>,
 }
 
 impl RolePermissions {
-    pub fn new(perms: &[Permission]) -> Self {
+    pub fn new(perms: &[PermissionCheck]) -> Self {
         let mut _self = Self {
             perms: HashSet::new(),
         };
@@ -47,13 +51,13 @@ impl RolePermissions {
         _self
     }
 
-    pub fn extend(&mut self, perms: &[Permission]) {
+    pub fn extend(&mut self, perms: &[PermissionCheck]) {
         for perm in perms {
             self.perms.insert(perm.clone());
         }
     }
 
-    pub fn remove(&mut self, perms: &[Permission]) {
+    pub fn remove(&mut self, perms: &[PermissionCheck]) {
         for perm in perms {
             self.perms.remove(&perm);
         }
@@ -61,7 +65,7 @@ impl RolePermissions {
 
     pub fn build_checker(&self) -> PermissionChecker {
         let size = self.perms.len();
-        let mut perms: Vec<Permission> = Vec::with_capacity(size);
+        let mut perms: Vec<PermissionCheck> = Vec::with_capacity(size);
         for perm in self.perms.iter() {
             perms.push(perm.clone())
         }
@@ -71,7 +75,7 @@ impl RolePermissions {
 }
 
 impl Iterator for RolePermissions {
-    type Item = Permission;
+    type Item = PermissionCheck;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.perms.iter().next().cloned()

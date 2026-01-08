@@ -7,7 +7,7 @@ use crate::{
         error::{CoreError, CoreResult},
         models::{
             list::{ListResponse, RequestFilterParams},
-            permission::{Permission, PermissionChecker},
+            permission::{PermissionCheck, PermissionChecker},
             project::{
                 Project, ProjectCreateParams, ProjectDeleteParams, ProjectDescribeParams,
                 ProjectFilter, ProjectListParams, ProjectUpdateParams,
@@ -285,7 +285,7 @@ impl<D: DbExecutor> ProjectService<D> {
             slug: None,
         };
 
-        let added_perms = vec![Permission::try_from("workspace:describe")?];
+        let added_perms = vec![PermissionCheck::try_from("workspace:describe")?];
         ctx.perm_checker.extend(added_perms);
 
         self.ws_svc.describe(ctx, params).await

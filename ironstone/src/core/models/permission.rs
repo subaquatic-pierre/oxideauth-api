@@ -1,26 +1,153 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::core::error::{CoreError, CoreResult};
+use modql::filter::OpValString;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+use crate::{
+    core::{
+        error::{CoreError, CoreResult},
+        models::{
+            audit::CoreAuditFields,
+            list::{RequestFilterParams, RequestListOptions},
+            workspace::Workspace,
+        },
+        traits::{filter::OpValWorkspaceId, list::RequestListParams},
+    },
+    store::entities::permission::{
+        PermissionFilter as StorePermissionFilter, PermissionMeta as StorePermissionMeta,
+        PermissionRow,
+    },
+};
+
+pub type PermissionMeta = StorePermissionMeta;
+pub type PermissionFilter = StorePermissionFilter;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Permission {
+    pub id: Uuid,
+    pub workspace: Workspace,
+
+    pub name: String,
+    pub code: Option<String>,
+    pub description: Option<String>,
+
+    pub tags: Vec<String>,
+    pub meta: PermissionMeta,
+
+    pub audit: CoreAuditFields,
+}
+
+impl Permission {
+    pub fn from_row_with_entities(row: PermissionRow, workspace: Workspace) -> CoreResult<Self> {
+        if row.workspace_id != workspace.id {
+            return Err(CoreError::InvalidParams(
+                "row.workspace_id does not match workspace.id".to_string(),
+            ));
+        }
+
+        Ok(Self {
+            id: row.id.into(),
+            workspace,
+            name: row.name,
+            code: row.code,
+            description: row.description,
+            tags: row.tags,
+            meta: row.meta,
+            audit: row.audit.into(),
+        })
+    }
+}
+
+impl Default for Permission {
+    fn default() -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            workspace: Workspace::default(),
+            name: "New Permission".to_string(),
+            code: None,
+            description: None,
+            tags: vec![],
+            meta: PermissionMeta {
+                schema_version: "1".to_string(),
+            },
+            audit: CoreAuditFields::default(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PermissionCreateParams {
+    pub workspace_id: Uuid,
+    pub name: String,
+    pub code: Option<String>,
+    pub description: Option<String>,
+    pub tags: Vec<String>,
+    pub meta: PermissionMeta,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PermissionUpdateParams {
+    pub id: Uuid,
+    pub workspace_id: Uuid,
+    pub name: Option<String>,
+    pub code: Option<String>,
+    pub description: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub meta: Option<PermissionMeta>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PermissionDescribeParams {
+    pub id: Option<Uuid>,
+    pub workspace_id: Uuid,
+    pub code: Option<String>,
+}
+
+pub struct PermissionListParams {
+    pub filter: Option<RequestFilterParams<PermissionFilter>>,
+    pub options: Option<RequestListOptions>,
+}
+
+impl RequestListParams<PermissionFilter> for PermissionListParams {
+    fn filter(&self) -> Option<RequestFilterParams<PermissionFilter>> {
+        self.filter.clone()
+    }
+
+    fn options(&self) -> Option<RequestListOptions> {
+        self.options.clone()
+    }
+}
+
+impl OpValWorkspaceId for PermissionFilter {
+    fn get_workspace_id_opval(&self) -> Option<&OpValString> {
+        self.workspace_id
+            .as_ref()
+            .and_then(|op_vals| op_vals.0.first())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq, Hash)]
+pub struct PermissionCheck {
     resource: String,
     action: String,
 }
 
-impl Permission {
+impl PermissionCheck {
     /// Checks if this pattern matches a required permission.
     /// `self` represents the granted pattern (e.g., from the user's roles).
     /// `required_resource` and `required_action` are the specific permissions
     /// being checked (e.g., "projects", "delete").
-    pub fn matches(&self, perm: &Permission) -> bool {
-        Permission::matches_str(&self.action, &perm.action)
-            && Permission::matches_str(&self.resource, &perm.resource)
+    pub fn matches(&self, perm: &PermissionCheck) -> bool {
+        PermissionCheck::matches_str(&self.action, &perm.action)
+            && PermissionCheck::matches_str(&self.resource, &perm.resource)
     }
 
-    pub fn perms_from_str_slice(perms: &[&str]) -> CoreResult<Vec<Permission>> {
-        let perms: CoreResult<Vec<Permission>> =
-            perms.iter().map(|&el| Permission::try_from(el)).collect();
+    pub fn perms_from_str_slice(perms: &[&str]) -> CoreResult<Vec<PermissionCheck>> {
+        let perms: CoreResult<Vec<PermissionCheck>> = perms
+            .iter()
+            .map(|&el| PermissionCheck::try_from(el))
+            .collect();
 
         perms
     }
@@ -38,7 +165,7 @@ impl Permission {
     }
 }
 
-impl TryFrom<String> for Permission {
+impl TryFrom<String> for PermissionCheck {
     type Error = CoreError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
@@ -46,7 +173,7 @@ impl TryFrom<String> for Permission {
     }
 }
 
-impl TryFrom<&str> for Permission {
+impl TryFrom<&str> for PermissionCheck {
     type Error = CoreError;
 
     // Parses a string like "projects:create" into the struct.
@@ -67,7 +194,7 @@ impl TryFrom<&str> for Permission {
 
             if resource.is_empty() || action.is_empty() {
                 Err(CoreError::ParseError(
-                    "Permission string cannot have empty parts.".to_string(),
+                    "PermissionCheck string cannot have empty parts.".to_string(),
                 ))
             } else {
                 Ok(Self {
@@ -77,7 +204,7 @@ impl TryFrom<&str> for Permission {
             }
         } else {
             Err(CoreError::ParseError(
-                "Permission string must contain a ':' delimiter.".to_string(),
+                "PermissionCheck string must contain a ':' delimiter.".to_string(),
             ))
         }
     }
@@ -91,7 +218,7 @@ pub struct PermissionChecker {
 }
 
 impl PermissionChecker {
-    pub fn new(perms: Vec<Permission>) -> Self {
+    pub fn new(perms: Vec<PermissionCheck>) -> Self {
         let mut _self = Self {
             granted: HashMap::new(),
         };
@@ -100,20 +227,9 @@ impl PermissionChecker {
     }
 
     pub fn from_str_slice(perms: &[&str]) -> CoreResult<PermissionChecker> {
-        let perms: CoreResult<Vec<Permission>> =
-            perms.iter().map(|&el| Permission::try_from(el)).collect();
-
-        let perms = perms?;
-
-        let checker = PermissionChecker::new(perms);
-
-        Ok(checker)
-    }
-
-    pub fn from_string_vec(perms: Vec<String>) -> CoreResult<PermissionChecker> {
-        let perms: CoreResult<Vec<Permission>> = perms
+        let perms: CoreResult<Vec<PermissionCheck>> = perms
             .iter()
-            .map(|el| Permission::try_from(el.as_str()))
+            .map(|&el| PermissionCheck::try_from(el))
             .collect();
 
         let perms = perms?;
@@ -123,7 +239,20 @@ impl PermissionChecker {
         Ok(checker)
     }
 
-    pub fn extend(&mut self, perms: Vec<Permission>) {
+    pub fn from_string_vec(perms: Vec<String>) -> CoreResult<PermissionChecker> {
+        let perms: CoreResult<Vec<PermissionCheck>> = perms
+            .iter()
+            .map(|el| PermissionCheck::try_from(el.as_str()))
+            .collect();
+
+        let perms = perms?;
+
+        let checker = PermissionChecker::new(perms);
+
+        Ok(checker)
+    }
+
+    pub fn extend(&mut self, perms: Vec<PermissionCheck>) {
         for perm in perms {
             if let Some(resource) = self.granted.get_mut(&perm.resource) {
                 resource.insert(perm.action);
@@ -135,11 +264,11 @@ impl PermissionChecker {
         }
     }
 
-    pub fn has_subset(&self, required: &[Permission]) -> bool {
+    pub fn has_subset(&self, required: &[PermissionCheck]) -> bool {
         required.iter().all(|needed| self.is_allowed(needed))
     }
 
-    pub fn is_allowed(&self, required: &Permission) -> bool {
+    pub fn is_allowed(&self, required: &PermissionCheck) -> bool {
         // Check for a global resource wildcard first, e.g., "*:delete"
         if let Some(actions) = self.granted.get("*") {
             if actions.contains("*") || actions.contains(&required.action) {
@@ -207,20 +336,20 @@ mod tests {
 
     #[test]
     fn permission_try_from_valid_string() -> Result<()> {
-        let perm: Permission = "project:create".try_into()?;
+        let perm: PermissionCheck = "project:create".try_into()?;
         assert_eq!(perm.resource, "project");
         assert_eq!(perm.action, "create");
 
-        let perm_wildcard: Permission = "*:read".try_into()?;
+        let perm_wildcard: PermissionCheck = "*:read".try_into()?;
         assert_eq!(perm_wildcard.resource, "*");
         assert_eq!(perm_wildcard.action, "read");
 
-        let perm_full_wildcard: Permission = "*:*".try_into()?;
+        let perm_full_wildcard: PermissionCheck = "*:*".try_into()?;
         assert_eq!(perm_full_wildcard.resource, "*");
         assert_eq!(perm_full_wildcard.action, "*");
 
         // Test TryFrom<String>
-        let perm_string: Permission = String::from("users:delete").try_into()?;
+        let perm_string: PermissionCheck = String::from("users:delete").try_into()?;
         assert_eq!(perm_string.resource, "users");
         assert_eq!(perm_string.action, "delete");
 
@@ -230,21 +359,21 @@ mod tests {
     #[test]
     fn permission_try_from_invalid_string() {
         // No delimiter
-        let result = Permission::try_from("project_create");
+        let result = PermissionCheck::try_from("project_create");
         assert!(result.is_err());
         if let Err(CoreError::ParseError(msg)) = result {
             assert!(msg.contains("must contain a ':'"));
         }
 
         // Empty resource
-        let result = Permission::try_from(":create");
+        let result = PermissionCheck::try_from(":create");
         assert!(result.is_err());
         if let Err(CoreError::ParseError(msg)) = result {
             assert!(msg.contains("cannot have empty parts"));
         }
 
         // Empty action
-        let result = Permission::try_from("project:");
+        let result = PermissionCheck::try_from("project:");
         assert!(result.is_err());
         if let Err(CoreError::ParseError(msg)) = result {
             assert!(msg.contains("cannot have empty parts"));
@@ -253,27 +382,27 @@ mod tests {
 
     #[test]
     fn permission_matches_str_logic() {
-        let perm = Permission {
+        let perm = PermissionCheck {
             resource: "r".to_string(),
             action: "a".to_string(),
         };
 
         // Exact match
         assert_eq!(
-            Permission::matches_str("read", "read"),
+            PermissionCheck::matches_str("read", "read"),
             true,
             "Exact match failed"
         );
 
         // Wildcard granted
         assert_eq!(
-            Permission::matches_str("*", "read"),
+            PermissionCheck::matches_str("*", "read"),
             true,
             "Wildcard granted failed"
         );
 
         assert_eq!(
-            Permission::matches_str("read", "*"),
+            PermissionCheck::matches_str("read", "*"),
             true,
             "Wildcard required failed"
         );
@@ -281,15 +410,15 @@ mod tests {
 
     #[test]
     fn permission_full_matches() -> Result<()> {
-        let granted_read: Permission = "project:read".try_into()?;
-        let granted_all: Permission = "project:*".try_into()?;
-        let granted_global: Permission = "*:read".try_into()?;
-        let granted_everything: Permission = "*:*".try_into()?;
+        let granted_read: PermissionCheck = "project:read".try_into()?;
+        let granted_all: PermissionCheck = "project:*".try_into()?;
+        let granted_global: PermissionCheck = "*:read".try_into()?;
+        let granted_everything: PermissionCheck = "*:*".try_into()?;
 
-        let required_read: Permission = "project:read".try_into()?;
-        let required_delete: Permission = "project:delete".try_into()?;
-        let required_account: Permission = "account:read".try_into()?;
-        let required_wildcard: Permission = "project:*".try_into()?;
+        let required_read: PermissionCheck = "project:read".try_into()?;
+        let required_delete: PermissionCheck = "project:delete".try_into()?;
+        let required_account: PermissionCheck = "account:read".try_into()?;
+        let required_wildcard: PermissionCheck = "project:*".try_into()?;
 
         // Exact Match
         assert!(granted_read.matches(&required_read));
@@ -338,7 +467,7 @@ mod tests {
         assert!(checker.granted.get("project").unwrap().contains("read"));
 
         // Extend with new and existing permissions
-        let new_perms: Vec<Permission> = vec![
+        let new_perms: Vec<PermissionCheck> = vec![
             "project:delete".try_into()?,
             "account:read".try_into()?,
             "project:read".try_into()?, // Duplicate, should be ignored
@@ -357,14 +486,14 @@ mod tests {
     #[test]
     fn checker_is_allowed_specific_match() -> Result<()> {
         let checker = setup_checker()?;
-        let required: Permission = "project:create".try_into()?;
+        let required: PermissionCheck = "project:create".try_into()?;
 
         assert!(
             checker.is_allowed(&required),
             "Specific action allowed failed, project:create"
         );
 
-        let required_denied: Permission = "project:delete".try_into()?;
+        let required_denied: PermissionCheck = "project:delete".try_into()?;
         assert!(
             !checker.is_allowed(&required_denied),
             "Specific action denied failed, project:delete"
@@ -377,7 +506,7 @@ mod tests {
     fn checker_is_allowed_action_wildcard_grant() -> Result<()> {
         let checker = setup_checker()?;
         // Granted: account:*
-        let required_delete: Permission = "account:delete".try_into()?;
+        let required_delete: PermissionCheck = "account:delete".try_into()?;
         assert!(
             checker.is_allowed(&required_delete),
             "Action wildcard grant failed"
@@ -390,13 +519,13 @@ mod tests {
     fn checker_is_allowed_resource_wildcard_grant() -> Result<()> {
         let checker = setup_checker()?;
         // Granted: *:read
-        let required_read: Permission = "workspace:read".try_into()?;
+        let required_read: PermissionCheck = "workspace:read".try_into()?;
         assert!(
             checker.is_allowed(&required_read),
             "Resource wildcard grant failed"
         );
 
-        let required_write: Permission = "workspace:write".try_into()?;
+        let required_write: PermissionCheck = "workspace:write".try_into()?;
         assert!(
             !checker.is_allowed(&required_write),
             "Resource wildcard grant too broad failed"
@@ -410,13 +539,13 @@ mod tests {
         let mut checker = setup_checker()?;
         checker.extend(vec!["*".try_into()?]);
         // Granted: * (which is *:*)
-        let required_write: Permission = "workspace:write".try_into()?;
+        let required_write: PermissionCheck = "workspace:write".try_into()?;
         assert!(
             checker.is_allowed(&required_write),
             "Global wildcard grant failed"
         );
 
-        let required_admin: Permission = "admin:do_anything".try_into()?;
+        let required_admin: PermissionCheck = "admin:do_anything".try_into()?;
         assert!(
             checker.is_allowed(&required_admin),
             "Global wildcard grant extreme case failed"
@@ -429,13 +558,13 @@ mod tests {
     fn checker_is_allowed_no_match() -> Result<()> {
         let mut checker = setup_checker()?;
         // project:delete is neither granted specifically, nor covered by *:read, account:*, or project:read/create
-        let required: Permission = "project:delete".try_into()?;
+        let required: PermissionCheck = "project:delete".try_into()?;
         assert!(
             !checker.is_allowed(&required),
             "Unmatched permission check failed"
         );
 
-        let required_unrelated: Permission = "files:upload".try_into()?;
+        let required_unrelated: PermissionCheck = "files:upload".try_into()?;
         checker.extend(vec!["*".try_into()?]);
 
         assert!(
@@ -445,7 +574,7 @@ mod tests {
 
         // Set up a checker with no wildcards
         let checker_strict = PermissionChecker::from_str_slice(&["users:list"])?;
-        let required_files: Permission = "files:upload".try_into()?;
+        let required_files: PermissionCheck = "files:upload".try_into()?;
         assert!(
             !checker_strict.is_allowed(&required_files),
             "No match should result in false"
@@ -458,7 +587,7 @@ mod tests {
     fn checker_has_subset_check() -> Result<()> {
         let checker = setup_checker()?;
 
-        let allowed_subset = Permission::perms_from_str_slice(&[
+        let allowed_subset = PermissionCheck::perms_from_str_slice(&[
             "project:read",   // Specific match
             "account:update", // Action wildcard match (account:*)
             "files:read",     // Resource wildcard match (*:read)
@@ -468,7 +597,7 @@ mod tests {
             "Allowed subset check failed"
         );
 
-        let denied_subset = Permission::perms_from_str_slice(&[
+        let denied_subset = PermissionCheck::perms_from_str_slice(&[
             "project:read",
             "project:delete", // Fails (not granted and no covering wildcard)
         ])?;

@@ -116,8 +116,6 @@ impl Nullable for CredentialKind {
     }
 }
 
-// --- Create (store input) ---
-/// Input for creating a new `credential`.
 #[derive(Debug, Fields)]
 pub struct CredentialForCreate {
     pub kind: CredentialKind,
@@ -133,8 +131,6 @@ pub struct CredentialForCreate {
     pub meta: CredentialMeta,
 }
 
-// --- Update (store input) ---
-/// Input for updating an existing `credential`.
 #[derive(Debug, Fields, Clone)]
 pub struct CredentialForUpdate {
     pub kind: Option<CredentialKind>,
@@ -167,7 +163,7 @@ impl From<CredentialMeta> for SeaValue {
 }
 
 /// Filtering options for `credential` queries.
-#[derive(FilterNodes, Deserialize, Default, Debug)]
+#[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
 pub struct CredentialFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<OpValsString>,
@@ -184,9 +180,6 @@ pub struct CredentialFilter {
 
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub last_used_at: Option<OpValsValue>,
-    // NOTE: Filtering on JSONB and TEXT[] fields would require custom modql logic.
-    // pub tags: Option<OpValsValue>,
-    // pub meta: Option<OpValsValue>,
 
     // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]

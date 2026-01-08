@@ -10,7 +10,6 @@ use crate::{
     utils::id::map_optional_db_id,
 };
 
-/// The Core business model representation of standard audit fields.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CoreAuditFields {
     pub created_by: Uuid,
@@ -22,7 +21,6 @@ pub struct CoreAuditFields {
     pub meta: AuditMeta,
 }
 
-// Implementation to convert the store's AuditFields to the core's CoreAuditFields
 impl From<AuditFields> for CoreAuditFields {
     fn from(value: AuditFields) -> Self {
         Self {
@@ -36,8 +34,6 @@ impl From<AuditFields> for CoreAuditFields {
 }
 
 impl Default for CoreAuditFields {
-    /// Provides a default instance of audit fields, initializing `created_by` to the nil UUID
-    /// and `created_at` to the Unix epoch. Optional fields are set to `None`.
     fn default() -> Self {
         Self {
             created_by: Uuid::nil(),

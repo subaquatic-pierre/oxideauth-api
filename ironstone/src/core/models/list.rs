@@ -20,13 +20,13 @@ use crate::{
 ///
 /// # Type Parameters
 ///
-/// * `F`: The generic filter struct specific to the target entity (e.g., `UserFilter`, `TaskFilter`).
+/// * `F`: The generic filter struct specific to the target entity (e.g., `AccountFilter`).
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RequestFilterParams<F>
 where
     F: Clone,
 {
-    /// This is used for standard field-based filtering (e.g., equality, range).
+    /// This is used for standard field-based filtering (e.g., name, description).
     pub fields: Option<F>,
 
     /// An optional list of tags used for filtering entities that support tag containment queries.
@@ -56,16 +56,16 @@ where
     ///
     /// # Returns
     ///
-    /// A `CoreResult` containing `Ok((Option<Vec<String>>, Option<F>))` if validation succeeds,
+    /// A `CoreResult` containing consumed self if validation succeeds,
     /// or `Err(CoreError::InvalidParams)` if both filters are present.
-    pub fn validate(&self) -> CoreResult<RequestFilterParams<F>> {
+    pub fn validate(self) -> CoreResult<RequestFilterParams<F>> {
         if self.tags.is_some() && self.fields.is_some() {
             return Err(CoreError::InvalidParams(
                 "cannot have both filter and tags on params".to_string(),
             ));
         }
 
-        Ok(Self::new(self.tags.clone(), self.fields.clone()))
+        Ok(self)
     }
 }
 

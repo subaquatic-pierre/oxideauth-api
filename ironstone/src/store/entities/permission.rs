@@ -24,8 +24,6 @@ pub enum PermissionIden {
     WorkspaceId,
 }
 
-// --- Row (DB-facing) ---
-/// Maps to the `permission` SQL table.
 #[derive(Debug, FromRow, Deserialize, HasId)]
 pub struct PermissionRow {
     pub id: DbId,
@@ -44,8 +42,6 @@ pub struct PermissionRow {
     pub audit: AuditFields,
 }
 
-// --- Create (store input) ---
-/// Input for creating a new `permission`.
 #[derive(Debug, Fields)]
 pub struct PermissionForCreate {
     pub workspace_id: Uuid,
@@ -56,8 +52,6 @@ pub struct PermissionForCreate {
     pub meta: PermissionMeta,
 }
 
-// --- Update (store input) ---
-/// Input for updating an existing `permission`.
 #[derive(Debug, Fields, Clone)]
 pub struct PermissionForUpdate {
     pub name: Option<String>,
@@ -96,10 +90,6 @@ pub struct PermissionFilter {
     pub name: Option<OpValsString>,
     pub code: Option<OpValsString>,
     pub description: Option<OpValsString>,
-
-    // NOTE: Filtering on JSONB and TEXT[] fields would require custom modql logic.
-    // pub tags: Option<OpValsValue>,
-    // pub meta: Option<OpValsValue>,
 
     // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]

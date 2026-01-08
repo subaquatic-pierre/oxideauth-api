@@ -126,8 +126,6 @@ impl Nullable for MembershipStatus {
     }
 }
 
-// --- Create (store input) ---
-/// Input for creating a new `membership`.
 #[derive(Debug, Fields)]
 pub struct MembershipForCreate {
     pub account_id: Uuid,
@@ -139,8 +137,6 @@ pub struct MembershipForCreate {
     pub meta: MembershipMeta,
 }
 
-// --- Update (store input) ---
-/// Input for updating an existing `membership`.
 #[derive(Debug, Fields, Clone)]
 pub struct MembershipForUpdate {
     pub scope: Option<MembershipScope>,
@@ -185,8 +181,6 @@ pub struct MembershipFilter {
     // NOTE: Filtering on JSONB and TEXT[] fields would require custom modql logic.
     // pub tags: Option<OpValsValue>,
     // pub meta: Option<OpValsValue>,
-
-    // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]
     pub created_by: Option<OpValsString>,
     #[modql(to_sea_value_fn = "time_to_sea_value")]
