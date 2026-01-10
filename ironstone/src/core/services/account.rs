@@ -15,7 +15,13 @@ use crate::{
             list::{ListResponse, ListResponseMeta},
         },
         services::auth::AuthValidator,
-        traits::{list::RequestListParams, service::CoreService},
+        traits::{
+            list::RequestListParams,
+            service::{
+                CoreModelCreateService, CoreModelDeleteService, CoreModelDescribeService,
+                CoreModelListService, CoreModelService, CoreModelUpdateService,
+            },
+        },
     },
     store::{
         contains::FilterByContains,
@@ -36,10 +42,10 @@ use crate::{
 
 pub struct AccountService<D: DbExecutor> {
     sm: Arc<StoreManager<D>>,
-    // password_hasher: Arc<dyn PasswordHasher>, // Dependency for hashing
 }
 
-impl<D: DbExecutor> CoreService for AccountService<D> {
+impl<D: DbExecutor> CoreModelService for AccountService<D> {
+    type CoreModel = Account;
     type ServiceStore = AccountStore<D>;
 
     fn store(&self) -> &Self::ServiceStore {
@@ -56,11 +62,40 @@ impl<D: DbExecutor> AccountService<D> {
         Self { sm }
     }
 
-    pub async fn create(
+    async fn get_account_id(
         &self,
-        ctx: &mut CoreCtx,
-        params: AccountCreateParams,
-    ) -> CoreResult<Account> {
+        ctx: &CoreCtx,
+        id: Option<Uuid>,
+        email: Option<String>,
+    ) -> CoreResult<DbId> {
+        let store = self.store();
+
+        let id: DbId = match (id, email) {
+            (Some(id), _) => id.into(),
+            (None, Some(email)) => match store.get_by_email(&ctx.into(), &email).await? {
+                Some(acc) => acc.id,
+                None => {
+                    return Err(CoreError::StoreError(StoreError::EntityNotFound {
+                        entity: "account".to_string(),
+                        id: email.to_string(),
+                    }))
+                }
+            },
+            (None, None) => {
+                return Err(CoreError::InvalidParams(
+                    "Account ID or email required".to_string(),
+                ))
+            }
+        };
+
+        Ok(id)
+    }
+}
+
+impl<D: DbExecutor> CoreModelCreateService for AccountService<D> {
+    type CreateParams = AccountCreateParams;
+
+    async fn create(&self, ctx: &mut CoreCtx, params: AccountCreateParams) -> CoreResult<Account> {
         let store = self.store();
 
         if store
@@ -88,12 +123,11 @@ impl<D: DbExecutor> AccountService<D> {
 
         Ok(new_account.into())
     }
+}
+impl<D: DbExecutor> CoreModelDescribeService for AccountService<D> {
+    type DescribeParams = AccountDescribeParams;
 
-    pub async fn describe(
-        &self,
-        ctx: &CoreCtx,
-        params: AccountDescribeParams,
-    ) -> CoreResult<Account> {
+    async fn describe(&self, ctx: &CoreCtx, params: AccountDescribeParams) -> CoreResult<Account> {
         let store = self.store();
 
         let id = self.get_account_id(&ctx, params.id, params.email).await?;
@@ -102,8 +136,12 @@ impl<D: DbExecutor> AccountService<D> {
 
         Ok(acc)
     }
+}
 
-    pub async fn list(
+impl<D: DbExecutor> CoreModelListService for AccountService<D> {
+    type ListParams = AccountListParams;
+
+    async fn list(
         &self,
         ctx: &CoreCtx,
         params: AccountListParams,
@@ -143,26 +181,27 @@ impl<D: DbExecutor> AccountService<D> {
         // empty result
         Ok(ListResponse::default())
     }
+}
 
-    pub async fn delete(&self, ctx: &CoreCtx, params: AccountDeleteParams) -> CoreResult<Account> {
-        let store = self.store();
+impl<D: DbExecutor> CoreModelUpdateService for AccountService<D> {
+    type UpdateParams = AccountUpdateParams;
 
-        let id = self.get_account_id(ctx, params.id, params.email).await?;
-
-        let deleted = store.delete(&ctx.into(), &id).await?.into();
-
-        Ok(deleted)
-    }
-
-    pub async fn update(&self, ctx: &CoreCtx, params: AccountUpdateParams) -> CoreResult<Account> {
+    async fn update(&self, ctx: &CoreCtx, params: AccountUpdateParams) -> CoreResult<Account> {
         let store = self.store();
 
         let email = params.email.clone();
         let id = self.get_account_id(ctx, params.id, params.email).await?;
 
-        // 2. Prepare the update struct for the store layer
+        // TODO: updating email constraints need to be enforced
+        // if email is updated then need to set verified as false
+        // ensure email does not already exist for a different account
+        // force reverify
+        // this email acts primarily as ID, if a user wants to update email
+        // to login then can update credential used for that namespace instead
+
+        // Prepare the update struct for the store layer
         let update_data = AccountForUpdate {
-            email: email, // Use the new email if provided in params
+            email: None, // NOTE: read above for decision
             name: params.name,
             description: params.description,
             avatar_url: params.avatar_url,
@@ -176,34 +215,19 @@ impl<D: DbExecutor> AccountService<D> {
 
         Ok(updated_account.into())
     }
+}
 
-    async fn get_account_id(
-        &self,
-        ctx: &CoreCtx,
-        id: Option<Uuid>,
-        email: Option<String>,
-    ) -> CoreResult<DbId> {
+impl<D: DbExecutor> CoreModelDeleteService for AccountService<D> {
+    type DeleteParams = AccountDeleteParams;
+
+    async fn delete(&self, ctx: &CoreCtx, params: AccountDeleteParams) -> CoreResult<Account> {
         let store = self.store();
 
-        let id: DbId = match (id, email) {
-            (Some(id), _) => id.into(),
-            (None, Some(email)) => match store.get_by_email(&ctx.into(), &email).await? {
-                Some(acc) => acc.id,
-                None => {
-                    return Err(CoreError::StoreError(StoreError::EntityNotFound {
-                        entity: "account".to_string(),
-                        id: email.to_string(),
-                    }))
-                }
-            },
-            (None, None) => {
-                return Err(CoreError::InvalidParams(
-                    "Account ID or email required".to_string(),
-                ))
-            }
-        };
+        let id = self.get_account_id(ctx, params.id, params.email).await?;
 
-        Ok(id)
+        let deleted = store.delete(&ctx.into(), &id).await?.into();
+
+        Ok(deleted)
     }
 }
 

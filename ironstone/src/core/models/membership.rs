@@ -86,9 +86,8 @@ pub struct MembershipCreateParams {
 
 #[derive(Debug, Deserialize)]
 pub struct MembershipDescribeParams {
-    pub id: Option<Uuid>,
-    pub account_id: Option<Uuid>,
-    pub workspace_id: Option<Uuid>,
+    pub id: Uuid,
+    pub workspace_id: Uuid,
 }
 
 #[derive(Debug, Deserialize)]
@@ -104,6 +103,10 @@ pub struct MembershipUpdateParams {
 pub struct MembershipListParams {
     pub filter: Option<RequestFilterParams<MembershipFilter>>,
     pub options: Option<RequestListOptions>,
+}
+
+pub struct MembershipDeleteParams {
+    pub id: Uuid,
 }
 
 impl RequestListParams<MembershipFilter> for MembershipListParams {

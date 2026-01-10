@@ -8,15 +8,31 @@ use crate::{
         ctx::CoreCtx,
         error::{CoreError, CoreResult},
         models::{
-            account::Account,
+            account::{Account, AccountDescribeParams},
+            list::RequestFilterParams,
             membership::{
                 CachedMembership, Membership, MembershipCreateParams, MembershipDescribeParams,
             },
+            role::{Role, RoleFilter, RoleListParams},
+            workspace::WorkspaceDescribeParams,
+        },
+        services::{
+            account::AccountService, auth::AuthValidator, role::RoleService,
+            workspace::WorkspaceService,
+        },
+        traits::service::{
+            CoreModelCreateService, CoreModelDescribeService, CoreModelListService,
+            CoreModelService,
         },
     },
     store::{
         dbx::PgDbx,
-        entities::account::{AccountFilter, AccountForCreate, AccountMeta},
+        entities::{
+            account::{AccountFilter, AccountForCreate, AccountMeta},
+            id::DbId,
+            membership::{MembershipForCreate, MembershipRow, MembershipWithRoles},
+        },
+        join::GetManyToMany,
         manager::StoreManager,
         stores::membership::MembershipStore,
         traits::{crud::*, dbx::DbExecutor},
@@ -26,33 +42,40 @@ use crate::{
 pub struct MembershipService<D: DbExecutor, C: CacheExecutor> {
     sm: Arc<StoreManager<D>>,
     cm: Arc<CacheManager<C>>,
-    // password_hasher: Arc<dyn PasswordHasher>, // Dependency for hashing
+    ws_svc: WorkspaceService<D>,
+    acc_svc: AccountService<D>,
+    role_svc: RoleService<D>,
+}
+
+impl<D: DbExecutor, C: CacheExecutor> CoreModelService for MembershipService<D, C> {
+    type CoreModel = Membership;
+
+    type ServiceStore = MembershipStore<D>;
+
+    fn store(&self) -> &Self::ServiceStore {
+        &self.sm.membership
+    }
+
+    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
+        AuthValidator::new(ctx)
+    }
 }
 
 impl<D: DbExecutor, C: CacheExecutor> MembershipService<D, C> {
-    pub fn new(sm: Arc<StoreManager<D>>, cm: Arc<CacheManager<C>>) -> Self {
-        Self { sm, cm }
-    }
-
-    pub async fn create(
-        &self,
-        ctx: &CoreCtx,
-        params: MembershipCreateParams,
-    ) -> CoreResult<Membership> {
-        // ensure can create membership in this workspace
-        let n = Membership::default();
-
-        Ok(n)
-    }
-
-    pub async fn describe(
-        &self,
-        ctx: &CoreCtx,
-        _params: MembershipDescribeParams,
-    ) -> CoreResult<Membership> {
-        let n = Membership::default();
-
-        Ok(n)
+    pub fn new(
+        sm: Arc<StoreManager<D>>,
+        cm: Arc<CacheManager<C>>,
+        ws_svc: WorkspaceService<D>,
+        acc_svc: AccountService<D>,
+        role_svc: RoleService<D>,
+    ) -> Self {
+        Self {
+            sm,
+            cm,
+            ws_svc,
+            acc_svc,
+            role_svc,
+        }
     }
 
     pub fn get_cached(&self) -> Option<CachedMembership> {
@@ -63,9 +86,128 @@ impl<D: DbExecutor, C: CacheExecutor> MembershipService<D, C> {
     fn cache(&self) -> &MembershipCache<C> {
         &self.cm.membership
     }
+}
 
-    fn store(&self) -> &MembershipStore<D> {
-        &self.sm.membership
+impl<D: DbExecutor, C: CacheExecutor> CoreModelCreateService for MembershipService<D, C> {
+    type CreateParams = MembershipCreateParams;
+
+    /// Creates a membership and optionally associates it with roles
+    async fn create(
+        &self,
+        ctx: &mut CoreCtx,
+        params: MembershipCreateParams,
+    ) -> CoreResult<Membership> {
+        let store = self.store();
+
+        let m_create = MembershipForCreate {
+            account_id: params.account_id,
+            workspace_id: params.workspace_id,
+            scope: params.scope,
+            status: params.status,
+            project_id: params.project_id,
+            tags: params.tags,
+            meta: params.meta,
+        };
+
+        // TODO: Ensure membership doesn't already exist for given account_id and workspace_id
+        // check database constraints
+
+        let membership_row = store.create(&ctx.into(), m_create).await?;
+
+        // TODO: assign roles if present on params
+        if !params.role_ids.is_empty() {}
+
+        self.describe(
+            ctx,
+            MembershipDescribeParams {
+                id: membership_row.id.into(),
+                workspace_id: membership_row.workspace_id.into(),
+            },
+        )
+        .await
+    }
+}
+
+impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService for MembershipService<D, C> {
+    type DescribeParams = MembershipDescribeParams;
+
+    async fn describe(
+        &self,
+        ctx: &CoreCtx,
+        params: MembershipDescribeParams,
+    ) -> CoreResult<Membership> {
+        let store = self.store();
+        let db_id: DbId = params.id.into();
+
+        // Get Membership with Roles (Join query)
+        let membership: MembershipRow = store.get(&ctx.into(), &db_id).await?;
+
+        // Hydrate related Account and Workspace
+        let account = self
+            .acc_svc
+            .describe(
+                &ctx,
+                AccountDescribeParams {
+                    email: None,
+                    id: Some(membership.account_id.into()),
+                },
+            )
+            .await?;
+
+        let workspace = self
+            .ws_svc
+            .describe(
+                &ctx,
+                WorkspaceDescribeParams {
+                    id: Some(membership.workspace_id.into()),
+                    slug: None,
+                },
+            )
+            .await?;
+
+        let role_filter: RoleFilter = json!({ "name": "list-role-b" }).try_into()?;
+        let filter = RequestFilterParams::new(None, Some(role_filter));
+
+        let roles = self
+            .role_svc
+            .list(
+                &ctx,
+                RoleListParams {
+                    filter: Some(filter),
+                    options: None,
+                },
+            )
+            .await?;
+
+        let account = self
+            .acc_svc
+            .describe(
+                &ctx,
+                AccountDescribeParams {
+                    email: None,
+                    id: Some(membership.account_id),
+                },
+            )
+            .await?;
+
+        // let roles = membership_with_roles.roles.into_iter().map(|el| Role {
+        //     id: membership.id.into(),
+        //     workspace: workspace.clone(),
+        //     name: todo!(),
+        //     description: todo!(),
+        //     permissions: todo!(),
+        //     tags: todo!(),
+        //     meta: todo!(),
+        //     audit: todo!(),
+        // });
+
+        // Membership::from_row_with_entities(
+        //     row_with_roles.membership,
+        //     row_with_roles.roles,
+        //     account,
+        //     workspace,
+        // )
+        todo!()
     }
 }
 
@@ -78,6 +220,7 @@ mod tests {
     use crate::{
         cache::redis::RedisChx,
         config::Config,
+        core::services::factory::ServiceFactory,
         create_dbx_mock_unsafe,
         dev::init::init_test,
         store::{
@@ -123,7 +266,8 @@ mod tests {
         // build cache manager
         let redis_cache = Arc::new(RedisChx::new(&config.redis_url).await);
         let cm = Arc::new(CacheManager::new(redis_cache));
-        let svc = MembershipService::new(sm, cm);
+        let svc_factory = ServiceFactory::new(sm, cm);
+        let svc = svc_factory.membership();
 
         Ok(())
     }
@@ -159,7 +303,8 @@ mod tests {
         // build cache manager
         let redis_cache = Arc::new(RedisChx::new(&config.redis_url).await);
         let cm = Arc::new(CacheManager::new(redis_cache));
-        let svc = MembershipService::new(sm, cm);
+        let svc_factory = ServiceFactory::new(sm, cm);
+        let svc = svc_factory.membership();
 
         Ok(())
     }

@@ -6,7 +6,10 @@ use crate::{
     core::services::{
         account::AccountService,
         auth::AuthService,
+        membership::MembershipService,
+        permission::PermissionService,
         project::ProjectService,
+        role::RoleService,
         token::{TokenService, TokenServiceConfig},
         workspace::WorkspaceService,
     },
@@ -36,6 +39,16 @@ where
         svc
     }
 
+    pub fn role(&self) -> RoleService<D> {
+        let svc = RoleService::new(self.sm.clone(), self.permission());
+        svc
+    }
+
+    pub fn permission(&self) -> PermissionService<D> {
+        let svc = PermissionService::new(self.sm.clone());
+        svc
+    }
+
     pub fn workspace(&self) -> WorkspaceService<D> {
         let svc = WorkspaceService::new(self.sm.clone());
         svc
@@ -46,6 +59,17 @@ where
         svc
     }
 
+    pub fn membership(&self) -> MembershipService<D, C> {
+        let svc = MembershipService::new(
+            self.sm.clone(),
+            self.cm.clone(),
+            self.workspace(),
+            self.account(),
+            self.role(),
+        );
+        svc
+    }
+
     pub fn auth(&self) -> AuthService<D> {
         let acc_svc = self.account();
         let svc = AuthService::new(acc_svc);
@@ -53,7 +77,11 @@ where
     }
 
     pub fn token(&self) -> TokenService<D, C> {
-        // TODO: get config from storage, first check cache, if not found then check database and update cache
+        // TODO: get config from storage, first check cache,
+        // if not found then check database and update cache
+        // the reason for holding config in storage is to allow
+        // dynamic config retrieval at runtime, this allows
+        // multi tenant configs, also allows for config edit from client
         let config = TokenServiceConfig::default();
         let svc = TokenService::new(self.sm.clone(), self.cm.clone(), config);
         svc

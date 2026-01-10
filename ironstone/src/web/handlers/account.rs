@@ -19,6 +19,10 @@ use crate::{
             },
             list::{ListResponse, ListResponseMeta, RequestFilterParams, RequestListOptions},
         },
+        traits::service::{
+            CoreModelCreateService, CoreModelDeleteService, CoreModelDescribeService,
+            CoreModelListService, CoreModelUpdateService,
+        },
     },
     store::entities::account::AccountFilter,
     web::{

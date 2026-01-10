@@ -138,6 +138,10 @@ pub struct RoleDescribeParams {
     pub name: Option<String>,
 }
 
+pub struct RoleDeleteParams {
+    pub id: Uuid,
+}
+
 pub struct RoleListParams {
     pub filter: Option<RequestFilterParams<RoleFilter>>,
     pub options: Option<RequestListOptions>,

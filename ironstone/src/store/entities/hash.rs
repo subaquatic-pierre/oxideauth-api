@@ -21,7 +21,7 @@ use tracing::{error, warn};
 
 use crate::store::error::{StoreError, StoreResult};
 
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Serialize, Default)]
 pub struct Sha256Hash {
     inner: [u8; 32],
 }

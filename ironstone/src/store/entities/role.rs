@@ -131,10 +131,6 @@ pub struct RoleFilter {
     pub name: Option<OpValsString>,
     pub description: Option<OpValsString>,
 
-    // NOTE: Filtering on JSONB and TEXT[] fields would require custom modql logic.
-    // pub tags: Option<OpValsValue>,
-    // pub meta: Option<OpValsValue>,
-
     // Audit filters (created_by/at, updated_by/at)
     #[modql(cast_as = "uuid")]
     pub created_by: Option<OpValsString>,

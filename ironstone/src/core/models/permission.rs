@@ -104,6 +104,10 @@ pub struct PermissionDescribeParams {
     pub code: Option<String>,
 }
 
+pub struct PermissionDeleteParams {
+    id: Uuid,
+}
+
 pub struct PermissionListParams {
     pub filter: Option<RequestFilterParams<PermissionFilter>>,
     pub options: Option<RequestListOptions>,

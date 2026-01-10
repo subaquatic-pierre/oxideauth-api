@@ -15,7 +15,7 @@ use crate::{
             workspace::{Workspace, WorkspaceDescribeParams},
         },
         services::{auth::AuthValidator, workspace::WorkspaceService},
-        traits::{list::RequestListParams, service::CoreService},
+        traits::{list::RequestListParams, service::CoreModelService},
     },
     store::{
         ctx::StoreCtx,
@@ -36,7 +36,9 @@ pub struct ProjectService<D: DbExecutor> {
     ws_svc: WorkspaceService<D>,
 }
 
-impl<D: DbExecutor> CoreService for ProjectService<D> {
+impl<D: DbExecutor> CoreModelService for ProjectService<D> {
+    type CoreModel = Project;
+
     type ServiceStore = ProjectStore<D>;
 
     fn store(&self) -> &Self::ServiceStore {

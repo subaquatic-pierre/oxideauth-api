@@ -86,7 +86,7 @@ impl From<TokenBlacklistMeta> for SeaValue {
 }
 
 /// Filtering options for `token_blacklist` queries.
-#[derive(FilterNodes, Deserialize, Default, Debug)]
+#[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
 pub struct TokenBlacklistFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<OpValsString>,
