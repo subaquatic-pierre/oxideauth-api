@@ -41,7 +41,7 @@ use uuid::Uuid;
 
 #[axum::debug_handler]
 pub async fn describe_account(
-    ctx: Extension<CoreCtx>,
+    mut ctx: Extension<CoreCtx>,
     app: Extension<App>,
     body: JsonReqResult<AccountDescribeReq>,
 ) -> JsonResResult<WebResponse<AccountDescribeRes>> {
@@ -50,7 +50,7 @@ pub async fn describe_account(
 
     let params: AccountDescribeParams = body.into();
 
-    let acc = svc.describe(&ctx, params).await?;
+    let acc = svc.describe(&mut ctx, params).await?;
 
     let acc_res = acc.into();
 
@@ -59,7 +59,7 @@ pub async fn describe_account(
 
 #[axum::debug_handler]
 pub async fn list_accounts(
-    ctx: Extension<CoreCtx>,
+    mut ctx: Extension<CoreCtx>,
     app: Extension<App>,
     body: JsonReqResult<AccountListReq>,
 ) -> JsonResResult<WebResponse<AccountListRes>> {
@@ -67,7 +67,7 @@ pub async fn list_accounts(
     let svc = app.svc_build.account();
 
     let params: AccountListParams = body.into();
-    let res = svc.list(&ctx, params).await?;
+    let res = svc.list(&mut ctx, params).await?;
 
     let res = AccountListRes {
         accounts: res.data,
@@ -99,7 +99,7 @@ pub async fn create_account(
 
 #[axum::debug_handler]
 pub async fn delete_account(
-    ctx: Extension<CoreCtx>,
+    mut ctx: Extension<CoreCtx>,
     app: Extension<App>,
     body: JsonReqResult<AccountDeleteReq>,
 ) -> JsonResResult<WebResponse<AccountDeleteRes>> {
@@ -108,7 +108,7 @@ pub async fn delete_account(
 
     let params: AccountDeleteParams = body.into();
 
-    let acc = svc.delete(&ctx, params).await?;
+    let acc = svc.delete(&mut ctx, params).await?;
 
     let res = AccountDeleteRes { id: acc.id };
 
@@ -118,7 +118,7 @@ pub async fn delete_account(
 
 #[axum::debug_handler]
 pub async fn update_account(
-    ctx: Extension<CoreCtx>,
+    mut ctx: Extension<CoreCtx>,
     app: Extension<App>,
     body: JsonReqResult<AccountUpdateReq>,
 ) -> JsonResResult<WebResponse<AccountDescribeRes>> {
@@ -127,7 +127,7 @@ pub async fn update_account(
 
     let params: AccountUpdateParams = body.into();
 
-    let acc = svc.update(&ctx, params).await?;
+    let acc = svc.update(&mut ctx, params).await?;
 
     let acc_res: AccountDescribeRes = acc.into();
 

@@ -3,8 +3,11 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core::models::permission::{PermissionCheck, PermissionChecker},
-    store::entities::{audit::AuditMeta, permission::PermissionMeta},
+    core::{
+        models::permission::{PermissionCheck, PermissionChecker},
+        traits::params::ValidateParams,
+    },
+    store::entities::{audit::AuditMeta, permission::PermissionMeta, role::RoleForUpdate},
 };
 
 use modql::filter::OpValString;
@@ -131,15 +134,26 @@ pub struct RoleUpdateParams {
     pub meta: Option<RoleMeta>,
 }
 
+impl From<RoleUpdateParams> for RoleForUpdate {
+    fn from(params: RoleUpdateParams) -> Self {
+        Self {
+            name: params.name,
+            description: params.description,
+            tags: params.tags,
+            meta: params.meta,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct RoleDescribeParams {
-    pub id: Option<Uuid>,
+    pub id: Uuid,
     pub workspace_id: Uuid,
-    pub name: Option<String>,
 }
 
 pub struct RoleDeleteParams {
     pub id: Uuid,
+    pub workspace_id: Uuid,
 }
 
 pub struct RoleListParams {

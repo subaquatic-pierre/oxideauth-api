@@ -19,6 +19,7 @@ use crate::{
                 WorkspaceListParams, WorkspaceUpdateParams,
             },
         },
+        traits::service::*,
     },
     store::entities::workspace::WorkspaceFilter,
     web::{
@@ -38,7 +39,7 @@ use uuid::Uuid;
 // --- Describe Workspace ---
 #[axum::debug_handler]
 pub async fn describe_workspace(
-    ctx: Extension<CoreCtx>,
+    mut ctx: Extension<CoreCtx>,
     app: Extension<App>,
     body: JsonReqResult<WorkspaceDescribeReq>,
 ) -> JsonResResult<WebResponse<WorkspaceDescribeRes>> {
@@ -47,7 +48,7 @@ pub async fn describe_workspace(
 
     let params: WorkspaceDescribeParams = body.into();
 
-    let ws = svc.describe(&ctx, params).await?;
+    let ws = svc.describe(&mut ctx, params).await?;
 
     let ws_res: WorkspaceDescribeRes = ws.into();
 
@@ -58,7 +59,7 @@ pub async fn describe_workspace(
 // --- List Workspaces ---
 #[axum::debug_handler]
 pub async fn list_workspaces(
-    ctx: Extension<CoreCtx>,
+    mut ctx: Extension<CoreCtx>,
     app: Extension<App>,
     body: JsonReqResult<WorkspaceListReq>,
 ) -> JsonResResult<WebResponse<WorkspaceListRes>> {
@@ -66,7 +67,7 @@ pub async fn list_workspaces(
     let svc = app.svc_build.workspace();
 
     let params: WorkspaceListParams = body.into();
-    let res = svc.list(&ctx, params).await?;
+    let res = svc.list(&mut ctx, params).await?;
 
     // Map the vector of Workspace entities to the vector of DTOs
     let workspaces: Vec<WorkspaceDescribeRes> = res
@@ -86,7 +87,7 @@ pub async fn list_workspaces(
 // --- Create Workspace ---
 #[axum::debug_handler]
 pub async fn create_workspace(
-    ctx: Extension<CoreCtx>,
+    mut ctx: Extension<CoreCtx>,
     app: Extension<App>,
     body: JsonReqResult<WorkspaceCreateReq>,
 ) -> JsonResResult<WebResponse<WorkspaceDescribeRes>> {
@@ -95,7 +96,7 @@ pub async fn create_workspace(
 
     let params: WorkspaceCreateParams = body.into();
 
-    let ws = svc.create(&ctx, params).await?;
+    let ws = svc.create(&mut ctx, params).await?;
 
     let ws_res: WorkspaceDescribeRes = ws.into();
 
@@ -106,7 +107,7 @@ pub async fn create_workspace(
 // --- Update Workspace ---
 #[axum::debug_handler]
 pub async fn update_workspace(
-    ctx: Extension<CoreCtx>,
+    mut ctx: Extension<CoreCtx>,
     app: Extension<App>,
     body: JsonReqResult<WorkspaceUpdateReq>,
 ) -> JsonResResult<WebResponse<WorkspaceDescribeRes>> {
@@ -115,7 +116,7 @@ pub async fn update_workspace(
 
     let params: WorkspaceUpdateParams = body.into();
 
-    let ws = svc.update(&ctx, params).await?;
+    let ws = svc.update(&mut ctx, params).await?;
 
     let ws_res: WorkspaceDescribeRes = ws.into();
 
@@ -126,7 +127,7 @@ pub async fn update_workspace(
 // --- Delete Workspace ---
 #[axum::debug_handler]
 pub async fn delete_workspace(
-    ctx: Extension<CoreCtx>,
+    mut ctx: Extension<CoreCtx>,
     app: Extension<App>,
     body: JsonReqResult<WorkspaceDeleteReq>,
 ) -> JsonResResult<WebResponse<WorkspaceDeleteRes>> {
@@ -136,7 +137,7 @@ pub async fn delete_workspace(
     let params: WorkspaceDeleteParams = body.into();
 
     // The service returns the deleted Workspace entity
-    let ws = svc.delete(&ctx, params).await?;
+    let ws = svc.delete(&mut ctx, params).await?;
 
     // Convert the deleted Workspace entity into the response DTO
     let res: WorkspaceDeleteRes = ws.into();

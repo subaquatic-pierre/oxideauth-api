@@ -40,7 +40,7 @@ where
     }
 
     pub fn role(&self) -> RoleService<D> {
-        let svc = RoleService::new(self.sm.clone(), self.permission());
+        let svc = RoleService::new(self.sm.clone(), self.workspace(), self.permission());
         svc
     }
 

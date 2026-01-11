@@ -7,8 +7,12 @@ use crate::store::{
     crud::List,
     ctx::StoreCtx,
     dbx::PgDbx,
-    entities::permission::{
-        PermissionFilter, PermissionForCreate, PermissionForUpdate, PermissionIden, PermissionRow,
+    entities::{
+        id::DbId,
+        permission::{
+            PermissionFilter, PermissionForCreate, PermissionForUpdate, PermissionIden,
+            PermissionRow,
+        },
     },
     error::{StoreError, StoreResult},
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, ReadQueryMeta},
@@ -29,8 +33,13 @@ impl<D: DbExecutor> PermissionStore<D> {
         Self { dbx }
     }
 
-    pub async fn get_by_code(&self, ctx: &StoreCtx, code: &str) -> StoreResult<PermissionRow> {
-        match self.get_by_code_opt(ctx, code).await? {
+    pub async fn get_by_code(
+        &self,
+        ctx: &StoreCtx,
+        code: &str,
+        workspace_id: DbId,
+    ) -> StoreResult<PermissionRow> {
+        match self.get_by_code_opt(ctx, code, workspace_id).await? {
             Some(row) => Ok(row),
             None => Err(StoreError::EntityNotFound {
                 entity: self.read_meta().table.to_string(),
@@ -43,9 +52,11 @@ impl<D: DbExecutor> PermissionStore<D> {
         &self,
         ctx: &StoreCtx,
         code: &str,
+        workspace_id: DbId,
     ) -> StoreResult<Option<PermissionRow>> {
         let filter: PermissionFilter = json!({
-            "code": code.to_string()
+            "code": code.to_string(),
+            "workspace_id":workspace_id.to_string()
         })
         .try_into()?;
 

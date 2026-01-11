@@ -28,7 +28,7 @@ pub trait CoreModelDescribeService: CoreModelService {
 
     async fn describe(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: Self::DescribeParams,
     ) -> CoreResult<Self::CoreModel>;
 }
@@ -38,7 +38,7 @@ pub trait CoreModelListService: CoreModelService {
 
     async fn list(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: Self::ListParams,
     ) -> CoreResult<ListResponse<Self::CoreModel>>;
 }
@@ -48,7 +48,7 @@ pub trait CoreModelUpdateService: CoreModelService {
 
     async fn update(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: Self::UpdateParams,
     ) -> CoreResult<Self::CoreModel>;
 }
@@ -58,7 +58,7 @@ pub trait CoreModelDeleteService: CoreModelService {
 
     async fn delete(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: Self::DeleteParams,
     ) -> CoreResult<Self::CoreModel>;
 }

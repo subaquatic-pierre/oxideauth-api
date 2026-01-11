@@ -15,7 +15,14 @@ use crate::{
                 WorkspaceListParams, WorkspaceUpdateParams,
             },
         },
-        traits::list::RequestListParams,
+        services::auth::AuthValidator,
+        traits::{
+            list::RequestListParams,
+            service::{
+                CoreModelCreateService, CoreModelDeleteService, CoreModelDescribeService,
+                CoreModelListService, CoreModelService, CoreModelUpdateService,
+            },
+        },
     },
     store::{
         ctx::StoreCtx,
@@ -45,10 +52,57 @@ impl<D: DbExecutor> WorkspaceService<D> {
         Self { sm }
     }
 
-    /// Creates a new workspace.
-    pub async fn create(
+    async fn get_workspace_id(
         &self,
         ctx: &CoreCtx,
+        id: Option<Uuid>,
+        slug: Option<String>,
+    ) -> CoreResult<DbId> {
+        let store = self.store();
+
+        let id: DbId = match (id, slug) {
+            (Some(id), _) => id.into(),
+            (None, Some(slug)) => match store.get_by_slug_opt(&ctx.into(), &slug).await? {
+                Some(ws) => ws.id,
+                None => {
+                    return Err(CoreError::StoreError(StoreError::EntityNotFound {
+                        entity: "workspace".to_string(),
+                        id: slug.to_string(),
+                    }))
+                }
+            },
+            (None, None) => {
+                return Err(CoreError::InvalidParams(
+                    "Workspace ID or slug required".to_string(),
+                ))
+            }
+        };
+
+        Ok(id)
+    }
+}
+
+impl<D: DbExecutor> CoreModelService for WorkspaceService<D> {
+    type CoreModel = Workspace;
+
+    type ServiceStore = WorkspaceStore<D>;
+
+    fn store(&self) -> &Self::ServiceStore {
+        &self.sm.workspace
+    }
+
+    fn validator<'a>(&self, ctx: &'a CoreCtx) -> super::auth::AuthValidator<'a> {
+        AuthValidator::new(&ctx)
+    }
+}
+
+impl<D: DbExecutor> CoreModelCreateService for WorkspaceService<D> {
+    type CreateParams = WorkspaceCreateParams;
+
+    /// Creates a new workspace.
+    async fn create(
+        &self,
+        ctx: &mut CoreCtx,
         params: WorkspaceCreateParams,
     ) -> CoreResult<Workspace> {
         let store = self.store();
@@ -81,11 +135,15 @@ impl<D: DbExecutor> WorkspaceService<D> {
 
         Ok(new_workspace.into())
     }
+}
+
+impl<D: DbExecutor> CoreModelDescribeService for WorkspaceService<D> {
+    type DescribeParams = WorkspaceDescribeParams;
 
     /// Retrieves a single workspace by ID or slug.
-    pub async fn describe(
+    async fn describe(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: WorkspaceDescribeParams,
     ) -> CoreResult<Workspace> {
         let store = self.store();
@@ -96,58 +154,15 @@ impl<D: DbExecutor> WorkspaceService<D> {
 
         Ok(res.into())
     }
+}
 
-    /// Updates an existing workspace.
-    pub async fn update(
-        &self,
-        ctx: &CoreCtx,
-        params: WorkspaceUpdateParams,
-    ) -> CoreResult<Workspace> {
-        let store = self.store();
-
-        let id = self
-            .get_workspace_id(ctx, params.id, params.slug.clone())
-            .await?;
-
-        let config = StoreWorkspaceConfig::default();
-
-        // 2. Map Core Params to Store ForUpdate struct
-        let update_data = WorkspaceForUpdate {
-            name: params.name,
-            slug: params.slug,
-            description: params.description,
-            config: Some(config),
-            tags: params.tags,
-            meta: params.meta,
-        };
-
-        // 3. Execute store update
-        let res = store.update(&ctx.into(), &id, update_data).await?;
-
-        Ok(res.into())
-    }
-
-    /// Deletes a workspace by ID or slug.
-    pub async fn delete(
-        &self,
-        ctx: &CoreCtx,
-        params: WorkspaceDeleteParams,
-    ) -> CoreResult<Workspace> {
-        // Returns the ID of the deleted item
-        let store = self.store();
-
-        let id = self.get_workspace_id(ctx, params.id, params.slug).await?;
-
-        // 2. Execute store delete (returns the ID of the deleted item)
-        let deleted = store.delete(&ctx.into(), &id).await?;
-
-        Ok(deleted.into())
-    }
+impl<D: DbExecutor> CoreModelListService for WorkspaceService<D> {
+    type ListParams = WorkspaceListParams;
 
     /// Lists workspaces based on filter and options.
-    pub async fn list(
+    async fn list(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: WorkspaceListParams,
     ) -> CoreResult<ListResponse<Workspace>> {
         let store = self.store();
@@ -182,38 +197,60 @@ impl<D: DbExecutor> WorkspaceService<D> {
         // empty result
         Ok(ListResponse::default())
     }
+}
 
-    fn store(&self) -> &WorkspaceStore<D> {
-        &self.sm.workspace
-    }
+impl<D: DbExecutor> CoreModelUpdateService for WorkspaceService<D> {
+    type UpdateParams = WorkspaceUpdateParams;
 
-    async fn get_workspace_id(
+    /// Updates an existing workspace.
+    async fn update(
         &self,
-        ctx: &CoreCtx,
-        id: Option<Uuid>,
-        slug: Option<String>,
-    ) -> CoreResult<DbId> {
+        ctx: &mut CoreCtx,
+        params: WorkspaceUpdateParams,
+    ) -> CoreResult<Workspace> {
         let store = self.store();
 
-        let id: DbId = match (id, slug) {
-            (Some(id), _) => id.into(),
-            (None, Some(slug)) => match store.get_by_slug_opt(&ctx.into(), &slug).await? {
-                Some(ws) => ws.id,
-                None => {
-                    return Err(CoreError::StoreError(StoreError::EntityNotFound {
-                        entity: "workspace".to_string(),
-                        id: slug.to_string(),
-                    }))
-                }
-            },
-            (None, None) => {
-                return Err(CoreError::InvalidParams(
-                    "Workspace ID or slug required".to_string(),
-                ))
-            }
+        let id = self
+            .get_workspace_id(ctx, params.id, params.slug.clone())
+            .await?;
+
+        let config = StoreWorkspaceConfig::default();
+
+        // 2. Map Core Params to Store ForUpdate struct
+        let update_data = WorkspaceForUpdate {
+            name: params.name,
+            slug: params.slug,
+            description: params.description,
+            config: Some(config),
+            tags: params.tags,
+            meta: params.meta,
         };
 
-        Ok(id)
+        // 3. Execute store update
+        let res = store.update(&ctx.into(), &id, update_data).await?;
+
+        Ok(res.into())
+    }
+}
+
+impl<D: DbExecutor> CoreModelDeleteService for WorkspaceService<D> {
+    type DeleteParams = WorkspaceDeleteParams;
+
+    /// Deletes a workspace by ID or slug.
+    async fn delete(
+        &self,
+        ctx: &mut CoreCtx,
+        params: WorkspaceDeleteParams,
+    ) -> CoreResult<Workspace> {
+        // Returns the ID of the deleted item
+        let store = self.store();
+
+        let id = self.get_workspace_id(ctx, params.id, params.slug).await?;
+
+        // 2. Execute store delete (returns the ID of the deleted item)
+        let deleted = store.delete(&ctx.into(), &id).await?;
+
+        Ok(deleted.into())
     }
 }
 

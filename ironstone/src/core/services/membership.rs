@@ -133,7 +133,7 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService for MembershipSer
 
     async fn describe(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: MembershipDescribeParams,
     ) -> CoreResult<Membership> {
         let store = self.store();
@@ -146,7 +146,7 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService for MembershipSer
         let account = self
             .acc_svc
             .describe(
-                &ctx,
+                ctx,
                 AccountDescribeParams {
                     email: None,
                     id: Some(membership.account_id.into()),
@@ -157,7 +157,7 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService for MembershipSer
         let workspace = self
             .ws_svc
             .describe(
-                &ctx,
+                ctx,
                 WorkspaceDescribeParams {
                     id: Some(membership.workspace_id.into()),
                     slug: None,
@@ -171,7 +171,7 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService for MembershipSer
         let roles = self
             .role_svc
             .list(
-                &ctx,
+                ctx,
                 RoleListParams {
                     filter: Some(filter),
                     options: None,
@@ -182,7 +182,7 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService for MembershipSer
         let account = self
             .acc_svc
             .describe(
-                &ctx,
+                ctx,
                 AccountDescribeParams {
                     email: None,
                     id: Some(membership.account_id),

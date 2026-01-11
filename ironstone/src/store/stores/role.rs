@@ -1,10 +1,17 @@
 use std::sync::Arc;
 
+use sea_query::Iden;
+use serde_json::json;
+
 use crate::store::{
+    crud::List,
+    ctx::StoreCtx,
     dbx::PgDbx,
-    entities::role::{
-        RoleFilter, RoleForCreate, RoleForUpdate, RoleIden, RoleRow, RoleWithPermissions,
+    entities::{
+        id::DbId,
+        role::{RoleFilter, RoleForCreate, RoleForUpdate, RoleIden, RoleRow, RoleWithPermissions},
     },
+    error::{StoreError, StoreResult},
     queries::meta::{ContainsFilterQueryMeta, ManyToManyQueryMeta, MutateQueryMeta, ReadQueryMeta},
     traits::{
         dbx::DbExecutor,
@@ -20,6 +27,36 @@ impl<D: DbExecutor> RoleStore<D> {
     /// Creates a new `RoleStore`.
     pub fn new(dbx: Arc<D>) -> Self {
         Self { dbx }
+    }
+
+    pub async fn get_by_name(
+        &self,
+        ctx: &StoreCtx,
+        name: &str,
+        workspace_id: DbId,
+    ) -> StoreResult<RoleRow> {
+        match self.get_by_name_opt(ctx, name, workspace_id).await? {
+            Some(row) => Ok(row),
+            None => Err(StoreError::EntityNotFound {
+                entity: self.read_meta().table.to_string(),
+                id: name.to_string(),
+            }),
+        }
+    }
+
+    pub async fn get_by_name_opt(
+        &self,
+        ctx: &StoreCtx,
+        name: &str,
+        workspace_id: DbId,
+    ) -> StoreResult<Option<RoleRow>> {
+        let filter: RoleFilter = json!({
+            "name": name.to_string(),
+            "workspace_id": workspace_id.to_string()
+        })
+        .try_into()?;
+
+        Ok(self.list(ctx, Some(filter), None).await?.into_iter().next())
     }
 }
 

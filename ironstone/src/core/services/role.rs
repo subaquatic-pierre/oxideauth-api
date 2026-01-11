@@ -1,24 +1,40 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
+
+use uuid::Uuid;
 
 use crate::{
     core::{
         ctx::CoreCtx,
-        error::CoreResult,
+        error::{CoreError, CoreResult},
         models::{
             list::ListResponse,
+            permission::PermissionCheck,
             role::{
                 Role, RoleCreateParams, RoleDeleteParams, RoleDescribeParams, RoleListParams,
                 RoleUpdateParams,
             },
+            workspace::{Workspace, WorkspaceDescribeParams},
         },
-        services::{auth::AuthValidator, permission::PermissionService},
-        traits::service::{
-            CoreModelCreateService, CoreModelDeleteService, CoreModelDescribeService,
-            CoreModelListService, CoreModelService, CoreModelUpdateService,
+        services::{
+            auth::AuthValidator, permission::PermissionService, workspace::WorkspaceService,
+        },
+        traits::{
+            list::RequestListParams,
+            params::ValidateParams,
+            service::{
+                CoreModelCreateService, CoreModelDeleteService, CoreModelDescribeService,
+                CoreModelListService, CoreModelService, CoreModelUpdateService,
+            },
         },
     },
     store::{
-        entities::{id::DbId, role::RoleForCreate},
+        contains::FilterByContains,
+        ctx::StoreCtx,
+        entities::{
+            id::DbId,
+            role::{RoleForCreate, RoleRow, RoleWithPermissions},
+        },
+        join::{GetManyToMany, ListManyToMany},
         manager::StoreManager,
         stores::role::RoleStore,
         traits::{crud::*, dbx::DbExecutor},
@@ -27,6 +43,7 @@ use crate::{
 
 pub struct RoleService<D: DbExecutor> {
     sm: Arc<StoreManager<D>>,
+    ws_svc: WorkspaceService<D>,
     perm_svc: PermissionService<D>,
 }
 
@@ -44,8 +61,78 @@ impl<D: DbExecutor> CoreModelService for RoleService<D> {
 }
 
 impl<D: DbExecutor> RoleService<D> {
-    pub fn new(sm: Arc<StoreManager<D>>, perm_svc: PermissionService<D>) -> Self {
-        Self { sm, perm_svc }
+    pub fn new(
+        sm: Arc<StoreManager<D>>,
+        ws_svc: WorkspaceService<D>,
+        perm_svc: PermissionService<D>,
+    ) -> Self {
+        Self {
+            sm,
+            ws_svc,
+            perm_svc,
+        }
+    }
+
+    async fn get_workspace(&self, ctx: &mut CoreCtx, workspace_id: Uuid) -> CoreResult<Workspace> {
+        let params = WorkspaceDescribeParams {
+            id: Some(workspace_id),
+            slug: None,
+        };
+
+        let added_perms = vec![PermissionCheck::try_from("workspace:describe")?];
+        ctx.perm_checker.extend(added_perms);
+
+        self.ws_svc.describe(ctx, params).await
+    }
+
+    async fn role_to_ws_map(
+        &self,
+        ctx: &mut CoreCtx,
+        roles: Vec<RoleRow>,
+    ) -> CoreResult<HashMap<Uuid, Workspace>> {
+        let mut data = HashMap::new();
+        let mut ws_map: HashMap<Uuid, Workspace> = HashMap::new();
+
+        for role in roles.iter() {
+            if let Some(ws) = ws_map.get(&role.workspace_id) {
+                data.insert(role.id.into(), ws.clone());
+            } else {
+                let ws = self.get_workspace(ctx, role.workspace_id).await?;
+                ws_map.insert(ws.id, ws.clone());
+                data.insert(role.id.into(), ws);
+            }
+        }
+
+        Ok(data)
+    }
+
+    async fn hydrate_roles(
+        &self,
+        ctx: &mut CoreCtx,
+        rows: Vec<RoleWithPermissions>,
+    ) -> CoreResult<Vec<Role>> {
+        let mut workspaces: HashMap<Uuid, Workspace> = HashMap::new();
+
+        let mut data: Vec<Role> = Vec::with_capacity(rows.len());
+
+        // Hydrate results
+        for row in rows.into_iter() {
+            let workspace_id: Uuid = row.role.workspace_id;
+            let workspace = match workspaces.get(&workspace_id) {
+                Some(ws) => ws,
+                None => {
+                    let ws = self.get_workspace(ctx, workspace_id).await?;
+                    let ws_id = ws.id;
+                    workspaces.insert(ws_id, ws);
+                    // SAFETY: can unwrap as insert occurs directly above
+                    workspaces.get(&ws_id).unwrap()
+                }
+            };
+            let role = Role::from_row_with_entities(row, workspace.clone())?;
+            data.push(role);
+        }
+
+        Ok(data)
     }
 }
 
@@ -75,9 +162,8 @@ impl<D: DbExecutor> CoreModelCreateService for RoleService<D> {
         self.describe(
             ctx,
             RoleDescribeParams {
-                id: Some(row.id.into()),
+                id: row.id.into(),
                 workspace_id: params.workspace_id,
-                name: None,
             },
         )
         .await
@@ -89,13 +175,20 @@ impl<D: DbExecutor> CoreModelDescribeService for RoleService<D> {
 
     async fn describe(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: Self::DescribeParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
 
-        // TODO: implement
-        todo!()
+        let role_with_perms_row = store
+            .get_many_to_many(&ctx.into(), &params.id.into())
+            .await?;
+        let ws = self
+            .get_workspace(ctx, role_with_perms_row.role.workspace_id)
+            .await?;
+        let role = Role::from_row_with_entities(role_with_perms_row, ws)?;
+
+        Ok(role)
     }
 }
 
@@ -104,13 +197,53 @@ impl<D: DbExecutor> CoreModelListService for RoleService<D> {
 
     async fn list(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: Self::ListParams,
     ) -> CoreResult<ListResponse<Self::CoreModel>> {
         let store = self.store();
+        let store_ctx: StoreCtx = ctx.into();
 
-        // TODO: implement
-        todo!()
+        let options = params.list_options();
+
+        let tags_filter = params.validate_filter_tags()?;
+
+        if let Some(tags) = tags_filter.tags() {
+            let data = store
+                .filter_by_tags_contain(&store_ctx, tags.clone(), Some(options.clone()))
+                .await?;
+            let total = store.count_by_tags_contain(&store_ctx, tags).await?;
+
+            // TODO: optimize filter Roles by tags with dedicated store SQL method
+            let mut roles = vec![];
+            for role in data {
+                let role = self
+                    .describe(
+                        ctx,
+                        RoleDescribeParams {
+                            id: role.id.into(),
+                            workspace_id: role.workspace_id.into(),
+                        },
+                    )
+                    .await?;
+                roles.push(role);
+            }
+
+            return Ok(ListResponse::new(roles, total, options));
+        }
+
+        if let Some(filter) = tags_filter.filter() {
+            let filter = Some(filter);
+            let data = store
+                .list_many_to_many(&store_ctx, filter.clone(), Some(options.clone()))
+                .await?;
+            let total = store.count(&store_ctx, filter).await?;
+
+            let data = self.hydrate_roles(ctx, data).await?;
+
+            return Ok(ListResponse::new(data, total, options));
+        }
+
+        Ok(ListResponse::default())
     }
 }
 
@@ -119,13 +252,23 @@ impl<D: DbExecutor> CoreModelUpdateService for RoleService<D> {
 
     async fn update(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: Self::UpdateParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
 
-        // TODO: implement
-        todo!()
+        let res = store
+            .update(&ctx.into(), &params.id.into(), params.into())
+            .await?;
+
+        self.describe(
+            ctx,
+            RoleDescribeParams {
+                id: res.id.into(),
+                workspace_id: res.workspace_id.into(),
+            },
+        )
+        .await
     }
 }
 
@@ -134,12 +277,27 @@ impl<D: DbExecutor> CoreModelDeleteService for RoleService<D> {
 
     async fn delete(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: Self::DeleteParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
 
-        // TODO: implement
-        todo!()
+        // TODO: optimize delete operations across all services,
+        // currently delete operation makes 2 database calls,
+        // should only make one, may need to change the return type
+        // of the delete method to only be deleted id
+        let to_delete = self
+            .describe(
+                ctx,
+                RoleDescribeParams {
+                    id: params.id.into(),
+                    workspace_id: params.workspace_id.into(),
+                },
+            )
+            .await?;
+
+        let _ = store.delete(&ctx.into(), &to_delete.id.into()).await?;
+
+        Ok(to_delete)
     }
 }

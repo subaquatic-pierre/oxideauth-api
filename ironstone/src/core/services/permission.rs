@@ -12,7 +12,7 @@ use crate::{
         models::{
             list::ListResponse,
             permission::{
-                Permission, PermissionCreateParams, PermissionDeleteParams,
+                Permission, PermissionCheck, PermissionCreateParams, PermissionDeleteParams,
                 PermissionDescribeParams, PermissionListParams, PermissionUpdateParams,
             },
             role::Role,
@@ -62,53 +62,45 @@ impl<D: DbExecutor> PermissionService<D> {
         Self { sm, ws_svc }
     }
 
-    async fn perm_to_ws_map(
-        &self,
-        ctx: &CoreCtx,
-        perms: &Vec<PermissionRow>,
-    ) -> CoreResult<HashMap<Uuid, Workspace>> {
-        let mut map: HashMap<Uuid, Workspace> = HashMap::new();
-        let mut ws_set: HashMap<Uuid, Workspace> = HashMap::new();
+    async fn get_workspace(&self, ctx: &mut CoreCtx, workspace_id: Uuid) -> CoreResult<Workspace> {
+        let params = WorkspaceDescribeParams {
+            id: Some(workspace_id),
+            slug: None,
+        };
 
-        for perm in perms.iter() {
-            if let Some(ws) = ws_set.get(&perm.workspace_id) {
-            } else {
-                let ws = self
-                    .ws_svc
-                    .describe(
-                        &ctx,
-                        WorkspaceDescribeParams {
-                            id: Some(perm.workspace_id),
-                            slug: None,
-                        },
-                    )
-                    .await?;
+        let added_perms = vec![PermissionCheck::try_from("workspace:describe")?];
+        ctx.perm_checker.extend(added_perms);
 
-                ws_set.insert(ws.id, ws.clone());
-                map.insert(perm.id.into(), ws);
-            }
-        }
-
-        Ok(map)
+        self.ws_svc.describe(ctx, params).await
     }
 
-    async fn consolidate_perm_data(
+    async fn hydrate_permissions(
         &self,
-        ctx: &CoreCtx,
-        perms: Vec<PermissionRow>,
+        ctx: &mut CoreCtx,
+        rows: Vec<PermissionRow>,
     ) -> CoreResult<Vec<Permission>> {
-        let perm_ws_map = self.perm_to_ws_map(&ctx, &perms).await?;
+        let mut workspaces: HashMap<Uuid, Workspace> = HashMap::new();
 
-        let mut data = vec![];
+        let mut perms: Vec<Permission> = Vec::with_capacity(rows.len());
 
-        for perm_row in perms.into_iter() {
-            if let Some(ws) = perm_ws_map.get(&perm_row.id) {
-                let n_perm = Permission::from_row_with_entities(perm_row, ws.clone())?;
-                data.push(n_perm);
-            }
+        // // Hydrate results
+        for row in rows.into_iter() {
+            let workspace_id: Uuid = row.workspace_id;
+            let workspace = match workspaces.get(&workspace_id) {
+                Some(ws) => ws,
+                None => {
+                    let ws = self.get_workspace(ctx, workspace_id).await?;
+                    let ws_id = ws.id;
+                    workspaces.insert(ws_id, ws);
+                    // SAFETY: can unwrap as insert occurs directly above
+                    workspaces.get(&ws_id).unwrap()
+                }
+            };
+            let perm = Permission::from_row_with_entities(row, workspace.clone())?;
+            perms.push(perm);
         }
 
-        Ok(data)
+        Ok(perms)
     }
 }
 
@@ -128,7 +120,7 @@ impl<D: DbExecutor> CoreModelCreateService for PermissionService<D> {
         let n_perm = store.create(&ctx.into(), params.into()).await?;
 
         self.describe(
-            &ctx,
+            ctx,
             PermissionDescribeParams {
                 id: Some(n_perm.id.into()),
                 workspace_id: n_perm.workspace_id.into(),
@@ -143,7 +135,7 @@ impl<D: DbExecutor> CoreModelDescribeService for PermissionService<D> {
 
     async fn describe(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: Self::DescribeParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
@@ -152,7 +144,7 @@ impl<D: DbExecutor> CoreModelDescribeService for PermissionService<D> {
         let ws = self
             .ws_svc
             .describe(
-                &ctx,
+                ctx,
                 WorkspaceDescribeParams {
                     id: Some(params.workspace_id),
                     slug: None,
@@ -161,7 +153,9 @@ impl<D: DbExecutor> CoreModelDescribeService for PermissionService<D> {
             .await?;
 
         if let Some(code) = params.code {
-            let row = store.get_by_code(&ctx.into(), &code).await?;
+            let row = store
+                .get_by_code(&ctx.into(), &code, params.workspace_id.into())
+                .await?;
             let perm = Permission::from_row_with_entities(row, ws)?;
 
             return Ok(perm);
@@ -185,7 +179,7 @@ impl<D: DbExecutor> CoreModelListService for PermissionService<D> {
 
     async fn list(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: Self::ListParams,
     ) -> CoreResult<ListResponse<Self::CoreModel>> {
         let store = self.store();
@@ -202,7 +196,7 @@ impl<D: DbExecutor> CoreModelListService for PermissionService<D> {
                 .await?;
             let total = store.count_by_tags_contain(&store_ctx, tags).await?;
 
-            let perms = self.consolidate_perm_data(&ctx, data).await?;
+            let perms = self.hydrate_permissions(ctx, data).await?;
 
             return Ok(ListResponse::new(perms, total, options));
         }
@@ -215,12 +209,11 @@ impl<D: DbExecutor> CoreModelListService for PermissionService<D> {
                 .await?;
             let total = store.count(&store_ctx, filter).await?;
 
-            let perms = self.consolidate_perm_data(&ctx, data).await?;
+            let perms = self.hydrate_permissions(ctx, data).await?;
 
             return Ok(ListResponse::new(perms, total, options));
         }
 
-        // empty result
         Ok(ListResponse::default())
     }
 }
@@ -230,7 +223,7 @@ impl<D: DbExecutor> CoreModelUpdateService for PermissionService<D> {
 
     async fn update(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: Self::UpdateParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
@@ -242,7 +235,7 @@ impl<D: DbExecutor> CoreModelUpdateService for PermissionService<D> {
             .await?;
 
         self.describe(
-            &ctx,
+            ctx,
             PermissionDescribeParams {
                 id: Some(updated.id.into()),
                 workspace_id: updated.workspace_id,
@@ -257,7 +250,7 @@ impl<D: DbExecutor> CoreModelDeleteService for PermissionService<D> {
 
     async fn delete(
         &self,
-        ctx: &CoreCtx,
+        ctx: &mut CoreCtx,
         params: Self::DeleteParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
@@ -266,7 +259,7 @@ impl<D: DbExecutor> CoreModelDeleteService for PermissionService<D> {
         // check database constraints
         let to_delete = self
             .describe(
-                &ctx,
+                ctx,
                 PermissionDescribeParams {
                     id: Some(params.id.into()),
                     workspace_id: params.workspace_id,

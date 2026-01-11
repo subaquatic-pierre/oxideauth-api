@@ -19,6 +19,10 @@ use crate::{
                 ProjectListParams, ProjectUpdateParams,
             },
         },
+        traits::service::{
+            CoreModelCreateService, CoreModelDeleteService, CoreModelDescribeService,
+            CoreModelListService, CoreModelUpdateService,
+        },
     },
     store::entities::project::ProjectFilter,
     web::{
