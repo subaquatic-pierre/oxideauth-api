@@ -1,10 +1,16 @@
 use std::sync::Arc;
 
+use sea_query::Iden;
+use serde_json::json;
+
 use crate::store::{
+    crud::List,
+    ctx::StoreCtx,
     dbx::PgDbx,
     entities::permission::{
         PermissionFilter, PermissionForCreate, PermissionForUpdate, PermissionIden, PermissionRow,
     },
+    error::{StoreError, StoreResult},
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, ReadQueryMeta},
     traits::{
         dbx::DbExecutor,
@@ -21,6 +27,29 @@ impl<D: DbExecutor> PermissionStore<D> {
     /// Creates a new `PermissionStore`.
     pub fn new(dbx: Arc<D>) -> Self {
         Self { dbx }
+    }
+
+    pub async fn get_by_code(&self, ctx: &StoreCtx, code: &str) -> StoreResult<PermissionRow> {
+        match self.get_by_code_opt(ctx, code).await? {
+            Some(row) => Ok(row),
+            None => Err(StoreError::EntityNotFound {
+                entity: self.read_meta().table.to_string(),
+                id: code.to_string(),
+            }),
+        }
+    }
+
+    pub async fn get_by_code_opt(
+        &self,
+        ctx: &StoreCtx,
+        code: &str,
+    ) -> StoreResult<Option<PermissionRow>> {
+        let filter: PermissionFilter = json!({
+            "code": code.to_string()
+        })
+        .try_into()?;
+
+        Ok(self.list(ctx, Some(filter), None).await?.into_iter().next())
     }
 }
 

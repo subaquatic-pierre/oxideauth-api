@@ -55,7 +55,7 @@ impl<D: DbExecutor> WorkspaceService<D> {
 
         // 1. Check if slug already exists
         if store
-            .get_by_slug(&ctx.into(), &params.slug)
+            .get_by_slug_opt(&ctx.into(), &params.slug)
             .await?
             .is_some()
         {
@@ -197,7 +197,7 @@ impl<D: DbExecutor> WorkspaceService<D> {
 
         let id: DbId = match (id, slug) {
             (Some(id), _) => id.into(),
-            (None, Some(slug)) => match store.get_by_slug(&ctx.into(), &slug).await? {
+            (None, Some(slug)) => match store.get_by_slug_opt(&ctx.into(), &slug).await? {
                 Some(ws) => ws.id,
                 None => {
                     return Err(CoreError::StoreError(StoreError::EntityNotFound {

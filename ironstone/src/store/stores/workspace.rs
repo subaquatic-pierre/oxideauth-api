@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use sea_query::Iden;
 use serde_json::json;
 
 use crate::store::{
@@ -9,7 +10,7 @@ use crate::store::{
         WorkspaceFilter, WorkspaceForCreate, WorkspaceForUpdate, WorkspaceIden, WorkspaceRow,
         WorkspaceWithProjects,
     },
-    error::StoreResult,
+    error::{StoreError, StoreResult},
     queries::meta::{ContainsFilterQueryMeta, MutateQueryMeta, OneToManyQueryMeta, ReadQueryMeta},
     traits::{
         crud::List,
@@ -30,7 +31,17 @@ impl<D: DbExecutor> WorkspaceStore<D> {
         Self { dbx }
     }
 
-    pub async fn get_by_slug(
+    pub async fn get_by_slug(&self, ctx: &StoreCtx, slug: &str) -> StoreResult<WorkspaceRow> {
+        match self.get_by_slug_opt(ctx, slug).await? {
+            Some(row) => Ok(row),
+            None => Err(StoreError::EntityNotFound {
+                entity: self.read_meta().table.to_string(),
+                id: slug.to_string(),
+            }),
+        }
+    }
+
+    pub async fn get_by_slug_opt(
         &self,
         ctx: &StoreCtx,
         slug: &str,

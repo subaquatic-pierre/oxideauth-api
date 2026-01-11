@@ -45,7 +45,7 @@ where
     }
 
     pub fn permission(&self) -> PermissionService<D> {
-        let svc = PermissionService::new(self.sm.clone());
+        let svc = PermissionService::new(self.sm.clone(), self.workspace());
         svc
     }
 

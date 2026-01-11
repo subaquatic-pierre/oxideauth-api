@@ -12,11 +12,11 @@ use crate::{
             list::{RequestFilterParams, RequestListOptions},
             workspace::Workspace,
         },
-        traits::{filter::OpValWorkspaceId, list::RequestListParams},
+        traits::{filter::OpValWorkspaceId, list::RequestListParams, params::ValidateParams},
     },
     store::entities::permission::{
-        PermissionFilter as StorePermissionFilter, PermissionMeta as StorePermissionMeta,
-        PermissionRow,
+        PermissionFilter as StorePermissionFilter, PermissionForCreate, PermissionForUpdate,
+        PermissionMeta as StorePermissionMeta, PermissionRow,
     },
 };
 
@@ -86,6 +86,19 @@ pub struct PermissionCreateParams {
     pub meta: PermissionMeta,
 }
 
+impl Into<PermissionForCreate> for PermissionCreateParams {
+    fn into(self) -> PermissionForCreate {
+        PermissionForCreate {
+            workspace_id: self.workspace_id.into(),
+            name: self.name,
+            code: self.code,
+            description: self.description,
+            tags: self.tags,
+            meta: self.meta,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct PermissionUpdateParams {
     pub id: Uuid,
@@ -97,6 +110,18 @@ pub struct PermissionUpdateParams {
     pub meta: Option<PermissionMeta>,
 }
 
+impl From<PermissionUpdateParams> for PermissionForUpdate {
+    fn from(params: PermissionUpdateParams) -> Self {
+        Self {
+            name: params.name,
+            code: params.code,
+            description: params.description,
+            tags: params.tags,
+            meta: params.meta,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct PermissionDescribeParams {
     pub id: Option<Uuid>,
@@ -104,8 +129,21 @@ pub struct PermissionDescribeParams {
     pub code: Option<String>,
 }
 
+impl ValidateParams for PermissionDescribeParams {
+    fn validate(self) -> CoreResult<Self> {
+        if (self.id.is_none() && self.code.is_none()) {
+            return Err(CoreError::InvalidParams(
+                "Permission describe must contain `id` or `code`".into(),
+            ));
+        }
+
+        Ok(self)
+    }
+}
+
 pub struct PermissionDeleteParams {
-    id: Uuid,
+    pub id: Uuid,
+    pub workspace_id: Uuid,
 }
 
 pub struct PermissionListParams {
