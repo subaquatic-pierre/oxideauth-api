@@ -17,8 +17,9 @@ use crate::{
         },
     },
     store::entities::membership::{
-        MembershipFilter as StoreMembershipFilter, MembershipMeta as StoreMembershipMeta,
-        MembershipRow, MembershipScope, MembershipStatus, MembershipWithRoles,
+        MembershipFilter as StoreMembershipFilter, MembershipForUpdate,
+        MembershipMeta as StoreMembershipMeta, MembershipRow, MembershipScope, MembershipStatus,
+        MembershipWithRoles,
     },
 };
 
@@ -93,11 +94,24 @@ pub struct MembershipDescribeParams {
 #[derive(Debug, Deserialize)]
 pub struct MembershipUpdateParams {
     pub id: Uuid,
+    pub workspace_id: Uuid,
     pub status: Option<MembershipStatus>,
     pub scope: Option<MembershipScope>,
     pub project_id: Option<Uuid>,
     pub tags: Option<Vec<String>>,
     pub meta: Option<MembershipMeta>,
+}
+
+impl From<MembershipUpdateParams> for MembershipForUpdate {
+    fn from(value: MembershipUpdateParams) -> Self {
+        Self {
+            status: value.status,
+            scope: value.scope,
+            project_id: value.project_id,
+            tags: value.tags,
+            meta: value.meta,
+        }
+    }
 }
 
 pub struct MembershipListParams {
@@ -107,6 +121,7 @@ pub struct MembershipListParams {
 
 pub struct MembershipDeleteParams {
     pub id: Uuid,
+    pub workspace_id: Uuid,
 }
 
 impl RequestListParams<MembershipFilter> for MembershipListParams {
