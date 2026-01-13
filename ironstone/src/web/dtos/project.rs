@@ -187,6 +187,7 @@ impl From<Project> for ProjectDeleteRes {
 #[derive(Deserialize, Debug)]
 pub struct ProjectListReq {
     // The filter and options are unchanged in structure but are mapped to ProjectFilter
+    pub workspace_id: Uuid,
     pub filter: Option<RequestFilterParams<ProjectFilter>>,
     pub options: Option<RequestListOptions>,
 }
@@ -196,6 +197,7 @@ impl From<ProjectListReq> for ProjectListParams {
         Self {
             filter: value.filter,
             options: value.options,
+            workspace_id: value.workspace_id,
         }
     }
 }

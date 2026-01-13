@@ -15,6 +15,7 @@ use crate::{
                 CachedMembership, Membership, MembershipCreateParams, MembershipDeleteParams,
                 MembershipDescribeParams, MembershipListParams, MembershipUpdateParams,
             },
+            permission::PermissionCheck,
             role::{Role, RoleDescribeParams, RoleFilter, RoleListParams},
             workspace::{Workspace, WorkspaceDescribeParams},
         },
@@ -57,7 +58,7 @@ pub struct MembershipService<D: DbExecutor, C: CacheExecutor> {
     role_svc: RoleService<D>,
 }
 
-impl<D: DbExecutor, C: CacheExecutor> CoreModelService for MembershipService<D, C> {
+impl<D: DbExecutor, C: CacheExecutor> CoreModelService<D> for MembershipService<D, C> {
     type CoreModel = Membership;
 
     type ServiceStore = MembershipStore<D>;
@@ -66,8 +67,8 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelService for MembershipService<D, 
         &self.sm.membership
     }
 
-    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
-        AuthValidator::new(ctx)
+    fn ws_svc(&self) -> &WorkspaceService<D> {
+        &self.ws_svc
     }
 }
 
@@ -99,34 +100,25 @@ impl<D: DbExecutor, C: CacheExecutor> MembershipService<D, C> {
         &self.cm.membership
     }
 
-    async fn get_account(&self, ctx: &mut CoreCtx, id: Uuid) -> CoreResult<Account> {
+    async fn get_account(
+        &self,
+        ctx: &mut CoreCtx,
+        id: Uuid,
+        workspace_id: Uuid,
+    ) -> CoreResult<Account> {
         // Hydrate related Account and Workspace
         let account = self
             .acc_svc
             .describe(
                 ctx,
                 AccountDescribeParams {
+                    workspace_id,
                     email: None,
                     id: Some(id),
                 },
             )
             .await?;
         Ok(account)
-    }
-
-    async fn get_workspace(&self, ctx: &mut CoreCtx, id: Uuid) -> CoreResult<Workspace> {
-        let workspace = self
-            .ws_svc
-            .describe(
-                ctx,
-                WorkspaceDescribeParams {
-                    id: Some(id),
-                    slug: None,
-                },
-            )
-            .await?;
-
-        Ok(workspace)
     }
 
     async fn get_roles(
@@ -205,7 +197,9 @@ impl<D: DbExecutor, C: CacheExecutor> MembershipService<D, C> {
                 }
             };
 
-            let account = self.get_account(ctx, row.membership.account_id).await?;
+            let account = self
+                .get_account(ctx, row.membership.account_id, row.membership.workspace_id)
+                .await?;
 
             let membership = Membership::from_row_with_entities(
                 row.membership,
@@ -221,8 +215,9 @@ impl<D: DbExecutor, C: CacheExecutor> MembershipService<D, C> {
     }
 }
 
-impl<D: DbExecutor, C: CacheExecutor> CoreModelCreateService for MembershipService<D, C> {
+impl<D: DbExecutor, C: CacheExecutor> CoreModelCreateService<D> for MembershipService<D, C> {
     type CreateParams = MembershipCreateParams;
+    const CREATE_PERMISSION: &'static str = "membership:create";
 
     /// Creates a membership and optionally associates it with roles
     async fn create(
@@ -231,6 +226,10 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelCreateService for MembershipServi
         params: MembershipCreateParams,
     ) -> CoreResult<Membership> {
         let store = self.store();
+
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::CREATE_PERMISSION])
+            .await?;
 
         let m_create = MembershipForCreate {
             account_id: params.account_id,
@@ -245,7 +244,7 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelCreateService for MembershipServi
         // TODO: Ensure membership doesn't already exist for given account_id and workspace_id
         // check database constraints
 
-        let membership_row = store.create(&ctx.into(), m_create).await?;
+        let membership_row = store.create(&store_ctx, m_create).await?;
 
         // TODO: assign roles if present on params
         if !params.role_ids.is_empty() {}
@@ -261,8 +260,9 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelCreateService for MembershipServi
     }
 }
 
-impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService for MembershipService<D, C> {
+impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService<D> for MembershipService<D, C> {
     type DescribeParams = MembershipDescribeParams;
+    const DESCRIBE_PERMISSION: &'static str = "membership:describe";
 
     async fn describe(
         &self,
@@ -272,13 +272,21 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService for MembershipSer
         let store = self.store();
         let db_id: DbId = params.id.into();
 
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DESCRIBE_PERMISSION])
+            .await?;
+
         // Get Membership with Roles (Join query)
         let membership_with_roles: MembershipWithRoles =
-            store.get_many_to_many(&ctx.into(), &db_id).await?;
+            store.get_many_to_many(&store_ctx, &db_id).await?;
 
         let roles = self.get_roles(ctx, membership_with_roles.roles).await?;
         let account = self
-            .get_account(ctx, membership_with_roles.membership.account_id)
+            .get_account(
+                ctx,
+                membership_with_roles.membership.account_id,
+                membership_with_roles.membership.workspace_id,
+            )
             .await?;
 
         let workspace = self
@@ -296,19 +304,22 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService for MembershipSer
     }
 }
 
-impl<D: DbExecutor, C: CacheExecutor> CoreModelListService for MembershipService<D, C> {
+impl<D: DbExecutor, C: CacheExecutor> CoreModelListService<D> for MembershipService<D, C> {
     type ListParams = MembershipListParams;
+    const LIST_PERMISSION: &'static str = "membership:list";
 
     async fn list(
         &self,
         ctx: &mut CoreCtx,
         params: Self::ListParams,
-    ) -> CoreResult<crate::core::models::list::ListResponse<Self::CoreModel>> {
+    ) -> CoreResult<ListResponse<Self::CoreModel>> {
         // TODO: this is the most naive way to listing membership,
         // it urgently needs dedicated store query
 
         let store = self.store();
-        let store_ctx: StoreCtx = ctx.into();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::LIST_PERMISSION])
+            .await?;
 
         let options = params.list_options();
 
@@ -354,8 +365,9 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelListService for MembershipService
     }
 }
 
-impl<D: DbExecutor, C: CacheExecutor> CoreModelUpdateService for MembershipService<D, C> {
+impl<D: DbExecutor, C: CacheExecutor> CoreModelUpdateService<D> for MembershipService<D, C> {
     type UpdateParams = MembershipUpdateParams;
+    const UPDATE_PERMISSION: &'static str = "membership:update";
 
     async fn update(
         &self,
@@ -364,8 +376,12 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelUpdateService for MembershipServi
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
 
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::UPDATE_PERMISSION])
+            .await?;
+
         let res = store
-            .update(&ctx.into(), &params.id.into(), params.into())
+            .update(&store_ctx, &params.id.into(), params.into())
             .await?;
 
         self.describe(
@@ -379,8 +395,9 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelUpdateService for MembershipServi
     }
 }
 
-impl<D: DbExecutor, C: CacheExecutor> CoreModelDeleteService for MembershipService<D, C> {
+impl<D: DbExecutor, C: CacheExecutor> CoreModelDeleteService<D> for MembershipService<D, C> {
     type DeleteParams = MembershipDeleteParams;
+    const DELETE_PERMISSION: &'static str = "membership:delete";
 
     async fn delete(
         &self,
@@ -388,6 +405,10 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelDeleteService for MembershipServi
         params: Self::DeleteParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
+
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DELETE_PERMISSION])
+            .await?;
 
         let to_delete = self
             .describe(
@@ -399,7 +420,7 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelDeleteService for MembershipServi
             )
             .await?;
 
-        let res = store.delete(&ctx.into(), &params.id.into()).await?;
+        let res = store.delete(&store_ctx, &params.id.into()).await?;
 
         Ok(to_delete)
     }

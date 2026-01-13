@@ -47,7 +47,7 @@ pub struct RoleService<D: DbExecutor> {
     perm_svc: PermissionService<D>,
 }
 
-impl<D: DbExecutor> CoreModelService for RoleService<D> {
+impl<D: DbExecutor> CoreModelService<D> for RoleService<D> {
     type CoreModel = Role;
     type ServiceStore = RoleStore<D>;
 
@@ -55,8 +55,8 @@ impl<D: DbExecutor> CoreModelService for RoleService<D> {
         &self.sm.role
     }
 
-    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
-        AuthValidator::new(ctx)
+    fn ws_svc(&self) -> &WorkspaceService<D> {
+        &self.ws_svc
     }
 }
 
@@ -136,8 +136,9 @@ impl<D: DbExecutor> RoleService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelCreateService for RoleService<D> {
+impl<D: DbExecutor> CoreModelCreateService<D> for RoleService<D> {
     type CreateParams = RoleCreateParams;
+    const CREATE_PERMISSION: &'static str = "role:create";
 
     async fn create(
         &self,
@@ -145,6 +146,10 @@ impl<D: DbExecutor> CoreModelCreateService for RoleService<D> {
         params: Self::CreateParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
+
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::CREATE_PERMISSION])
+            .await?;
 
         let r_create = RoleForCreate {
             workspace_id: params.workspace_id,
@@ -154,7 +159,7 @@ impl<D: DbExecutor> CoreModelCreateService for RoleService<D> {
             meta: params.meta,
         };
 
-        let row = store.create(&ctx.into(), r_create).await?;
+        let row = store.create(&store_ctx, r_create).await?;
 
         // TODO: Sync many-to-many permissions
         if !params.permission_ids.is_empty() {}
@@ -170,8 +175,9 @@ impl<D: DbExecutor> CoreModelCreateService for RoleService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelDescribeService for RoleService<D> {
+impl<D: DbExecutor> CoreModelDescribeService<D> for RoleService<D> {
     type DescribeParams = RoleDescribeParams;
+    const DESCRIBE_PERMISSION: &'static str = "role:describe";
 
     async fn describe(
         &self,
@@ -179,9 +185,12 @@ impl<D: DbExecutor> CoreModelDescribeService for RoleService<D> {
         params: Self::DescribeParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DESCRIBE_PERMISSION])
+            .await?;
 
         let role_with_perms_row = store
-            .get_many_to_many(&ctx.into(), &params.id.into())
+            .get_many_to_many(&store_ctx, &params.id.into())
             .await?;
         let ws = self
             .get_workspace(ctx, role_with_perms_row.role.workspace_id)
@@ -192,8 +201,9 @@ impl<D: DbExecutor> CoreModelDescribeService for RoleService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelListService for RoleService<D> {
+impl<D: DbExecutor> CoreModelListService<D> for RoleService<D> {
     type ListParams = RoleListParams;
+    const LIST_PERMISSION: &'static str = "role:list";
 
     async fn list(
         &self,
@@ -201,7 +211,9 @@ impl<D: DbExecutor> CoreModelListService for RoleService<D> {
         params: Self::ListParams,
     ) -> CoreResult<ListResponse<Self::CoreModel>> {
         let store = self.store();
-        let store_ctx: StoreCtx = ctx.into();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::LIST_PERMISSION])
+            .await?;
 
         let options = params.list_options();
 
@@ -247,8 +259,9 @@ impl<D: DbExecutor> CoreModelListService for RoleService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelUpdateService for RoleService<D> {
+impl<D: DbExecutor> CoreModelUpdateService<D> for RoleService<D> {
     type UpdateParams = RoleUpdateParams;
+    const UPDATE_PERMISSION: &'static str = "role:update";
 
     async fn update(
         &self,
@@ -256,9 +269,12 @@ impl<D: DbExecutor> CoreModelUpdateService for RoleService<D> {
         params: Self::UpdateParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::UPDATE_PERMISSION])
+            .await?;
 
         let res = store
-            .update(&ctx.into(), &params.id.into(), params.into())
+            .update(&store_ctx, &params.id.into(), params.into())
             .await?;
 
         self.describe(
@@ -272,8 +288,9 @@ impl<D: DbExecutor> CoreModelUpdateService for RoleService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelDeleteService for RoleService<D> {
+impl<D: DbExecutor> CoreModelDeleteService<D> for RoleService<D> {
     type DeleteParams = RoleDeleteParams;
+    const DELETE_PERMISSION: &'static str = "role:delete";
 
     async fn delete(
         &self,
@@ -281,6 +298,9 @@ impl<D: DbExecutor> CoreModelDeleteService for RoleService<D> {
         params: Self::DeleteParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DELETE_PERMISSION])
+            .await?;
 
         // TODO: optimize delete operations across all services,
         // currently delete operation makes 2 database calls,
@@ -296,7 +316,7 @@ impl<D: DbExecutor> CoreModelDeleteService for RoleService<D> {
             )
             .await?;
 
-        let _ = store.delete(&ctx.into(), &to_delete.id.into()).await?;
+        let _ = store.delete(&store_ctx, &to_delete.id.into()).await?;
 
         Ok(to_delete)
     }

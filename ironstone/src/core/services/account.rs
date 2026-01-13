@@ -47,7 +47,7 @@ pub struct AccountService<D: DbExecutor> {
     ws_svc: WorkspaceService<D>,
 }
 
-impl<D: DbExecutor> CoreModelService for AccountService<D> {
+impl<D: DbExecutor> CoreModelService<D> for AccountService<D> {
     type CoreModel = Account;
     type ServiceStore = AccountStore<D>;
 
@@ -55,39 +55,8 @@ impl<D: DbExecutor> CoreModelService for AccountService<D> {
         &self.sm.account
     }
 
-    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
-        AuthValidator::new(&ctx)
-    }
-
-    async fn get_workspace(&self, ctx: &mut CoreCtx, workspace_id: Uuid) -> CoreResult<Workspace> {
-        let params = WorkspaceDescribeParams {
-            id: Some(workspace_id),
-            slug: None,
-        };
-
-        let added_perms = vec![PermissionCheck::try_from("workspace:describe")?];
-        ctx.perm_checker.extend(added_perms);
-
-        self.ws_svc.describe(ctx, params).await
-    }
-
-    async fn scope_and_validate_ctx(
-        &self,
-        ctx: &mut CoreCtx,
-        workspace_id: Uuid,
-        required_perms: &[&str],
-    ) -> CoreResult<(StoreCtx, Workspace)> {
-        let workspace = self.get_workspace(ctx, workspace_id).await?;
-
-        let auth_validator = self.validator(&ctx);
-
-        // validate permissions
-        auth_validator.validate_ctx_perms(required_perms)?;
-
-        // scope store_ctx
-        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
-
-        Ok((store_ctx, workspace))
+    fn ws_svc(&self) -> &WorkspaceService<D> {
+        &self.ws_svc
     }
 }
 
@@ -132,7 +101,7 @@ impl<D: DbExecutor> AccountService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelCreateService for AccountService<D> {
+impl<D: DbExecutor> CoreModelCreateService<D> for AccountService<D> {
     type CreateParams = AccountCreateParams;
     const CREATE_PERMISSION: &'static str = "account:create";
 
@@ -169,7 +138,7 @@ impl<D: DbExecutor> CoreModelCreateService for AccountService<D> {
         Ok(new_account.into())
     }
 }
-impl<D: DbExecutor> CoreModelDescribeService for AccountService<D> {
+impl<D: DbExecutor> CoreModelDescribeService<D> for AccountService<D> {
     type DescribeParams = AccountDescribeParams;
     const DESCRIBE_PERMISSION: &'static str = "account:describe";
 
@@ -194,7 +163,7 @@ impl<D: DbExecutor> CoreModelDescribeService for AccountService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelListService for AccountService<D> {
+impl<D: DbExecutor> CoreModelListService<D> for AccountService<D> {
     type ListParams = AccountListParams;
     const LIST_PERMISSION: &'static str = "account:list";
 
@@ -242,7 +211,7 @@ impl<D: DbExecutor> CoreModelListService for AccountService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelUpdateService for AccountService<D> {
+impl<D: DbExecutor> CoreModelUpdateService<D> for AccountService<D> {
     type UpdateParams = AccountUpdateParams;
     const UPDATE_PERMISSION: &'static str = "account:update";
 
@@ -282,7 +251,7 @@ impl<D: DbExecutor> CoreModelUpdateService for AccountService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelDeleteService for AccountService<D> {
+impl<D: DbExecutor> CoreModelDeleteService<D> for AccountService<D> {
     type DeleteParams = AccountDeleteParams;
     const DELETE_PERMISSION: &'static str = "account:delete";
 

@@ -4,29 +4,60 @@ use crate::{
     core::{
         ctx::CoreCtx,
         error::CoreResult,
-        models::{list::ListResponse, workspace::Workspace},
-        services::auth::AuthValidator,
+        models::{
+            list::ListResponse,
+            permission::PermissionCheck,
+            workspace::{Workspace, WorkspaceDescribeParams},
+        },
+        services::{auth::AuthValidator, workspace::WorkspaceService},
     },
     store::{ctx::StoreCtx, traits::dbx::DbExecutor},
 };
 
-pub trait CoreModelService {
+pub trait CoreModelService<D: DbExecutor> {
     type CoreModel;
     type ServiceStore;
-    fn store(&self) -> &Self::ServiceStore;
 
-    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a>;
-    async fn get_workspace(&self, ctx: &mut CoreCtx, workspace_id: Uuid) -> CoreResult<Workspace>;
+    fn store(&self) -> &Self::ServiceStore;
+    fn ws_svc(&self) -> &WorkspaceService<D>;
+
+    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
+        AuthValidator::new(ctx)
+    }
+
+    async fn get_workspace(&self, ctx: &mut CoreCtx, workspace_id: Uuid) -> CoreResult<Workspace> {
+        let params = WorkspaceDescribeParams {
+            id: Some(workspace_id),
+            slug: None,
+        };
+
+        let added_perms = vec![PermissionCheck::try_from("workspace:describe")?];
+        ctx.perm_checker.extend(added_perms);
+
+        self.ws_svc().describe(ctx, params).await
+    }
 
     async fn scope_and_validate_ctx(
         &self,
         ctx: &mut CoreCtx,
         workspace_id: Uuid,
-        perms: &[&str],
-    ) -> CoreResult<(StoreCtx, Workspace)>;
+        required_perms: &[&str],
+    ) -> CoreResult<(StoreCtx, Workspace)> {
+        let workspace = self.get_workspace(ctx, workspace_id).await?;
+
+        let auth_validator = self.validator(&ctx);
+
+        // validate permissions
+        auth_validator.validate_ctx_perms(required_perms)?;
+
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
+
+        Ok((store_ctx, workspace))
+    }
 }
 
-pub trait CoreModelCreateService: CoreModelService {
+pub trait CoreModelCreateService<D: DbExecutor>: CoreModelService<D> {
     type CreateParams;
     const CREATE_PERMISSION: &'static str;
 
@@ -37,7 +68,7 @@ pub trait CoreModelCreateService: CoreModelService {
     ) -> CoreResult<Self::CoreModel>;
 }
 
-pub trait CoreModelDescribeService: CoreModelService {
+pub trait CoreModelDescribeService<D: DbExecutor>: CoreModelService<D> {
     type DescribeParams;
     const DESCRIBE_PERMISSION: &'static str;
 
@@ -48,7 +79,7 @@ pub trait CoreModelDescribeService: CoreModelService {
     ) -> CoreResult<Self::CoreModel>;
 }
 
-pub trait CoreModelListService: CoreModelService {
+pub trait CoreModelListService<D: DbExecutor>: CoreModelService<D> {
     type ListParams;
     const LIST_PERMISSION: &'static str;
 
@@ -59,7 +90,7 @@ pub trait CoreModelListService: CoreModelService {
     ) -> CoreResult<ListResponse<Self::CoreModel>>;
 }
 
-pub trait CoreModelUpdateService: CoreModelService {
+pub trait CoreModelUpdateService<D: DbExecutor>: CoreModelService<D> {
     type UpdateParams;
     const UPDATE_PERMISSION: &'static str;
 
@@ -70,7 +101,7 @@ pub trait CoreModelUpdateService: CoreModelService {
     ) -> CoreResult<Self::CoreModel>;
 }
 
-pub trait CoreModelDeleteService: CoreModelService {
+pub trait CoreModelDeleteService<D: DbExecutor>: CoreModelService<D> {
     type DeleteParams;
     const DELETE_PERMISSION: &'static str;
 
@@ -82,21 +113,21 @@ pub trait CoreModelDeleteService: CoreModelService {
 }
 
 /// A convenience trait that groups all CRUD operations.
-pub trait CoreModelCrudService:
-    CoreModelCreateService
-    + CoreModelDescribeService
-    + CoreModelListService
-    + CoreModelUpdateService
-    + CoreModelDeleteService
+pub trait CoreModelCrudService<D: DbExecutor>:
+    CoreModelCreateService<D>
+    + CoreModelDescribeService<D>
+    + CoreModelListService<D>
+    + CoreModelUpdateService<D>
+    + CoreModelDeleteService<D>
 {
 }
 
 // Blanket implementation for any service that meets all criteria
-impl<T> CoreModelCrudService for T where
-    T: CoreModelCreateService
-        + CoreModelDescribeService
-        + CoreModelListService
-        + CoreModelUpdateService
-        + CoreModelDeleteService
+impl<T, D: DbExecutor> CoreModelCrudService<D> for T where
+    T: CoreModelCreateService<D>
+        + CoreModelDescribeService<D>
+        + CoreModelListService<D>
+        + CoreModelUpdateService<D>
+        + CoreModelDeleteService<D>
 {
 }

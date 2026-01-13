@@ -15,6 +15,7 @@ use crate::core::models::{
 pub struct AccountDescribeReq {
     pub email: Option<String>,
     pub id: Option<Uuid>,
+    pub workspace_id: Uuid,
 }
 
 // Implement From to convert Web Req to Core Param
@@ -24,6 +25,7 @@ impl From<AccountDescribeReq> for AccountDescribeParams {
         Self {
             email: value.email,
             id: value.id,
+            workspace_id: value.workspace_id,
         }
     }
 }
@@ -73,6 +75,7 @@ impl From<Account> for AccountDescribeRes {
 pub struct AccountCreateReq {
     pub email: String,
     pub password: String,
+    pub workspace_id: Uuid,
     // Fields that map to core::AccountCreateParams
     pub name: String,
     pub description: Option<String>,
@@ -93,6 +96,7 @@ impl From<AccountCreateReq> for AccountCreateParams {
             avatar_url: value.avatar_url,
             tags: value.tags,
             meta: value.meta,
+            workspace_id: value.workspace_id,
         }
     }
 }
@@ -103,6 +107,7 @@ pub struct AccountUpdateReq {
     // Identifier (one or both must be provided)
     pub email: Option<String>,
     pub id: Option<Uuid>,
+    pub workspace_id: Uuid,
 
     // Fields to Update (all fields here are Option<T> to represent 'patch')
     pub name: Option<String>,
@@ -126,6 +131,7 @@ impl From<AccountUpdateReq> for AccountUpdateParams {
             enabled: value.enabled,
             verified: value.verified,
             tags: value.tags,
+            workspace_id: value.workspace_id,
             meta: value.meta,
         }
     }
@@ -135,6 +141,7 @@ impl From<AccountUpdateReq> for AccountUpdateParams {
 #[derive(Deserialize, Debug)]
 pub struct AccountListReq {
     // These typically contain nested structs for filtering and pagination/sorting
+    pub workspace_id: Uuid,
     pub filter: Option<RequestFilterParams<AccountFilter>>,
     pub options: Option<RequestListOptions>,
 }
@@ -146,6 +153,7 @@ impl From<AccountListReq> for AccountListParams {
     fn from(value: AccountListReq) -> Self {
         Self {
             filter: value.filter,
+            workspace_id: value.workspace_id,
             options: value.options,
         }
     }
@@ -163,6 +171,7 @@ pub struct AccountListRes {
 pub struct AccountDeleteReq {
     pub email: Option<String>,
     pub id: Option<Uuid>,
+    pub workspace_id: Uuid,
 }
 
 // Implement From<AccountDeleteReq> for AccountDeleteParams
@@ -171,6 +180,7 @@ impl From<AccountDeleteReq> for AccountDeleteParams {
         Self {
             email: value.email,
             id: value.id,
+            workspace_id: value.workspace_id,
         }
     }
 }

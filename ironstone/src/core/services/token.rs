@@ -23,7 +23,7 @@ use crate::{
                 TokenListParams,
             },
         },
-        services::auth::AuthValidator,
+        services::{auth::AuthValidator, workspace::WorkspaceService},
         traits::service::{
             CoreModelCreateService, CoreModelDeleteService, CoreModelDescribeService,
             CoreModelListService, CoreModelService,
@@ -62,6 +62,7 @@ impl Default for TokenServiceConfig {
 pub struct TokenService<D: DbExecutor, C: CacheExecutor> {
     sm: Arc<StoreManager<D>>,
     cm: Arc<CacheManager<C>>,
+    ws_svc: WorkspaceService<D>,
     config: TokenServiceConfig,
 }
 
@@ -73,9 +74,15 @@ where
     pub fn new(
         sm: Arc<StoreManager<D>>,
         cm: Arc<CacheManager<C>>,
+        ws_svc: WorkspaceService<D>,
         config: TokenServiceConfig,
     ) -> Self {
-        Self { sm, cm, config }
+        Self {
+            sm,
+            cm,
+            config,
+            ws_svc,
+        }
     }
 
     pub fn is_blacklisted(&self, token: &TokenClaims) -> bool {
@@ -133,7 +140,7 @@ where
     }
 }
 
-impl<D: DbExecutor, C: CacheExecutor> CoreModelService for TokenService<D, C> {
+impl<D: DbExecutor, C: CacheExecutor> CoreModelService<D> for TokenService<D, C> {
     type CoreModel = Token;
     type ServiceStore = TokenStore<D>;
 
@@ -141,13 +148,14 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelService for TokenService<D, C> {
         &self.sm.token
     }
 
-    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
-        AuthValidator::new(ctx)
+    fn ws_svc(&self) -> &WorkspaceService<D> {
+        &self.ws_svc
     }
 }
 
-impl<D: DbExecutor, C: CacheExecutor> CoreModelCreateService for TokenService<D, C> {
+impl<D: DbExecutor, C: CacheExecutor> CoreModelCreateService<D> for TokenService<D, C> {
     type CreateParams = TokenCreateParams;
+    const CREATE_PERMISSION: &'static str = "token:create";
 
     async fn create(
         &self,
@@ -159,8 +167,9 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelCreateService for TokenService<D,
     }
 }
 
-impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService for TokenService<D, C> {
+impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService<D> for TokenService<D, C> {
     type DescribeParams = TokenDescribeParams;
+    const DESCRIBE_PERMISSION: &'static str = "token:describe";
 
     async fn describe(
         &self,
@@ -172,8 +181,9 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService for TokenService<
     }
 }
 
-impl<D: DbExecutor, C: CacheExecutor> CoreModelListService for TokenService<D, C> {
+impl<D: DbExecutor, C: CacheExecutor> CoreModelListService<D> for TokenService<D, C> {
     type ListParams = TokenListParams;
+    const LIST_PERMISSION: &'static str = "token:list";
 
     async fn list(
         &self,
@@ -185,8 +195,9 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelListService for TokenService<D, C
     }
 }
 
-impl<D: DbExecutor, C: CacheExecutor> CoreModelDeleteService for TokenService<D, C> {
+impl<D: DbExecutor, C: CacheExecutor> CoreModelDeleteService<D> for TokenService<D, C> {
     type DeleteParams = TokenDeleteParams;
+    const DELETE_PERMISSION: &'static str = "token:delete";
 
     async fn delete(
         &self,

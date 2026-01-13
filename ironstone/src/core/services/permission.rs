@@ -44,7 +44,7 @@ pub struct PermissionService<D: DbExecutor> {
     ws_svc: WorkspaceService<D>,
 }
 
-impl<D: DbExecutor> CoreModelService for PermissionService<D> {
+impl<D: DbExecutor> CoreModelService<D> for PermissionService<D> {
     type CoreModel = Permission;
     type ServiceStore = PermissionStore<D>;
 
@@ -52,8 +52,8 @@ impl<D: DbExecutor> CoreModelService for PermissionService<D> {
         &self.sm.permission
     }
 
-    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
-        AuthValidator::new(ctx)
+    fn ws_svc(&self) -> &WorkspaceService<D> {
+        &self.ws_svc
     }
 }
 
@@ -104,8 +104,9 @@ impl<D: DbExecutor> PermissionService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelCreateService for PermissionService<D> {
+impl<D: DbExecutor> CoreModelCreateService<D> for PermissionService<D> {
     type CreateParams = PermissionCreateParams;
+    const CREATE_PERMISSION: &'static str = "permission:create";
 
     async fn create(
         &self,
@@ -113,11 +114,14 @@ impl<D: DbExecutor> CoreModelCreateService for PermissionService<D> {
         params: Self::CreateParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::CREATE_PERMISSION])
+            .await?;
 
         // TODO: ensure cannot create same permission in same workspace
         // check database constraints
 
-        let n_perm = store.create(&ctx.into(), params.into()).await?;
+        let n_perm = store.create(&store_ctx, params.into()).await?;
 
         self.describe(
             ctx,
@@ -130,8 +134,9 @@ impl<D: DbExecutor> CoreModelCreateService for PermissionService<D> {
         .await
     }
 }
-impl<D: DbExecutor> CoreModelDescribeService for PermissionService<D> {
+impl<D: DbExecutor> CoreModelDescribeService<D> for PermissionService<D> {
     type DescribeParams = PermissionDescribeParams;
+    const DESCRIBE_PERMISSION: &'static str = "permission:describe";
 
     async fn describe(
         &self,
@@ -139,6 +144,9 @@ impl<D: DbExecutor> CoreModelDescribeService for PermissionService<D> {
         params: Self::DescribeParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DESCRIBE_PERMISSION])
+            .await?;
 
         let params = params.validate()?;
         let ws = self
@@ -154,7 +162,7 @@ impl<D: DbExecutor> CoreModelDescribeService for PermissionService<D> {
 
         if let Some(code) = params.code {
             let row = store
-                .get_by_code(&ctx.into(), &code, params.workspace_id.into())
+                .get_by_code(&store_ctx, &code, params.workspace_id.into())
                 .await?;
             let perm = Permission::from_row_with_entities(row, ws)?;
 
@@ -162,7 +170,7 @@ impl<D: DbExecutor> CoreModelDescribeService for PermissionService<D> {
         }
 
         if let Some(id) = params.id {
-            let row = store.get(&ctx.into(), &id.into()).await?;
+            let row = store.get(&store_ctx, &id.into()).await?;
             let perm = Permission::from_row_with_entities(row, ws)?;
 
             return Ok(perm);
@@ -174,8 +182,9 @@ impl<D: DbExecutor> CoreModelDescribeService for PermissionService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelListService for PermissionService<D> {
+impl<D: DbExecutor> CoreModelListService<D> for PermissionService<D> {
     type ListParams = PermissionListParams;
+    const LIST_PERMISSION: &'static str = "permission:list";
 
     async fn list(
         &self,
@@ -183,7 +192,9 @@ impl<D: DbExecutor> CoreModelListService for PermissionService<D> {
         params: Self::ListParams,
     ) -> CoreResult<ListResponse<Self::CoreModel>> {
         let store = self.store();
-        let store_ctx: StoreCtx = ctx.into();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::LIST_PERMISSION])
+            .await?;
 
         let options = params.list_options();
 
@@ -218,8 +229,9 @@ impl<D: DbExecutor> CoreModelListService for PermissionService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelUpdateService for PermissionService<D> {
+impl<D: DbExecutor> CoreModelUpdateService<D> for PermissionService<D> {
     type UpdateParams = PermissionUpdateParams;
+    const UPDATE_PERMISSION: &'static str = "permission:update";
 
     async fn update(
         &self,
@@ -227,11 +239,14 @@ impl<D: DbExecutor> CoreModelUpdateService for PermissionService<D> {
         params: Self::UpdateParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::UPDATE_PERMISSION])
+            .await?;
 
         // TODO: ensure cannot update permission to an existing permission in same workspace
         // check database constraints
         let updated = store
-            .update(&ctx.into(), &params.id.into(), params.into())
+            .update(&store_ctx, &params.id.into(), params.into())
             .await?;
 
         self.describe(
@@ -245,8 +260,9 @@ impl<D: DbExecutor> CoreModelUpdateService for PermissionService<D> {
         .await
     }
 }
-impl<D: DbExecutor> CoreModelDeleteService for PermissionService<D> {
+impl<D: DbExecutor> CoreModelDeleteService<D> for PermissionService<D> {
     type DeleteParams = PermissionDeleteParams;
+    const DELETE_PERMISSION: &'static str = "permission:delete";
 
     async fn delete(
         &self,
@@ -254,6 +270,9 @@ impl<D: DbExecutor> CoreModelDeleteService for PermissionService<D> {
         params: Self::DeleteParams,
     ) -> CoreResult<Self::CoreModel> {
         let store = self.store();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DELETE_PERMISSION])
+            .await?;
 
         // TODO: ensure cannot delete attached permission
         // check database constraints
@@ -268,7 +287,7 @@ impl<D: DbExecutor> CoreModelDeleteService for PermissionService<D> {
             )
             .await?;
 
-        let res = store.delete(&ctx.into(), &to_delete.id.into()).await?;
+        let res = store.delete(&store_ctx, &to_delete.id.into()).await?;
 
         Ok(to_delete)
     }

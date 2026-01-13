@@ -157,6 +157,7 @@ pub struct RoleDeleteParams {
 }
 
 pub struct RoleListParams {
+    pub workspace_id: Uuid,
     pub filter: Option<RequestFilterParams<RoleFilter>>,
     pub options: Option<RequestListOptions>,
 }

@@ -35,7 +35,7 @@ where
     }
 
     pub fn account(&self) -> AccountService<D> {
-        let svc = AccountService::new(self.sm.clone());
+        let svc = AccountService::new(self.sm.clone(), self.workspace());
         svc
     }
 
@@ -83,7 +83,7 @@ where
         // dynamic config retrieval at runtime, this allows
         // multi tenant configs, also allows for config edit from client
         let config = TokenServiceConfig::default();
-        let svc = TokenService::new(self.sm.clone(), self.cm.clone(), config);
+        let svc = TokenService::new(self.sm.clone(), self.cm.clone(), self.workspace(), config);
         svc
     }
 }

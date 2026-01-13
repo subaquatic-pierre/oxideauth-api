@@ -57,7 +57,7 @@ impl<D: DbExecutor> WorkspaceService<D> {
         ctx: &CoreCtx,
         id: Option<Uuid>,
         slug: Option<String>,
-    ) -> CoreResult<DbId> {
+    ) -> CoreResult<Uuid> {
         let store = self.store();
 
         let id: DbId = match (id, slug) {
@@ -78,11 +78,11 @@ impl<D: DbExecutor> WorkspaceService<D> {
             }
         };
 
-        Ok(id)
+        Ok(id.into())
     }
 }
 
-impl<D: DbExecutor> CoreModelService for WorkspaceService<D> {
+impl<D: DbExecutor> CoreModelService<D> for WorkspaceService<D> {
     type CoreModel = Workspace;
 
     type ServiceStore = WorkspaceStore<D>;
@@ -91,13 +91,14 @@ impl<D: DbExecutor> CoreModelService for WorkspaceService<D> {
         &self.sm.workspace
     }
 
-    fn validator<'a>(&self, ctx: &'a CoreCtx) -> super::auth::AuthValidator<'a> {
-        AuthValidator::new(&ctx)
+    fn ws_svc(&self) -> &WorkspaceService<D> {
+        &self
     }
 }
 
-impl<D: DbExecutor> CoreModelCreateService for WorkspaceService<D> {
+impl<D: DbExecutor> CoreModelCreateService<D> for WorkspaceService<D> {
     type CreateParams = WorkspaceCreateParams;
+    const CREATE_PERMISSION: &'static str = "workspace:create";
 
     /// Creates a new workspace.
     async fn create(
@@ -107,9 +108,17 @@ impl<D: DbExecutor> CoreModelCreateService for WorkspaceService<D> {
     ) -> CoreResult<Workspace> {
         let store = self.store();
 
+        let auth_validator = self.validator(&ctx);
+
+        // validate permissions
+        auth_validator.validate_ctx_perms(&[Self::CREATE_PERMISSION])?;
+
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(None)?;
+
         // 1. Check if slug already exists
         if store
-            .get_by_slug_opt(&ctx.into(), &params.slug)
+            .get_by_slug_opt(&store_ctx, &params.slug)
             .await?
             .is_some()
         {
@@ -131,14 +140,15 @@ impl<D: DbExecutor> CoreModelCreateService for WorkspaceService<D> {
         };
 
         // 3. Execute store creation
-        let new_workspace = store.create(&ctx.into(), n_ws).await?;
+        let new_workspace = store.create(&store_ctx, n_ws).await?;
 
         Ok(new_workspace.into())
     }
 }
 
-impl<D: DbExecutor> CoreModelDescribeService for WorkspaceService<D> {
+impl<D: DbExecutor> CoreModelDescribeService<D> for WorkspaceService<D> {
     type DescribeParams = WorkspaceDescribeParams;
+    const DESCRIBE_PERMISSION: &'static str = "workspace:describe";
 
     /// Retrieves a single workspace by ID or slug.
     async fn describe(
@@ -148,16 +158,25 @@ impl<D: DbExecutor> CoreModelDescribeService for WorkspaceService<D> {
     ) -> CoreResult<Workspace> {
         let store = self.store();
 
-        let id = self.get_workspace_id(ctx, params.id, params.slug).await?;
+        let workspace_id = self.get_workspace_id(ctx, params.id, params.slug).await?;
 
-        let res = store.get(&ctx.into(), &id).await?;
+        let auth_validator = self.validator(&ctx);
+
+        // validate permissions
+        auth_validator.validate_ctx_perms(&[Self::DESCRIBE_PERMISSION])?;
+
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(Some(workspace_id))?;
+
+        let res = store.get(&store_ctx, &workspace_id.into()).await?;
 
         Ok(res.into())
     }
 }
 
-impl<D: DbExecutor> CoreModelListService for WorkspaceService<D> {
+impl<D: DbExecutor> CoreModelListService<D> for WorkspaceService<D> {
     type ListParams = WorkspaceListParams;
+    const LIST_PERMISSION: &'static str = "workspace:list";
 
     /// Lists workspaces based on filter and options.
     async fn list(
@@ -166,7 +185,13 @@ impl<D: DbExecutor> CoreModelListService for WorkspaceService<D> {
         params: WorkspaceListParams,
     ) -> CoreResult<ListResponse<Workspace>> {
         let store = self.store();
-        let ctx: StoreCtx = ctx.into();
+        let auth_validator = self.validator(&ctx);
+
+        // validate permissions
+        auth_validator.validate_ctx_perms(&[Self::LIST_PERMISSION])?;
+
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(None)?;
 
         let options = params.list_options();
 
@@ -175,9 +200,9 @@ impl<D: DbExecutor> CoreModelListService for WorkspaceService<D> {
         // filter by tags
         if let Some(tags) = tags_filter.tags() {
             let data = store
-                .filter_by_tags_contain(&ctx, tags.clone(), Some(options.clone()))
+                .filter_by_tags_contain(&store_ctx, tags.clone(), Some(options.clone()))
                 .await?;
-            let total = store.count_by_tags_contain(&ctx, tags).await?;
+            let total = store.count_by_tags_contain(&store_ctx, tags).await?;
 
             let accounts: Vec<Workspace> = data.into_iter().map(|el| el.into()).collect();
             return Ok(ListResponse::new(accounts, total, options));
@@ -187,9 +212,9 @@ impl<D: DbExecutor> CoreModelListService for WorkspaceService<D> {
         if let Some(filter) = tags_filter.filter() {
             let filter = Some(filter);
             let data = store
-                .list(&ctx, filter.clone(), Some(options.clone()))
+                .list(&store_ctx, filter.clone(), Some(options.clone()))
                 .await?;
-            let total = store.count(&ctx, filter).await?;
+            let total = store.count(&store_ctx, filter).await?;
             let accounts: Vec<Workspace> = data.into_iter().map(|el| el.into()).collect();
             return Ok(ListResponse::new(accounts, total, options));
         }
@@ -199,8 +224,9 @@ impl<D: DbExecutor> CoreModelListService for WorkspaceService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelUpdateService for WorkspaceService<D> {
+impl<D: DbExecutor> CoreModelUpdateService<D> for WorkspaceService<D> {
     type UpdateParams = WorkspaceUpdateParams;
+    const UPDATE_PERMISSION: &'static str = "workspace:update";
 
     /// Updates an existing workspace.
     async fn update(
@@ -209,6 +235,17 @@ impl<D: DbExecutor> CoreModelUpdateService for WorkspaceService<D> {
         params: WorkspaceUpdateParams,
     ) -> CoreResult<Workspace> {
         let store = self.store();
+
+        let auth_validator = self.validator(&ctx);
+
+        // validate permissions
+        auth_validator.validate_ctx_perms(&[Self::DESCRIBE_PERMISSION])?;
+        let workspace_id = self
+            .get_workspace_id(ctx, params.id, params.slug.clone())
+            .await?;
+
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(Some(workspace_id))?;
 
         let id = self
             .get_workspace_id(ctx, params.id, params.slug.clone())
@@ -227,14 +264,15 @@ impl<D: DbExecutor> CoreModelUpdateService for WorkspaceService<D> {
         };
 
         // 3. Execute store update
-        let res = store.update(&ctx.into(), &id, update_data).await?;
+        let res = store.update(&store_ctx, &id.into(), update_data).await?;
 
         Ok(res.into())
     }
 }
 
-impl<D: DbExecutor> CoreModelDeleteService for WorkspaceService<D> {
+impl<D: DbExecutor> CoreModelDeleteService<D> for WorkspaceService<D> {
     type DeleteParams = WorkspaceDeleteParams;
+    const DELETE_PERMISSION: &'static str = "workspace:delete";
 
     /// Deletes a workspace by ID or slug.
     async fn delete(
@@ -245,9 +283,20 @@ impl<D: DbExecutor> CoreModelDeleteService for WorkspaceService<D> {
         // Returns the ID of the deleted item
         let store = self.store();
 
+        let auth_validator = self.validator(&ctx);
+
+        // validate permissions
+        auth_validator.validate_ctx_perms(&[Self::DELETE_PERMISSION])?;
+        let workspace_id = self
+            .get_workspace_id(ctx, params.id, params.slug.clone())
+            .await?;
+
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(Some(workspace_id))?;
+
         let id = self.get_workspace_id(ctx, params.id, params.slug).await?;
 
-        let deleted = store.delete(&ctx.into(), &id).await?;
+        let deleted = store.delete(&store_ctx, &id.into()).await?;
 
         Ok(deleted.into())
     }

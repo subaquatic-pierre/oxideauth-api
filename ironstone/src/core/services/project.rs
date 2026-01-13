@@ -42,7 +42,7 @@ pub struct ProjectService<D: DbExecutor> {
     ws_svc: WorkspaceService<D>,
 }
 
-impl<D: DbExecutor> CoreModelService for ProjectService<D> {
+impl<D: DbExecutor> CoreModelService<D> for ProjectService<D> {
     type CoreModel = Project;
 
     type ServiceStore = ProjectStore<D>;
@@ -51,39 +51,8 @@ impl<D: DbExecutor> CoreModelService for ProjectService<D> {
         &self.sm.project
     }
 
-    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
-        AuthValidator::new(&ctx)
-    }
-
-    async fn get_workspace(&self, ctx: &mut CoreCtx, workspace_id: Uuid) -> CoreResult<Workspace> {
-        let params = WorkspaceDescribeParams {
-            id: Some(workspace_id),
-            slug: None,
-        };
-
-        let added_perms = vec![PermissionCheck::try_from("workspace:describe")?];
-        ctx.perm_checker.extend(added_perms);
-
-        self.ws_svc.describe(ctx, params).await
-    }
-
-    async fn scope_and_validate_ctx(
-        &self,
-        ctx: &mut CoreCtx,
-        workspace_id: Uuid,
-        required_perms: &[&str],
-    ) -> CoreResult<(StoreCtx, Workspace)> {
-        let workspace = self.get_workspace(ctx, workspace_id).await?;
-
-        let auth_validator = self.validator(&ctx);
-
-        // validate permissions
-        auth_validator.validate_ctx_perms(required_perms)?;
-
-        // scope store_ctx
-        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
-
-        Ok((store_ctx, workspace))
+    fn ws_svc(&self) -> &WorkspaceService<D> {
+        &self.ws_svc
     }
 }
 
@@ -162,7 +131,7 @@ impl<D: DbExecutor> ProjectService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelCreateService for ProjectService<D> {
+impl<D: DbExecutor> CoreModelCreateService<D> for ProjectService<D> {
     type CreateParams = ProjectCreateParams;
     const CREATE_PERMISSION: &'static str = "project:create";
 
@@ -203,7 +172,7 @@ impl<D: DbExecutor> CoreModelCreateService for ProjectService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelDescribeService for ProjectService<D> {
+impl<D: DbExecutor> CoreModelDescribeService<D> for ProjectService<D> {
     type DescribeParams = ProjectDescribeParams;
     const DESCRIBE_PERMISSION: &'static str = "project:describe";
 
@@ -228,7 +197,7 @@ impl<D: DbExecutor> CoreModelDescribeService for ProjectService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelListService for ProjectService<D> {
+impl<D: DbExecutor> CoreModelListService<D> for ProjectService<D> {
     type ListParams = ProjectListParams;
     const LIST_PERMISSION: &'static str = "project:list";
 
@@ -275,7 +244,7 @@ impl<D: DbExecutor> CoreModelListService for ProjectService<D> {
         Ok(ListResponse::default())
     }
 }
-impl<D: DbExecutor> CoreModelUpdateService for ProjectService<D> {
+impl<D: DbExecutor> CoreModelUpdateService<D> for ProjectService<D> {
     type UpdateParams = ProjectUpdateParams;
     const UPDATE_PERMISSION: &'static str = "project:update";
 
@@ -319,7 +288,7 @@ impl<D: DbExecutor> CoreModelUpdateService for ProjectService<D> {
     }
 }
 
-impl<D: DbExecutor> CoreModelDeleteService for ProjectService<D> {
+impl<D: DbExecutor> CoreModelDeleteService<D> for ProjectService<D> {
     type DeleteParams = ProjectDeleteParams;
     const DELETE_PERMISSION: &'static str = "project:delete";
 

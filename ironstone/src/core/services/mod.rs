@@ -4,7 +4,6 @@ pub mod ctx;
 pub mod email;
 pub mod factory;
 pub mod membership;
-pub mod meta;
 pub mod permission;
 pub mod project;
 pub mod role;

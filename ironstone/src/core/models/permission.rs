@@ -147,6 +147,7 @@ pub struct PermissionDeleteParams {
 }
 
 pub struct PermissionListParams {
+    pub workspace_id: Uuid,
     pub filter: Option<RequestFilterParams<PermissionFilter>>,
     pub options: Option<RequestListOptions>,
 }
