@@ -46,7 +46,7 @@ pub async fn describe_account(
     body: JsonReqResult<AccountDescribeReq>,
 ) -> JsonResResult<WebResponse<AccountDescribeRes>> {
     let Json(body) = body?;
-    let svc = app.svc_build.account();
+    let svc = app.svc_factory.account();
 
     let params: AccountDescribeParams = body.into();
 
@@ -64,7 +64,7 @@ pub async fn list_accounts(
     body: JsonReqResult<AccountListReq>,
 ) -> JsonResResult<WebResponse<AccountListRes>> {
     let Json(body) = body?;
-    let svc = app.svc_build.account();
+    let svc = app.svc_factory.account();
 
     let params: AccountListParams = body.into();
     let res = svc.list(&mut ctx, params).await?;
@@ -84,7 +84,7 @@ pub async fn create_account(
     body: JsonReqResult<AccountCreateReq>,
 ) -> JsonResResult<WebResponse<AccountDescribeRes>> {
     let Json(body) = body?;
-    let svc = app.svc_build.account();
+    let svc = app.svc_factory.account();
 
     let params: AccountCreateParams = body.into();
 
@@ -104,7 +104,7 @@ pub async fn delete_account(
     body: JsonReqResult<AccountDeleteReq>,
 ) -> JsonResResult<WebResponse<AccountDeleteRes>> {
     let Json(body) = body?;
-    let svc = app.svc_build.account();
+    let svc = app.svc_factory.account();
 
     let params: AccountDeleteParams = body.into();
 
@@ -123,7 +123,7 @@ pub async fn update_account(
     body: JsonReqResult<AccountUpdateReq>,
 ) -> JsonResResult<WebResponse<AccountDescribeRes>> {
     let Json(body) = body?;
-    let svc = app.svc_build.account();
+    let svc = app.svc_factory.account();
 
     let params: AccountUpdateParams = body.into();
 

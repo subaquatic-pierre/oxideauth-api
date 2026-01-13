@@ -1,4 +1,5 @@
 use std::ops::{Deref, DerefMut};
+use std::str::FromStr;
 
 use modql::field::Fields;
 use modql::filter::{FilterNodes, OpValsString, OpValsValue};
@@ -11,7 +12,7 @@ use uuid::Uuid;
 
 use crate::store::entities::id::DbId;
 use crate::store::traits::meta::HasId;
-use ironauth_macros::HasId;
+use ironauth_macros::{EnumTextType, HasId};
 
 use crate::store::entities::audit::{AuditFields, AuditMeta};
 use crate::store::entities::hash::Sha256Hash;
@@ -19,78 +20,101 @@ use crate::store::error::{StoreError, StoreResult};
 use crate::store::utils::{bytes_to_sea_value, json_to_sea_value, time_to_sea_value};
 
 #[derive(Iden, Copy, Clone)]
-pub enum TokenBlacklistIden {
-    #[iden = "token_blacklist"]
+pub enum TokenIden {
+    #[iden = "token"]
     Table, // TABLE_NAME
     Id, // TABLE_PK
 }
 
 // --- Row (DB-facing) ---
-/// Maps to the `token_blacklist` SQL table.
+/// Maps to the `token` SQL table.
 #[derive(Debug, FromRow, Deserialize, HasId)]
-pub struct TokenBlacklistRow {
+pub struct TokenRow {
     pub id: DbId,
-    pub token_hash: Sha256Hash,
+    pub hash: Sha256Hash,
+    pub kind: TokenKind,
     pub account_id: Option<Uuid>,
     pub workspace_id: Option<Uuid>,
     pub expires_at: OffsetDateTime,
     pub reason: Option<String>,
-    // pub tags: Vec<String>,
-    // #[sqlx(json)]
-    // pub meta: TokenBlacklistMeta,
+    pub tags: Vec<String>,
+    #[sqlx(json)]
+    pub meta: TokenMeta,
     #[sqlx(flatten)]
     pub audit: AuditFields,
 }
 
-// --- Create (store input) ---
-/// Input for creating a new `token_blacklist` entry.
-#[derive(Debug, Fields)]
-pub struct TokenBlacklistForCreate {
-    pub token_hash: Sha256Hash,
-    pub account_id: Option<Uuid>,
-    pub workspace_id: Option<Uuid>,
-    pub expires_at: OffsetDateTime,
-    pub reason: Option<String>,
-    // pub tags: Vec<String>,
-    // pub meta: TokenBlacklistMeta,
+#[derive(Debug, Serialize, Deserialize, Clone, EnumTextType)]
+pub enum TokenKind {
+    #[serde(rename = "auth")]
+    Auth,
+    #[serde(rename = "password_reset")]
+    PasswordReset,
 }
 
-// --- Update (store input) ---
-/// Input for updating an existing `token_blacklist` entry.
-#[derive(Debug, Fields, Clone)]
-pub struct TokenBlacklistForUpdate {
-    pub account_id: Option<Uuid>,
-    pub workspace_id: Option<Uuid>,
-    pub expires_at: Option<OffsetDateTime>,
-    pub reason: Option<String>,
-    // pub tags: Option<Vec<String>>,
-    // pub meta: Option<TokenBlacklistMeta>,
+impl From<TokenKind> for SeaValue {
+    fn from(value: TokenKind) -> Self {
+        let s = format!("{value}");
+        SeaValue::String(Some(Box::new(s)))
+    }
 }
 
-#[derive(Debug, Default, Fields, Serialize, Deserialize, Clone)]
-#[serde(default)]
-pub struct TokenBlacklistMeta {
-    pub schema_version: String,
-}
-
-impl Nullable for TokenBlacklistMeta {
+impl Nullable for TokenKind {
     fn null() -> SeaValue {
         SeaValue::Json(None)
     }
 }
 
-impl From<TokenBlacklistMeta> for SeaValue {
-    fn from(value: TokenBlacklistMeta) -> Self {
+// --- Create (store input) ---
+/// Input for creating a new `token` entry.
+#[derive(Debug, Fields)]
+pub struct TokenForCreate {
+    pub hash: Sha256Hash,
+    pub account_id: Option<Uuid>,
+    pub kind: TokenKind,
+    pub workspace_id: Option<Uuid>,
+    pub expires_at: OffsetDateTime,
+    pub reason: Option<String>,
+    pub tags: Vec<String>,
+    pub meta: TokenMeta,
+}
+
+// --- Update (store input) ---
+/// Input for updating an existing `token` entry.
+#[derive(Debug, Fields, Clone)]
+pub struct TokenForUpdate {
+    pub account_id: Option<Uuid>,
+    pub workspace_id: Option<Uuid>,
+    pub expires_at: Option<OffsetDateTime>,
+    pub reason: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub meta: Option<TokenMeta>,
+}
+
+#[derive(Debug, Default, Fields, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct TokenMeta {
+    pub schema_version: String,
+}
+
+impl Nullable for TokenMeta {
+    fn null() -> SeaValue {
+        SeaValue::Json(None)
+    }
+}
+
+impl From<TokenMeta> for SeaValue {
+    fn from(value: TokenMeta) -> Self {
         json_to_sea_value(serde_json::to_value(value).unwrap()).unwrap()
     }
 }
 
-/// Filtering options for `token_blacklist` queries.
+/// Filtering options for `token` queries.
 #[derive(FilterNodes, Deserialize, Default, Debug, Clone)]
-pub struct TokenBlacklistFilter {
+pub struct TokenFilter {
     #[modql(cast_as = "uuid")]
     pub id: Option<OpValsString>,
-    pub token_hash: Option<Sha256Hash>,
+    pub hash: Option<Sha256Hash>,
     #[modql(cast_as = "uuid")]
     pub account_id: Option<OpValsString>,
     #[modql(cast_as = "uuid")]
@@ -98,6 +122,7 @@ pub struct TokenBlacklistFilter {
     #[modql(to_sea_value_fn = "time_to_sea_value")]
     pub expires_at: Option<OpValsValue>,
     pub reason: Option<OpValsString>,
+    pub kind: Option<OpValsString>,
 
     // Audit filters
     #[modql(cast_as = "uuid")]
@@ -110,7 +135,7 @@ pub struct TokenBlacklistFilter {
     pub updated_at: Option<OpValsValue>,
 }
 
-impl TryFrom<JsonValue> for TokenBlacklistFilter {
+impl TryFrom<JsonValue> for TokenFilter {
     type Error = StoreError;
 
     fn try_from(value: JsonValue) -> StoreResult<Self> {
@@ -121,32 +146,33 @@ impl TryFrom<JsonValue> for TokenBlacklistFilter {
 
 // --- Defaults for testing ---
 #[cfg(test)]
-impl Default for TokenBlacklistForCreate {
+impl Default for TokenForCreate {
     fn default() -> Self {
         Self {
-            token_hash: Sha256Hash::gen_rand(),
+            hash: Sha256Hash::gen_rand(),
             account_id: None,
+            kind: TokenKind::Auth,
             workspace_id: None,
             expires_at: OffsetDateTime::now_utc(),
             reason: Some("test_revoke".into()),
-            // tags: vec![],
-            // meta: TokenBlacklistMeta {
-            //     schema_version: "1".into(),
-            // },
+            tags: vec![],
+            meta: TokenMeta {
+                schema_version: "1".into(),
+            },
         }
     }
 }
 
 #[cfg(test)]
-impl Default for TokenBlacklistForUpdate {
+impl Default for TokenForUpdate {
     fn default() -> Self {
         Self {
             account_id: None,
             workspace_id: None,
             expires_at: None,
             reason: None,
-            // tags: None,
-            // meta: None,
+            tags: None,
+            meta: None,
         }
     }
 }

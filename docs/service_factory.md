@@ -120,6 +120,6 @@ Instead of a single "God Trait" for CRUD, we split responsibilities into specifi
 
 ### Benefits
 
-1. **Contract Honesty**: A service like `TokenBlacklistService` can implement `Create` and `Describe` without being forced to implement a non-existent `Update` method.
+1. **Contract Honesty**: A service like `TokenService` can implement `Create` and `Describe` without being forced to implement a non-existent `Update` method.
 2. **Generic Bound Granularity**: Utility functions can require only the specific capability they need (e.g., `where S: CoreModelListService`).
 3. **Consistent Naming**: All capability traits follow the `CoreModel[Action]Service` convention for high discoverability.

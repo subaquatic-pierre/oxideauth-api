@@ -1,4 +1,6 @@
+use sqlx;
 use std::{sync::Arc, time::Duration};
+use tracing::{debug, info};
 
 use axum::{
     extract::Request,
@@ -7,18 +9,27 @@ use axum::{
 use jsonwebtoken::{
     decode, encode, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation,
 };
-use tracing::debug;
+use tokio::{task::JoinHandle, time::interval};
 
 use crate::{
     cache::{manager::CacheManager, traits::CacheExecutor},
     core::{
+        ctx::CoreCtx,
         error::{CoreError, CoreResult},
-        models::token::TokenClaims,
+        models::{
+            list::ListResponse,
+            token::{
+                Token, TokenClaims, TokenCreateParams, TokenDeleteParams, TokenDescribeParams,
+                TokenListParams,
+            },
+        },
+        services::auth::AuthValidator,
+        traits::service::{
+            CoreModelCreateService, CoreModelDeleteService, CoreModelDescribeService,
+            CoreModelListService, CoreModelService,
+        },
     },
-    store::{
-        manager::StoreManager, stores::token_blacklist::TokenBlacklistStore,
-        traits::dbx::DbExecutor,
-    },
+    store::{manager::StoreManager, stores::token::TokenStore, traits::dbx::DbExecutor, PgPool},
     utils::time::now_utc,
 };
 
@@ -119,5 +130,70 @@ where
         };
 
         token
+    }
+}
+
+impl<D: DbExecutor, C: CacheExecutor> CoreModelService for TokenService<D, C> {
+    type CoreModel = Token;
+    type ServiceStore = TokenStore<D>;
+
+    fn store(&self) -> &Self::ServiceStore {
+        &self.sm.token
+    }
+
+    fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
+        AuthValidator::new(ctx)
+    }
+}
+
+impl<D: DbExecutor, C: CacheExecutor> CoreModelCreateService for TokenService<D, C> {
+    type CreateParams = TokenCreateParams;
+
+    async fn create(
+        &self,
+        _ctx: &mut CoreCtx,
+        _params: Self::CreateParams,
+    ) -> CoreResult<Self::CoreModel> {
+        // TODO: Logic to generate secure token, store in DB, and optionally prime the cache
+        todo!()
+    }
+}
+
+impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService for TokenService<D, C> {
+    type DescribeParams = TokenDescribeParams;
+
+    async fn describe(
+        &self,
+        _ctx: &mut CoreCtx,
+        _params: Self::DescribeParams,
+    ) -> CoreResult<Self::CoreModel> {
+        // TODO: Logic to check CacheManager first (C), fallback to StoreManager (D)
+        todo!()
+    }
+}
+
+impl<D: DbExecutor, C: CacheExecutor> CoreModelListService for TokenService<D, C> {
+    type ListParams = TokenListParams;
+
+    async fn list(
+        &self,
+        _ctx: &mut CoreCtx,
+        _params: Self::ListParams,
+    ) -> CoreResult<ListResponse<Self::CoreModel>> {
+        // TODO: Implement paginated list from Database
+        todo!()
+    }
+}
+
+impl<D: DbExecutor, C: CacheExecutor> CoreModelDeleteService for TokenService<D, C> {
+    type DeleteParams = TokenDeleteParams;
+
+    async fn delete(
+        &self,
+        _ctx: &mut CoreCtx,
+        _params: Self::DeleteParams,
+    ) -> CoreResult<Self::CoreModel> {
+        // TODO: Remove from database and purge from cache
+        todo!()
     }
 }

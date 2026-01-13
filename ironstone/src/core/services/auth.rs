@@ -76,6 +76,35 @@ impl<'a> AuthValidator<'a> {
         }
     }
 
+    /// Validates the requested workspace ID against the user's operational context.
+    ///
+    /// This function enforces the separation of tenancy by ensuring that a user
+    /// operating within a scoped context (i.e., not a global/root user) can only
+    /// query or mutate data within their assigned workspace.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx`: The current operational context (`CoreCtx`), which holds the user's
+    ///          authentication and assigned workspace scope.
+    /// * `requested_workspace_id`: The optional workspace ID provided by the client
+    ///                             (e.g., in a query filter or mutation DTO).
+    ///
+    /// # Behavior
+    ///
+    /// 1. **Global Context (Admin/Root):** If `ctx.is_global_workspace()` is true,
+    ///    validation passes immediately, and the `StoreCtx` is returned.
+    ///
+    /// 2. **Scoped Context (Tenant User):**
+    ///    * **Required:** If `requested_workspace_id` is `None`, an error is returned.
+    ///    * **Authorization:** The provided `requested_workspace_id` must exactly match
+    ///      the workspace ID stored in the `ctx.workspace_id()`.
+    ///
+    /// # Returns
+    ///
+    /// A `CoreResult<StoreCtx>` containing:
+    ///
+    /// * `Ok(StoreCtx)`: If validation succeeds a StoreCtx is created from CoreCtx.
+    /// * `Err(CoreError::Auth)`: If the user is scoped and fails the validation checks.
     pub fn scope_store_workspace(
         &self,
         requested_workspace_id: Option<Uuid>,

@@ -13,8 +13,10 @@ use crate::{
                 AccountListParams, AccountUpdateParams,
             },
             list::{ListResponse, ListResponseMeta},
+            permission::PermissionCheck,
+            workspace::{Workspace, WorkspaceDescribeParams},
         },
-        services::auth::AuthValidator,
+        services::{auth::AuthValidator, workspace::WorkspaceService},
         traits::{
             list::RequestListParams,
             service::{
@@ -42,6 +44,7 @@ use crate::{
 
 pub struct AccountService<D: DbExecutor> {
     sm: Arc<StoreManager<D>>,
+    ws_svc: WorkspaceService<D>,
 }
 
 impl<D: DbExecutor> CoreModelService for AccountService<D> {
@@ -55,16 +58,53 @@ impl<D: DbExecutor> CoreModelService for AccountService<D> {
     fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
         AuthValidator::new(&ctx)
     }
+
+    async fn get_workspace(&self, ctx: &mut CoreCtx, workspace_id: Uuid) -> CoreResult<Workspace> {
+        let params = WorkspaceDescribeParams {
+            id: Some(workspace_id),
+            slug: None,
+        };
+
+        let added_perms = vec![PermissionCheck::try_from("workspace:describe")?];
+        ctx.perm_checker.extend(added_perms);
+
+        self.ws_svc.describe(ctx, params).await
+    }
+
+    async fn scope_and_validate_ctx(
+        &self,
+        ctx: &mut CoreCtx,
+        workspace_id: Uuid,
+        required_perms: &[&str],
+    ) -> CoreResult<(StoreCtx, Workspace)> {
+        let workspace = self.get_workspace(ctx, workspace_id).await?;
+
+        let auth_validator = self.validator(&ctx);
+
+        // validate permissions
+        auth_validator.validate_ctx_perms(required_perms)?;
+
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
+
+        Ok((store_ctx, workspace))
+    }
 }
 
+// TODO: URGENT NOTE
+// Account is the only table that is not workspace scoped
+// it is important that all CRUD operations are validated
+// against what accounts the requesting user is able to access
+// based on the 'membership' <-> 'account' many to many join table
+
 impl<D: DbExecutor> AccountService<D> {
-    pub fn new(sm: Arc<StoreManager<D>>) -> Self {
-        Self { sm }
+    pub fn new(sm: Arc<StoreManager<D>>, ws_svc: WorkspaceService<D>) -> Self {
+        Self { sm, ws_svc }
     }
 
     async fn get_account_id(
         &self,
-        ctx: &CoreCtx,
+        store_ctx: &StoreCtx,
         id: Option<Uuid>,
         email: Option<String>,
     ) -> CoreResult<DbId> {
@@ -72,7 +112,7 @@ impl<D: DbExecutor> AccountService<D> {
 
         let id: DbId = match (id, email) {
             (Some(id), _) => id.into(),
-            (None, Some(email)) => match store.get_by_email(&ctx.into(), &email).await? {
+            (None, Some(email)) => match store.get_by_email(store_ctx, &email).await? {
                 Some(acc) => acc.id,
                 None => {
                     return Err(CoreError::StoreError(StoreError::EntityNotFound {
@@ -94,12 +134,17 @@ impl<D: DbExecutor> AccountService<D> {
 
 impl<D: DbExecutor> CoreModelCreateService for AccountService<D> {
     type CreateParams = AccountCreateParams;
+    const CREATE_PERMISSION: &'static str = "account:create";
 
     async fn create(&self, ctx: &mut CoreCtx, params: AccountCreateParams) -> CoreResult<Account> {
         let store = self.store();
 
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::CREATE_PERMISSION])
+            .await?;
+
         if store
-            .get_by_email(&ctx.into(), &params.email)
+            .get_by_email(&store_ctx, &params.email)
             .await?
             .is_some()
         {
@@ -119,13 +164,14 @@ impl<D: DbExecutor> CoreModelCreateService for AccountService<D> {
             },
         };
 
-        let new_account = store.create(&ctx.into(), n_acc).await?;
+        let new_account = store.create(&store_ctx, n_acc).await?;
 
         Ok(new_account.into())
     }
 }
 impl<D: DbExecutor> CoreModelDescribeService for AccountService<D> {
     type DescribeParams = AccountDescribeParams;
+    const DESCRIBE_PERMISSION: &'static str = "account:describe";
 
     async fn describe(
         &self,
@@ -134,9 +180,15 @@ impl<D: DbExecutor> CoreModelDescribeService for AccountService<D> {
     ) -> CoreResult<Account> {
         let store = self.store();
 
-        let id = self.get_account_id(&ctx, params.id, params.email).await?;
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DELETE_PERMISSION])
+            .await?;
 
-        let acc: Account = store.get(&ctx.into(), &id).await?.into();
+        let id = self
+            .get_account_id(&store_ctx, params.id, params.email)
+            .await?;
+
+        let acc: Account = store.get(&store_ctx, &id).await?.into();
 
         Ok(acc)
     }
@@ -144,6 +196,7 @@ impl<D: DbExecutor> CoreModelDescribeService for AccountService<D> {
 
 impl<D: DbExecutor> CoreModelListService for AccountService<D> {
     type ListParams = AccountListParams;
+    const LIST_PERMISSION: &'static str = "account:list";
 
     async fn list(
         &self,
@@ -152,7 +205,9 @@ impl<D: DbExecutor> CoreModelListService for AccountService<D> {
     ) -> CoreResult<ListResponse<Account>> {
         let store = self.store();
 
-        let ctx: StoreCtx = ctx.into();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::LIST_PERMISSION])
+            .await?;
 
         let options = params.list_options();
 
@@ -163,9 +218,9 @@ impl<D: DbExecutor> CoreModelListService for AccountService<D> {
         // filter by tags
         if let Some(tags) = tags_filter.tags() {
             let data = store
-                .filter_by_tags_contain(&ctx, tags.clone(), Some(options.clone()))
+                .filter_by_tags_contain(&store_ctx, tags.clone(), Some(options.clone()))
                 .await?;
-            let total = store.count_by_tags_contain(&ctx, tags).await?;
+            let total = store.count_by_tags_contain(&store_ctx, tags).await?;
 
             let accounts: Vec<Account> = data.into_iter().map(|el| el.into()).collect();
             return Ok(ListResponse::new(accounts, total, options));
@@ -175,9 +230,9 @@ impl<D: DbExecutor> CoreModelListService for AccountService<D> {
         if let Some(filter) = tags_filter.filter() {
             let filter = Some(filter);
             let data = store
-                .list(&ctx, filter.clone(), Some(options.clone()))
+                .list(&store_ctx, filter.clone(), Some(options.clone()))
                 .await?;
-            let total = store.count(&ctx, filter).await?;
+            let total = store.count(&store_ctx, filter).await?;
             let accounts: Vec<Account> = data.into_iter().map(|el| el.into()).collect();
             return Ok(ListResponse::new(accounts, total, options));
         }
@@ -189,12 +244,18 @@ impl<D: DbExecutor> CoreModelListService for AccountService<D> {
 
 impl<D: DbExecutor> CoreModelUpdateService for AccountService<D> {
     type UpdateParams = AccountUpdateParams;
+    const UPDATE_PERMISSION: &'static str = "account:update";
 
     async fn update(&self, ctx: &mut CoreCtx, params: AccountUpdateParams) -> CoreResult<Account> {
         let store = self.store();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::UPDATE_PERMISSION])
+            .await?;
 
         let email = params.email.clone();
-        let id = self.get_account_id(ctx, params.id, params.email).await?;
+        let id = self
+            .get_account_id(&store_ctx, params.id, params.email)
+            .await?;
 
         // TODO: updating email constraints need to be enforced
         // if email is updated then need to set verified as false
@@ -215,7 +276,7 @@ impl<D: DbExecutor> CoreModelUpdateService for AccountService<D> {
             meta: params.meta,
         };
 
-        let updated_account = store.update(&ctx.into(), &id, update_data).await?;
+        let updated_account = store.update(&store_ctx, &id, update_data).await?;
 
         Ok(updated_account.into())
     }
@@ -223,13 +284,20 @@ impl<D: DbExecutor> CoreModelUpdateService for AccountService<D> {
 
 impl<D: DbExecutor> CoreModelDeleteService for AccountService<D> {
     type DeleteParams = AccountDeleteParams;
+    const DELETE_PERMISSION: &'static str = "account:delete";
 
     async fn delete(&self, ctx: &mut CoreCtx, params: AccountDeleteParams) -> CoreResult<Account> {
         let store = self.store();
 
-        let id = self.get_account_id(ctx, params.id, params.email).await?;
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DELETE_PERMISSION])
+            .await?;
 
-        let deleted = store.delete(&ctx.into(), &id).await?.into();
+        let id = self
+            .get_account_id(&store_ctx, params.id, params.email)
+            .await?;
+
+        let deleted = store.delete(&store_ctx, &id).await?.into();
 
         Ok(deleted)
     }
@@ -242,6 +310,9 @@ mod tests {
 
     use super::*;
     use crate::{
+        cache::{manager::CacheManager, redis::RedisChx},
+        config::Config,
+        core::services::factory::ServiceFactory,
         create_dbx_mock_unsafe,
         dev::init::init_test,
         store::{
@@ -277,10 +348,17 @@ mod tests {
             fetch_all: { Ok(vec![]) },
             execute: { Ok(1) }
         );
+        let config = Config::test_config();
 
+        // build store manager
         let dbx = Arc::new(MockDbxAccountRegister);
         let sm = Arc::new(StoreManager::new(dbx));
-        let svc = AccountService::new(sm);
+
+        // build cache manager
+        let redis_cache = Arc::new(RedisChx::new(&config.redis_url).await);
+        let cm = Arc::new(CacheManager::new(redis_cache));
+        let svc_factory = ServiceFactory::new(sm, cm);
+        let svc = svc_factory.account();
         let mut ctx = CoreCtx::new_test()?;
         let params = AccountCreateParams::default();
 
@@ -317,10 +395,18 @@ mod tests {
             },
             execute: { Ok(1) }
         );
+        let config = Config::test_config();
 
+        // build store manager
         let dbx = Arc::new(MockDbxAccountRegister);
         let sm = Arc::new(StoreManager::new(dbx));
-        let svc = AccountService::new(sm);
+
+        // build cache manager
+        let redis_cache = Arc::new(RedisChx::new(&config.redis_url).await);
+        let cm = Arc::new(CacheManager::new(redis_cache));
+        let svc_factory = ServiceFactory::new(sm, cm);
+        let svc = svc_factory.account();
+
         let mut ctx = CoreCtx::new_test()?;
         let params = AccountCreateParams::default();
         let new_acc = svc.create(&mut ctx, params).await;

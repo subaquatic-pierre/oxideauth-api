@@ -31,7 +31,7 @@ pub struct CtxLayer {
 impl CtxLayer {
     pub fn new(app_state: &App) -> Self {
         let config = CtxConfig {};
-        let ctx_svc = Arc::new(CtxService::new(app_state.svc_build.clone(), config));
+        let ctx_svc = Arc::new(CtxService::new(app_state.svc_factory.clone(), config));
         Self { ctx_svc }
     }
 }

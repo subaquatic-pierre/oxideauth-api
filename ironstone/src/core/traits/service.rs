@@ -1,8 +1,13 @@
+use uuid::Uuid;
+
 use crate::{
     core::{
-        ctx::CoreCtx, error::CoreResult, models::list::ListResponse, services::auth::AuthValidator,
+        ctx::CoreCtx,
+        error::CoreResult,
+        models::{list::ListResponse, workspace::Workspace},
+        services::auth::AuthValidator,
     },
-    store::traits::dbx::DbExecutor,
+    store::{ctx::StoreCtx, traits::dbx::DbExecutor},
 };
 
 pub trait CoreModelService {
@@ -11,10 +16,19 @@ pub trait CoreModelService {
     fn store(&self) -> &Self::ServiceStore;
 
     fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a>;
+    async fn get_workspace(&self, ctx: &mut CoreCtx, workspace_id: Uuid) -> CoreResult<Workspace>;
+
+    async fn scope_and_validate_ctx(
+        &self,
+        ctx: &mut CoreCtx,
+        workspace_id: Uuid,
+        perms: &[&str],
+    ) -> CoreResult<(StoreCtx, Workspace)>;
 }
 
 pub trait CoreModelCreateService: CoreModelService {
     type CreateParams;
+    const CREATE_PERMISSION: &'static str;
 
     async fn create(
         &self,
@@ -25,6 +39,7 @@ pub trait CoreModelCreateService: CoreModelService {
 
 pub trait CoreModelDescribeService: CoreModelService {
     type DescribeParams;
+    const DESCRIBE_PERMISSION: &'static str;
 
     async fn describe(
         &self,
@@ -35,6 +50,7 @@ pub trait CoreModelDescribeService: CoreModelService {
 
 pub trait CoreModelListService: CoreModelService {
     type ListParams;
+    const LIST_PERMISSION: &'static str;
 
     async fn list(
         &self,
@@ -45,6 +61,7 @@ pub trait CoreModelListService: CoreModelService {
 
 pub trait CoreModelUpdateService: CoreModelService {
     type UpdateParams;
+    const UPDATE_PERMISSION: &'static str;
 
     async fn update(
         &self,
@@ -55,6 +72,7 @@ pub trait CoreModelUpdateService: CoreModelService {
 
 pub trait CoreModelDeleteService: CoreModelService {
     type DeleteParams;
+    const DELETE_PERMISSION: &'static str;
 
     async fn delete(
         &self,

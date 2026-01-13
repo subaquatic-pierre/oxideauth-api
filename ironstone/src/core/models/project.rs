@@ -121,6 +121,7 @@ pub struct ProjectDeleteParams {
 }
 
 pub struct ProjectListParams {
+    pub workspace_id: Uuid,
     pub filter: Option<RequestFilterParams<ProjectFilter>>,
     pub options: Option<RequestListOptions>,
 }

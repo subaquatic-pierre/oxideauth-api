@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
     core::models::membership::Membership,
+    store::entities::token::TokenKind,
     utils::time::{format_time, now_utc},
 };
 
@@ -24,17 +26,17 @@ use crate::{
         },
     },
     store::entities::hash::Sha256Hash,
-    store::entities::token_blacklist::{
-        TokenBlacklistFilter as StoreTokenBlacklistFilter, TokenBlacklistRow,
-    },
+    store::entities::token::{TokenFilter as StoreTokenFilter, TokenRow},
 };
 
-pub type TokenBlacklistFilter = StoreTokenBlacklistFilter;
+pub type TokenFilter = StoreTokenFilter;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct TokenBlacklist {
+pub struct Token {
     pub id: Uuid,
-    pub token_hash: Sha256Hash,
+    pub hash: Sha256Hash,
+
+    pub kind: TokenKind,
 
     // Relations are optional in the blacklist context
     pub account: Option<Account>,
@@ -46,15 +48,16 @@ pub struct TokenBlacklist {
     pub audit: CoreAuditFields,
 }
 
-impl TokenBlacklist {
+impl Token {
     pub fn from_row_with_entities(
-        row: TokenBlacklistRow,
+        row: TokenRow,
         account: Option<Account>,
         workspace: Option<Workspace>,
     ) -> CoreResult<Self> {
         Ok(Self {
             id: row.id.into(),
-            token_hash: row.token_hash,
+            hash: row.hash,
+            kind: row.kind,
             account,
             workspace,
             expires_at: row.expires_at,
@@ -65,21 +68,33 @@ impl TokenBlacklist {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct TokenBlacklistCreateParams {
-    pub token_hash: Sha256Hash,
+pub struct TokenDescribeParams {
+    id: Uuid,
+    workspace_id: Uuid,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TokenDeleteParams {
+    id: Uuid,
+    workspace_id: Uuid,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TokenCreateParams {
+    pub hash: Sha256Hash,
     pub account_id: Option<Uuid>,
     pub workspace_id: Option<Uuid>,
     pub expires_at: OffsetDateTime,
     pub reason: Option<String>,
 }
 
-pub struct TokenBlacklistListParams {
-    pub filter: Option<RequestFilterParams<TokenBlacklistFilter>>,
+pub struct TokenListParams {
+    pub filter: Option<RequestFilterParams<TokenFilter>>,
     pub options: Option<RequestListOptions>,
 }
 
-impl RequestListParams<TokenBlacklistFilter> for TokenBlacklistListParams {
-    fn filter(&self) -> Option<RequestFilterParams<TokenBlacklistFilter>> {
+impl RequestListParams<TokenFilter> for TokenListParams {
+    fn filter(&self) -> Option<RequestFilterParams<TokenFilter>> {
         self.filter.clone()
     }
 
@@ -88,7 +103,7 @@ impl RequestListParams<TokenBlacklistFilter> for TokenBlacklistListParams {
     }
 }
 
-impl OpValWorkspaceId for TokenBlacklistFilter {
+impl OpValWorkspaceId for TokenFilter {
     fn get_workspace_id_opval(&self) -> Option<&OpValString> {
         self.workspace_id
             .as_ref()
@@ -96,7 +111,7 @@ impl OpValWorkspaceId for TokenBlacklistFilter {
     }
 }
 
-impl OpValAccountId for TokenBlacklistFilter {
+impl OpValAccountId for TokenFilter {
     fn get_account_id_opval(&self) -> Option<&OpValString> {
         self.account_id
             .as_ref()
@@ -104,11 +119,12 @@ impl OpValAccountId for TokenBlacklistFilter {
     }
 }
 
-impl Default for TokenBlacklist {
+impl Default for Token {
     fn default() -> Self {
         Self {
             id: Uuid::new_v4(),
-            token_hash: Sha256Hash::default(),
+            hash: Sha256Hash::default(),
+            kind: TokenKind::Auth,
             account: None,
             workspace: None,
             expires_at: OffsetDateTime::now_utc(),

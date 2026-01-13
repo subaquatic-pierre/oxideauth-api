@@ -247,7 +247,6 @@ impl<D: DbExecutor> CoreModelDeleteService for WorkspaceService<D> {
 
         let id = self.get_workspace_id(ctx, params.id, params.slug).await?;
 
-        // 2. Execute store delete (returns the ID of the deleted item)
         let deleted = store.delete(&ctx.into(), &id).await?;
 
         Ok(deleted.into())

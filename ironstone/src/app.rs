@@ -8,6 +8,8 @@ use crate::cache::manager::CacheManager;
 use crate::cache::redis::RedisChx;
 use crate::cache::traits::CacheExecutor;
 use crate::core::services::factory::ServiceFactory;
+use crate::core::services::token::TokenService;
+use crate::core::worker::WorkerManager;
 use crate::dev::init::init_dev;
 use crate::store::dbx::PgDbx;
 use crate::store::manager::StoreManager;
@@ -46,7 +48,7 @@ where
     pub chx: Arc<C>,
     pub sm: Arc<StoreManager<D>>,
     pub cm: Arc<CacheManager<C>>,
-    pub svc_build: Arc<ServiceFactory<D, C>>,
+    pub svc_factory: Arc<ServiceFactory<D, C>>,
 }
 
 pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
@@ -55,6 +57,11 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
         AppEnv::Development => {
             let config = Config::from_env();
             let db: PgPool = new_db_pool(&config.database_url, 1).await;
+
+            // TODO: add worker to app state, to manager all long running
+            // background tasks, in the future may need to use
+            // message bus, with dedicated worker services to handle scaling
+            WorkerManager::spawn_token_cleanup_worker(db.clone());
 
             let dbx = Arc::new(PgDbx::new(db.clone()));
             let sm = Arc::new(StoreManager::new(dbx.clone()));
@@ -106,7 +113,7 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
         }
     };
 
-    let svc_build = Arc::new(ServiceFactory::new(sm.clone(), cm.clone()));
+    let svc_factory = Arc::new(ServiceFactory::new(sm.clone(), cm.clone()));
 
     AppState {
         dbx: dbx.clone(),
@@ -114,7 +121,7 @@ pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
         chx,
         cm,
         sm,
-        svc_build,
+        svc_factory,
     }
 }
 

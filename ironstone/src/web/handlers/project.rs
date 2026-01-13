@@ -47,7 +47,7 @@ pub async fn describe_project(
     body: JsonReqResult<ProjectDescribeReq>,
 ) -> JsonResResult<WebResponse<ProjectDescribeRes>> {
     let Json(body) = body?;
-    let svc = app.svc_build.project();
+    let svc = app.svc_factory.project();
 
     let params: ProjectDescribeParams = body.into();
 
@@ -67,7 +67,7 @@ pub async fn list_workspaces(
     body: JsonReqResult<ProjectListReq>,
 ) -> JsonResResult<WebResponse<ProjectListRes>> {
     let Json(body) = body?;
-    let svc = app.svc_build.project();
+    let svc = app.svc_factory.project();
 
     let params: ProjectListParams = body.into();
     let res = svc.list(&mut ctx, params).await?;
@@ -92,7 +92,7 @@ pub async fn create_workspace(
     body: JsonReqResult<ProjectCreateReq>,
 ) -> JsonResResult<WebResponse<ProjectDescribeRes>> {
     let Json(body) = body?;
-    let svc = app.svc_build.project();
+    let svc = app.svc_factory.project();
 
     let params: ProjectCreateParams = body.into();
 
@@ -112,7 +112,7 @@ pub async fn update_workspace(
     body: JsonReqResult<ProjectUpdateReq>,
 ) -> JsonResResult<WebResponse<ProjectDescribeRes>> {
     let Json(body) = body?;
-    let svc = app.svc_build.project();
+    let svc = app.svc_factory.project();
 
     let params: ProjectUpdateParams = body.into();
 
@@ -132,7 +132,7 @@ pub async fn delete_workspace(
     body: JsonReqResult<ProjectDeleteReq>,
 ) -> JsonResResult<WebResponse<ProjectDeleteRes>> {
     let Json(body) = body?;
-    let svc = app.svc_build.project();
+    let svc = app.svc_factory.project();
 
     let params: ProjectDeleteParams = body.into();
 

@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use crate::store::{
     dbx::PgDbx,
-    entities::token_blacklist::{
-        TokenBlacklistFilter, TokenBlacklistForCreate, TokenBlacklistForUpdate, TokenBlacklistIden,
-        TokenBlacklistRow,
-    },
+    entities::token::{TokenFilter, TokenForCreate, TokenForUpdate, TokenIden, TokenRow},
     queries::meta::{MutateQueryMeta, ReadQueryMeta},
     traits::{
         dbx::DbExecutor,
@@ -14,13 +11,13 @@ use crate::store::{
 };
 use modql::field::HasSeaFields;
 
-/// The struct for our TokenBlacklist store, holding the database connection wrapper.
-pub struct TokenBlacklistStore<D: DbExecutor> {
+/// The struct for our Token store, holding the database connection wrapper.
+pub struct TokenStore<D: DbExecutor> {
     dbx: Arc<D>,
 }
 
-impl<D: DbExecutor> TokenBlacklistStore<D> {
-    /// Creates a new `TokenBlacklistStore`.
+impl<D: DbExecutor> TokenStore<D> {
+    /// Creates a new `TokenStore`.
     pub fn new(dbx: Arc<D>) -> Self {
         Self { dbx }
     }
@@ -28,38 +25,38 @@ impl<D: DbExecutor> TokenBlacklistStore<D> {
 
 // region:    --- Base Trait Implementations
 // -----------------------------------------------------------------------------
-// By implementing these meta traits, TokenBlacklistStore implicitly gains
+// By implementing these meta traits, TokenStore implicitly gains
 // its capabilities from the blanket implementations.
 
-impl<D: DbExecutor> Store for TokenBlacklistStore<D> {
-    type Iden = TokenBlacklistIden;
-    type Row = TokenBlacklistRow;
+impl<D: DbExecutor> Store for TokenStore<D> {
+    type Iden = TokenIden;
+    type Row = TokenRow;
 
     fn dbx(&self) -> impl DbExecutor {
         self.dbx.clone()
     }
 }
 
-impl<D: DbExecutor> ReadStore for TokenBlacklistStore<D> {
-    type FilterStoreParams = TokenBlacklistFilter;
+impl<D: DbExecutor> ReadStore for TokenStore<D> {
+    type FilterStoreParams = TokenFilter;
 
     fn read_meta(&self) -> ReadQueryMeta<Self::Iden> {
         ReadQueryMeta {
-            table: TokenBlacklistIden::Table,
-            pk: TokenBlacklistIden::Id,
+            table: TokenIden::Table,
+            pk: TokenIden::Id,
             has_audit: true,
         }
     }
 }
 
-impl<D: DbExecutor> MutateStore for TokenBlacklistStore<D> {
-    type CreateStoreParams = TokenBlacklistForCreate;
-    type UpdateStoreParams = TokenBlacklistForUpdate;
+impl<D: DbExecutor> MutateStore for TokenStore<D> {
+    type CreateStoreParams = TokenForCreate;
+    type UpdateStoreParams = TokenForUpdate;
 
     fn mutate_meta(&self) -> MutateQueryMeta<Self::Iden> {
         MutateQueryMeta {
-            table: TokenBlacklistIden::Table,
-            pk: TokenBlacklistIden::Id,
+            table: TokenIden::Table,
+            pk: TokenIden::Id,
             has_audit: true,
         }
     }
@@ -77,7 +74,7 @@ mod tests {
         dev::init::init_test,
         store::{
             ctx::StoreCtx,
-            entities::{hash::Sha256Hash, token_blacklist::TokenBlacklistForCreate},
+            entities::{hash::Sha256Hash, token::TokenForCreate},
             error::StoreError,
             traits::crud::*,
         },
@@ -94,14 +91,14 @@ mod tests {
         // -- Setup
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
-        let store = TokenBlacklistStore::new(dbx);
+        let store = TokenStore::new(dbx);
         let ctx = StoreCtx::new_root();
 
         let hash = Sha256Hash::gen_rand();
         let hash_2: Sha256Hash = Sha256Hash::new(hash.bytes().clone());
 
-        let data = TokenBlacklistForCreate {
-            token_hash: hash_2,
+        let data = TokenForCreate {
+            hash: hash_2,
             expires_at: now_utc() + Duration::days(1),
             ..Default::default()
         };
@@ -111,9 +108,9 @@ mod tests {
         let fetched_entry = store.get(&ctx, &created_entry.id).await?;
 
         // -- Assert
-        assert_eq!(created_entry.token_hash, hash);
+        assert_eq!(created_entry.hash, hash);
         assert_eq!(fetched_entry.id, created_entry.id);
-        assert_eq!(fetched_entry.token_hash, hash);
+        assert_eq!(fetched_entry.hash, hash);
 
         Ok(())
     }
@@ -124,13 +121,13 @@ mod tests {
         // -- Setup
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
-        let store = TokenBlacklistStore::new(dbx);
+        let store = TokenStore::new(dbx);
         let ctx = StoreCtx::new_root();
 
         let hash = Sha256Hash::gen_rand();
 
-        let data = TokenBlacklistForCreate {
-            token_hash: hash,
+        let data = TokenForCreate {
+            hash: hash,
             expires_at: now_utc() + Duration::days(1),
             ..Default::default()
         };
@@ -156,20 +153,20 @@ mod tests {
         // -- Setup
         let app = init_test().await;
         let dbx = app.sm.dbx().clone();
-        let store = TokenBlacklistStore::new(dbx);
+        let store = TokenStore::new(dbx);
         let ctx = StoreCtx::new_root();
 
         let hash = Sha256Hash::gen_rand();
         let hash_2: Sha256Hash = Sha256Hash::new(hash.bytes().clone());
         let entries_to_create = vec![
-            TokenBlacklistForCreate {
-                token_hash: hash_2,
+            TokenForCreate {
+                hash: hash_2,
                 expires_at: now_utc() + Duration::days(1),
                 reason: Some("REASON".to_string()),
                 ..Default::default()
             },
-            TokenBlacklistForCreate {
-                token_hash: Sha256Hash::gen_rand(),
+            TokenForCreate {
+                hash: Sha256Hash::gen_rand(),
                 expires_at: now_utc() + Duration::days(1),
                 ..Default::default()
             },
@@ -177,12 +174,13 @@ mod tests {
         store.create_many(&ctx, entries_to_create).await?;
 
         // -- Execute
-        let filter: TokenBlacklistFilter = json!({ "reason": "REASON" }).try_into()?;
+        let filter: TokenFilter = json!({ "reason": "REASON" }).try_into()?;
         let entries = store.list(&ctx, Some(filter), None).await?;
 
+        println!("{entries:#?}");
         // -- Assert
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].token_hash, hash);
+        assert_eq!(entries[0].hash, hash);
 
         Ok(())
     }

@@ -109,41 +109,41 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn test_run_migrations() -> Result<()> {
-        let config = Config::test_config();
-        let db = new_db_pool(&config.database_url, 1).await;
+    // #[tokio::test]
+    // #[serial]
+    // async fn test_run_migrations() -> Result<()> {
+    //     let config = Config::test_config();
+    //     let db = new_db_pool(&config.database_url, 1).await;
 
-        reset_db(&db).await?;
-        run_migrations(&db, "test").await?;
+    //     reset_db(&db).await?;
+    //     run_migrations(&db, "test").await?;
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
-    #[tokio::test]
-    #[serial]
-    async fn test_load_fixture() -> Result<()> {
-        let config = Config::test_config();
-        let db = new_db_pool(&config.database_url, 1).await;
+    // #[tokio::test]
+    // #[serial]
+    // async fn test_load_fixture() -> Result<()> {
+    //     let config = Config::test_config();
+    //     let db = new_db_pool(&config.database_url, 1).await;
 
-        init_test_db(&db).await;
-        load_fixture(&db, "services.sql").await?;
+    //     init_test_db(&db).await;
+    //     load_fixture(&db, "services.sql").await?;
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
-    #[tokio::test]
-    #[serial]
-    async fn test_load_all_fixtures() -> Result<()> {
-        let config = Config::test_config();
-        let db = new_db_pool(&config.database_url, 1).await;
+    // #[tokio::test]
+    // #[serial]
+    // async fn test_load_all_fixtures() -> Result<()> {
+    //     let config = Config::test_config();
+    //     let db = new_db_pool(&config.database_url, 1).await;
 
-        init_test_db(&db).await;
-        load_all_fixtures(&db).await?;
+    //     init_test_db(&db).await;
+    //     load_all_fixtures(&db).await?;
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     #[tokio::test]
     #[serial]

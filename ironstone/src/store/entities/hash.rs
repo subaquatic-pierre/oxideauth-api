@@ -1,5 +1,5 @@
 use std::{
-    fmt::Display,
+    fmt::{Debug, Display},
     ops::{Deref, DerefMut},
 };
 
@@ -21,7 +21,7 @@ use tracing::{error, warn};
 
 use crate::store::error::{StoreError, StoreResult};
 
-#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Serialize, Default)]
+#[derive(Deserialize, PartialEq, Eq, Clone, Serialize, Default)]
 pub struct Sha256Hash {
     inner: [u8; 32],
 }
@@ -30,6 +30,7 @@ impl Sha256Hash {
     pub fn new(data: [u8; 32]) -> Self {
         Self { inner: data }
     }
+
     pub fn gen_rand() -> Self {
         let mut rng = rand::thread_rng();
         let mut v = [0_u8; 32];
@@ -75,6 +76,15 @@ impl Display for Sha256Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s: String = hex::encode(**self);
         write!(f, "{s}")
+    }
+}
+
+impl Debug for Sha256Hash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_string())
+        // f.debug_struct("Sha256Hash")
+        //     .field("inner", &self.to_string())
+        //     .finish()
     }
 }
 

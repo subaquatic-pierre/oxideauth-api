@@ -54,6 +54,37 @@ impl<D: DbExecutor> CoreModelService for ProjectService<D> {
     fn validator<'a>(&self, ctx: &'a CoreCtx) -> AuthValidator<'a> {
         AuthValidator::new(&ctx)
     }
+
+    async fn get_workspace(&self, ctx: &mut CoreCtx, workspace_id: Uuid) -> CoreResult<Workspace> {
+        let params = WorkspaceDescribeParams {
+            id: Some(workspace_id),
+            slug: None,
+        };
+
+        let added_perms = vec![PermissionCheck::try_from("workspace:describe")?];
+        ctx.perm_checker.extend(added_perms);
+
+        self.ws_svc.describe(ctx, params).await
+    }
+
+    async fn scope_and_validate_ctx(
+        &self,
+        ctx: &mut CoreCtx,
+        workspace_id: Uuid,
+        required_perms: &[&str],
+    ) -> CoreResult<(StoreCtx, Workspace)> {
+        let workspace = self.get_workspace(ctx, workspace_id).await?;
+
+        let auth_validator = self.validator(&ctx);
+
+        // validate permissions
+        auth_validator.validate_ctx_perms(required_perms)?;
+
+        // scope store_ctx
+        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
+
+        Ok((store_ctx, workspace))
+    }
 }
 
 impl<D: DbExecutor> ProjectService<D> {
@@ -93,23 +124,10 @@ impl<D: DbExecutor> ProjectService<D> {
         Ok(projects)
     }
 
-    /// Fetches the required Workspace entity for hydration and confirms context validity.
-    async fn get_workspace(&self, ctx: &mut CoreCtx, workspace_id: Uuid) -> CoreResult<Workspace> {
-        let params = WorkspaceDescribeParams {
-            id: Some(workspace_id),
-            slug: None,
-        };
-
-        let added_perms = vec![PermissionCheck::try_from("workspace:describe")?];
-        ctx.perm_checker.extend(added_perms);
-
-        self.ws_svc.describe(ctx, params).await
-    }
-
     /// Resolves a Project's DbId from either Uuid or code, enforcing workspace scoping.
     async fn get_project_id(
         &self,
-        ctx: &CoreCtx,
+        store_ctx: &StoreCtx,
         id: Option<Uuid>,
         code: Option<String>,
         workspace_id: Uuid,
@@ -121,7 +139,7 @@ impl<D: DbExecutor> ProjectService<D> {
             (None, Some(code)) => {
                 // If code provided, lookup by code and ensure it's in the correct workspace
                 match store
-                    .get_by_code(&ctx.into(), &code, &workspace_id.into())
+                    .get_by_code(&store_ctx, &code, &workspace_id.into())
                     .await?
                 {
                     Some(project_row) => project_row.id,
@@ -146,23 +164,19 @@ impl<D: DbExecutor> ProjectService<D> {
 
 impl<D: DbExecutor> CoreModelCreateService for ProjectService<D> {
     type CreateParams = ProjectCreateParams;
+    const CREATE_PERMISSION: &'static str = "project:create";
 
     /// Creates a new Project, scoped to the provided workspace ID.
     async fn create(&self, ctx: &mut CoreCtx, params: ProjectCreateParams) -> CoreResult<Project> {
         let store = self.store();
-        let workspace = self.get_workspace(ctx, params.workspace_id).await?;
 
-        let auth_validator = self.validator(&ctx);
-
-        // validate permissions
-        auth_validator.validate_ctx_perms(&["project:create"])?;
-
-        // scope store_ctx
-        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::CREATE_PERMISSION])
+            .await?;
 
         if let Some(code) = &params.code {
             if store
-                .get_by_code(&ctx.into(), code, &params.workspace_id.into())
+                .get_by_code(&store_ctx, code, &params.workspace_id.into())
                 .await?
                 .is_some()
             {
@@ -183,7 +197,7 @@ impl<D: DbExecutor> CoreModelCreateService for ProjectService<D> {
             meta: params.meta,
         };
 
-        let project_row = store.create(&ctx.into(), n_project).await?;
+        let project_row = store.create(&store_ctx, n_project).await?;
 
         Project::from_row_with_workspace(project_row, workspace)
     }
@@ -191,6 +205,7 @@ impl<D: DbExecutor> CoreModelCreateService for ProjectService<D> {
 
 impl<D: DbExecutor> CoreModelDescribeService for ProjectService<D> {
     type DescribeParams = ProjectDescribeParams;
+    const DESCRIBE_PERMISSION: &'static str = "project:describe";
 
     async fn describe(
         &self,
@@ -198,18 +213,13 @@ impl<D: DbExecutor> CoreModelDescribeService for ProjectService<D> {
         params: ProjectDescribeParams,
     ) -> CoreResult<Project> {
         let store = self.store();
-        let workspace = self.get_workspace(ctx, params.workspace_id).await?;
 
-        let auth_validator = self.validator(&ctx);
-
-        // validate permissions
-        auth_validator.validate_ctx_perms(&["project:describe"])?;
-
-        // scope store_ctx
-        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DESCRIBE_PERMISSION])
+            .await?;
 
         let id_db = self
-            .get_project_id(ctx, params.id, params.code, workspace.id)
+            .get_project_id(&store_ctx, params.id, params.code, workspace.id)
             .await?;
 
         let project_row = store.get(&store_ctx, &id_db).await?;
@@ -220,6 +230,7 @@ impl<D: DbExecutor> CoreModelDescribeService for ProjectService<D> {
 
 impl<D: DbExecutor> CoreModelListService for ProjectService<D> {
     type ListParams = ProjectListParams;
+    const LIST_PERMISSION: &'static str = "project:list";
 
     async fn list(
         &self,
@@ -227,17 +238,14 @@ impl<D: DbExecutor> CoreModelListService for ProjectService<D> {
         params: ProjectListParams,
     ) -> CoreResult<ListResponse<Project>> {
         let store = self.store();
-        let auth_validator = self.validator(&ctx);
 
         // validate params
         let list_options = params.list_options();
         let tags_filter = params.validate_filter_tags()?;
 
-        // scope store_ctx
-        let store_ctx = auth_validator.scope_store_workspace(params.workspace_id())?;
-
-        // validate permissions
-        auth_validator.validate_ctx_perms(&["project:list"])?;
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::LIST_PERMISSION])
+            .await?;
 
         // filter by tags
         if let Some(tags) = tags_filter.tags() {
@@ -269,26 +277,22 @@ impl<D: DbExecutor> CoreModelListService for ProjectService<D> {
 }
 impl<D: DbExecutor> CoreModelUpdateService for ProjectService<D> {
     type UpdateParams = ProjectUpdateParams;
+    const UPDATE_PERMISSION: &'static str = "project:update";
 
     async fn update(&self, ctx: &mut CoreCtx, params: ProjectUpdateParams) -> CoreResult<Project> {
         let store = self.store();
-        let workspace = self.get_workspace(ctx, params.workspace_id).await?;
 
-        let auth_validator = self.validator(&ctx);
-
-        // validate permissions
-        auth_validator.validate_ctx_perms(&["project:update"])?;
-
-        // scope store_ctx
-        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::UPDATE_PERMISSION])
+            .await?;
 
         let id_db = self
-            .get_project_id(ctx, params.id, params.code.clone(), workspace.id)
+            .get_project_id(&store_ctx, params.id, params.code.clone(), workspace.id)
             .await?;
 
         if let Some(new_code) = &params.new_code {
             if store
-                .get_by_code(&ctx.into(), new_code, &workspace.id.into())
+                .get_by_code(&store_ctx, new_code, &workspace.id.into())
                 .await?
                 .filter(|p| p.id != id_db) // Filter out the current project
                 .is_some()
@@ -317,21 +321,17 @@ impl<D: DbExecutor> CoreModelUpdateService for ProjectService<D> {
 
 impl<D: DbExecutor> CoreModelDeleteService for ProjectService<D> {
     type DeleteParams = ProjectDeleteParams;
+    const DELETE_PERMISSION: &'static str = "project:delete";
 
     async fn delete(&self, ctx: &mut CoreCtx, params: ProjectDeleteParams) -> CoreResult<Project> {
         let store = self.store();
-        let workspace = self.get_workspace(ctx, params.workspace_id).await?;
 
-        let auth_validator = self.validator(&ctx);
-
-        // validate permissions
-        auth_validator.validate_ctx_perms(&["project:delete"])?;
-
-        // scope store_ctx
-        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DELETE_PERMISSION])
+            .await?;
 
         let id_db = self
-            .get_project_id(ctx, params.id, params.code, workspace.id)
+            .get_project_id(&store_ctx, params.id, params.code, workspace.id)
             .await?;
 
         let deleted_row = store.delete(&store_ctx, &id_db).await?;

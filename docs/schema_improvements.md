@@ -1017,24 +1017,24 @@ SQL:
 
 ### Data Integrity and Enforcement
 
-This section is for enforcing constraints on the data to ensure its validity. The `token_hash` length check is crucial for security.
+This section is for enforcing constraints on the data to ensure its validity. The `hash` length check is crucial for security.
 
 ```sql
 -- [1] Data Integrity
 -- Enforce 32 bytes for SHA-256 hash.
-ALTER TABLE token_blacklist
-  ADD CONSTRAINT token_blacklist_token_hash_len
-  CHECK (octet_length(token_hash) = 32);
+ALTER TABLE token
+  ADD CONSTRAINT token_blacklist_hash_len
+  CHECK (octet_length(hash) = 32);
 
 -- Ensure the reason field is not an empty string if it's provided.
-ALTER TABLE token_blacklist
+ALTER TABLE token
   ADD CONSTRAINT token_blacklist_reason_not_empty
   CHECK (reason IS NULL OR reason <> '');
 
 -- Check for valid JSONB objects in the meta and audit fields.
-ALTER TABLE token_blacklist
+ALTER TABLE token
   ADD CONSTRAINT token_blacklist_audit_is_object CHECK (jsonb_typeof(audit) = 'object');
-ALTER TABLE token_blacklist
+ALTER TABLE token
   ADD CONSTRAINT token_blacklist_meta_is_object CHECK (jsonb_typeof(meta) = 'object');
 ```
 
@@ -1047,12 +1047,12 @@ These indexes are optimized for the most frequent queries on this table: checkin
 -- The primary index for fast lookup of a token hash within a specific workspace.
 -- This is used for the most common check: is this token blacklisted for this user/workspace?
 CREATE INDEX IF NOT EXISTS token_blacklist_workspace_hash_idx
-  ON token_blacklist (workspace_id, token_hash);
+  ON token (workspace_id, hash);
 
 -- Index to optimize the application-level sweep function.
 -- This allows the scheduled job to quickly find and delete all expired tokens.
 CREATE INDEX IF NOT EXISTS token_blacklist_expires_at_idx
-  ON token_blacklist (expires_at);
+  ON token (expires_at);
 ```
 
 ### Security Checks (RLS & Views)
@@ -1064,16 +1064,16 @@ This provides Row-Level Security for multi-tenant isolation and a convenience vi
 -- Convenience VIEW to simplify queries for active, non-expired tokens.
 CREATE OR REPLACE VIEW token_blacklist_active AS
 SELECT *
-FROM token_blacklist
+FROM token
 WHERE
   now() < expires_at;
 
 -- Row Level Security (RLS) policies for multi-tenant isolation.
 -- 1. Enable RLS on the table.
-ALTER TABLE token_blacklist ENABLE ROW LEVEL SECURITY;
+ALTER TABLE token ENABLE ROW LEVEL SECURITY;
 
 -- 2. Define a policy to allow tenants to only see rows in their own workspace.
-CREATE POLICY token_blacklist_tenant_isolation ON token_blacklist
+CREATE POLICY token_blacklist_tenant_isolation ON token
   FOR ALL
   USING (workspace_id = current_setting('app.workspace_id', TRUE)::uuid)
   WITH CHECK (workspace_id = current_setting('app.workspace_id', TRUE)::uuid);

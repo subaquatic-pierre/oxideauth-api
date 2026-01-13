@@ -11,8 +11,7 @@ use crate::{
         services::{account::AccountService, factory::ServiceFactory, token::TokenService},
     },
     store::{
-        dbx::PgDbx, manager::StoreManager, stores::token_blacklist::TokenBlacklistStore,
-        traits::dbx::DbExecutor,
+        dbx::PgDbx, manager::StoreManager, stores::token::TokenStore, traits::dbx::DbExecutor,
     },
 };
 
@@ -23,7 +22,7 @@ where
     D: DbExecutor,
     C: CacheExecutor,
 {
-    svc_build: Arc<ServiceFactory<D, C>>,
+    svc_factory: Arc<ServiceFactory<D, C>>,
 }
 
 impl<D, C> CtxService<D, C>
@@ -31,14 +30,14 @@ where
     D: DbExecutor,
     C: CacheExecutor,
 {
-    pub fn new(svc_build: Arc<ServiceFactory<D, C>>, config: CtxConfig) -> Self {
-        Self { svc_build }
+    pub fn new(svc_factory: Arc<ServiceFactory<D, C>>, config: CtxConfig) -> Self {
+        Self { svc_factory }
     }
 
     pub async fn resolve_ctx(&self, headers: &HeaderMap) -> CoreResult<CoreCtx> {
         let token = match TokenService::<D, C>::token_str_from_headers(&headers) {
             Some(t) => {
-                let token_svc = self.svc_build.token();
+                let token_svc = self.svc_factory.token();
                 // decode token, will cause method to error if token signature or deserialization of claims fails, this means that request will return UNAUTHORIZED response. this is preferred behavior because token is on header. this means that request is malicious or has been tampered with, in which case return early
                 let token = token_svc.decode_token_str(t)?;
 
