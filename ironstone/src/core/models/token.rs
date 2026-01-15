@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::{
     core::models::membership::Membership,
-    store::entities::token::TokenKind,
+    store::entities::token::{TokenForCreate, TokenKind, TokenMeta},
     utils::time::{format_time, now_utc},
 };
 
@@ -39,8 +39,8 @@ pub struct Token {
     pub kind: TokenKind,
 
     // Relations are optional in the blacklist context
-    pub account: Option<Account>,
-    pub workspace: Option<Workspace>,
+    pub account_id: Uuid,
+    pub workspace_id: Uuid,
 
     pub expires_at: OffsetDateTime,
     pub reason: Option<String>,
@@ -48,47 +48,61 @@ pub struct Token {
     pub audit: CoreAuditFields,
 }
 
-impl Token {
-    pub fn from_row_with_entities(
-        row: TokenRow,
-        account: Option<Account>,
-        workspace: Option<Workspace>,
-    ) -> CoreResult<Self> {
-        Ok(Self {
-            id: row.id.into(),
-            hash: row.hash,
-            kind: row.kind,
-            account,
-            workspace,
-            expires_at: row.expires_at,
-            reason: row.reason,
-            audit: row.audit.into(),
-        })
+impl From<TokenRow> for Token {
+    fn from(value: TokenRow) -> Self {
+        Self {
+            id: value.id.into(),
+            hash: value.hash,
+            kind: value.kind,
+            account_id: value.account_id,
+            workspace_id: value.workspace_id,
+            expires_at: value.expires_at,
+            reason: value.reason,
+            audit: value.audit.into(),
+        }
     }
 }
 
 #[derive(Debug, Deserialize)]
 pub struct TokenDescribeParams {
-    id: Uuid,
-    workspace_id: Uuid,
+    pub id: Uuid,
+    pub workspace_id: Uuid,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct TokenDeleteParams {
-    id: Uuid,
-    workspace_id: Uuid,
+    pub id: Uuid,
+    pub workspace_id: Uuid,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct TokenCreateParams {
     pub hash: Sha256Hash,
+    pub kind: TokenKind,
     pub account_id: Option<Uuid>,
-    pub workspace_id: Option<Uuid>,
+    pub workspace_id: Uuid,
     pub expires_at: OffsetDateTime,
     pub reason: Option<String>,
 }
 
+impl From<TokenCreateParams> for TokenForCreate {
+    fn from(params: TokenCreateParams) -> Self {
+        Self {
+            hash: params.hash,
+            kind: params.kind,
+            account_id: params.account_id,
+            workspace_id: params.workspace_id,
+            expires_at: params.expires_at,
+            reason: params.reason,
+            // Defaulting system/store fields not present in simple CreateParams
+            tags: Vec::new(),
+            meta: TokenMeta::default(),
+        }
+    }
+}
+
 pub struct TokenListParams {
+    pub workspace_id: Uuid,
     pub filter: Option<RequestFilterParams<TokenFilter>>,
     pub options: Option<RequestListOptions>,
 }
@@ -125,8 +139,8 @@ impl Default for Token {
             id: Uuid::new_v4(),
             hash: Sha256Hash::default(),
             kind: TokenKind::Auth,
-            account: None,
-            workspace: None,
+            account_id: Uuid::default(),
+            workspace_id: Uuid::default(),
             expires_at: OffsetDateTime::now_utc(),
             reason: None,
             audit: CoreAuditFields::default(),

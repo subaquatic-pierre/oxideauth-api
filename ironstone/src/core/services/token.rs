@@ -1,6 +1,7 @@
 use sqlx;
 use std::{sync::Arc, time::Duration};
 use tracing::{debug, info};
+use uuid::Uuid;
 
 use axum::{
     extract::Request,
@@ -24,12 +25,21 @@ use crate::{
             },
         },
         services::{auth::AuthValidator, workspace::WorkspaceService},
-        traits::service::{
-            CoreModelCreateService, CoreModelDeleteService, CoreModelDescribeService,
-            CoreModelListService, CoreModelService,
+        traits::{
+            list::RequestListParams,
+            service::{
+                CoreModelCreateService, CoreModelDeleteService, CoreModelDescribeService,
+                CoreModelListService, CoreModelService,
+            },
         },
     },
-    store::{manager::StoreManager, stores::token::TokenStore, traits::dbx::DbExecutor, PgPool},
+    store::{
+        crud::{Create, Delete, Get, GetCount, List},
+        manager::StoreManager,
+        stores::token::TokenStore,
+        traits::dbx::DbExecutor,
+        PgPool,
+    },
     utils::time::now_utc,
 };
 
@@ -159,11 +169,17 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelCreateService<D> for TokenService
 
     async fn create(
         &self,
-        _ctx: &mut CoreCtx,
-        _params: Self::CreateParams,
+        ctx: &mut CoreCtx,
+        params: Self::CreateParams,
     ) -> CoreResult<Self::CoreModel> {
-        // TODO: Logic to generate secure token, store in DB, and optionally prime the cache
-        todo!()
+        let store = self.store();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::CREATE_PERMISSION])
+            .await?;
+
+        let res = store.create(&store_ctx, params.into()).await?;
+
+        Ok(res.into())
     }
 }
 
@@ -173,11 +189,18 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelDescribeService<D> for TokenServi
 
     async fn describe(
         &self,
-        _ctx: &mut CoreCtx,
-        _params: Self::DescribeParams,
+        ctx: &mut CoreCtx,
+        params: Self::DescribeParams,
     ) -> CoreResult<Self::CoreModel> {
-        // TODO: Logic to check CacheManager first (C), fallback to StoreManager (D)
-        todo!()
+        let store = self.store();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DESCRIBE_PERMISSION])
+            .await?;
+
+        // TODO: fetch token from cache instead
+        let res = store.get(&store_ctx, &params.id.into()).await?;
+
+        Ok(res.into())
     }
 }
 
@@ -187,11 +210,39 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelListService<D> for TokenService<D
 
     async fn list(
         &self,
-        _ctx: &mut CoreCtx,
-        _params: Self::ListParams,
+        ctx: &mut CoreCtx,
+        params: Self::ListParams,
     ) -> CoreResult<ListResponse<Self::CoreModel>> {
-        // TODO: Implement paginated list from Database
-        todo!()
+        let store = self.store();
+
+        // validate params
+        let list_options = params.list_options();
+        let tags_filter = params.validate_filter_tags()?;
+
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::LIST_PERMISSION])
+            .await?;
+
+        // filter by tags
+        if let Some(tags) = tags_filter.tags() {
+            // TODO: token store does not implement filter by list
+            return Ok(ListResponse::default());
+        }
+
+        // filter by filter
+        if let Some(filter) = tags_filter.filter() {
+            let data = store
+                .list(&store_ctx, Some(filter.clone()), Some(list_options.clone()))
+                .await?;
+            let total = store.count(&store_ctx, Some(filter)).await?;
+
+            let tokens = data.into_iter().map(|el| el.into()).collect();
+
+            return Ok(ListResponse::new(tokens, total, list_options));
+        }
+
+        // empty response
+        Ok(ListResponse::default())
     }
 }
 
@@ -201,10 +252,18 @@ impl<D: DbExecutor, C: CacheExecutor> CoreModelDeleteService<D> for TokenService
 
     async fn delete(
         &self,
-        _ctx: &mut CoreCtx,
-        _params: Self::DeleteParams,
+        ctx: &mut CoreCtx,
+        params: Self::DeleteParams,
     ) -> CoreResult<Self::CoreModel> {
-        // TODO: Remove from database and purge from cache
-        todo!()
+        let store = self.store();
+
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DELETE_PERMISSION])
+            .await?;
+
+        // TODO: purge from cache
+        let deleted_row = store.delete(&store_ctx, &params.id.into()).await?;
+
+        Ok(deleted_row.into())
     }
 }

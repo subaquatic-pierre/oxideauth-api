@@ -101,7 +101,7 @@ pub struct CredentialCreateParams {
 
 #[derive(Debug, Deserialize)]
 pub struct CredentialDescribeParams {
-    pub id: Option<Uuid>,
+    pub id: Uuid,
     pub account_id: Uuid,
     pub workspace_id: Uuid,
     pub provider_id: Option<String>,
