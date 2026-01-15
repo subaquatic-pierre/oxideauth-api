@@ -44,7 +44,6 @@ impl<D: DbExecutor> CredentialService<D> {
     pub fn new(
         sm: Arc<StoreManager<D>>,
         ws_svc: WorkspaceService<D>,
-
         acc_svc: AccountService<D>,
     ) -> Self {
         Self {

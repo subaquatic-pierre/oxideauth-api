@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    app::new_app_data,
+    app::{new_app_data, AppEnv},
     cache::redis::RedisChx,
     store::{dbx::PgDbx, init::new_db_pool},
 };
@@ -47,7 +47,7 @@ pub async fn init_test<'a>() -> &'a AppState<PgDbx, RedisChx> {
         .get_or_init(|| async {
             info!("{:<12} - init_test()", "FOR-DEV-ONLY");
 
-            let app = new_app_data().await;
+            let app = new_app_data(AppEnv::Test).await;
             init_test_db(&app.dbx.pool()).await;
 
             // init_tracing_for_tests();

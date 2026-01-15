@@ -1,4 +1,4 @@
--- migrations/10_token_blacklist.sql
+-- migrations/10_token.sql
 -- Purpose: Store blacklisted (revoked) tokens.
 -- Notes:
 --   - Store ONLY a cryptographic hash of the token (e.g., SHA-256) in hash (BYTEA).
@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS
     -- How (token kind: auth, password_reset)
     kind TEXT NOT NULL, -- 'auth','password_reset'
     -- Optional scoping for faster purges/analytics
-    account_id UUID,
-    workspace_id UUID,
+    account_id UUID NOT NULL,
+    workspace_id UUID NOT NULL,
     -- Expiry time of the token (when it naturally becomes invalid).
     expires_at TIMESTAMPTZ NOT NULL,
     -- Optional reason/context for auditing (e.g., "manual-revoke", "password-rotate").
@@ -36,17 +36,17 @@ CREATE TABLE IF NOT EXISTS
     updated_by UUID,
     updated_at TIMESTAMPTZ,
     -- Enforce 32 bytes for SHA-256 if you standardize on it (adjust if using another algo)
-    CONSTRAINT token_blacklist_hash_len CHECK (octet_length(hash) = 32),
+    CONSTRAINT token_hash_len CHECK (octet_length(hash) = 32),
     -- FKs (ON DELETE SET NULL to retain historical context)
-    CONSTRAINT token_blacklist_account_fk FOREIGN KEY (account_id) REFERENCES account (id) ON UPDATE CASCADE ON DELETE SET NULL,
-    CONSTRAINT token_blacklist_workspace_fk FOREIGN KEY (workspace_id) REFERENCES workspace (id) ON UPDATE CASCADE ON DELETE SET NULL
+    CONSTRAINT token_account_fk FOREIGN KEY (account_id) REFERENCES account (id) ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT token_workspace_fk FOREIGN KEY (workspace_id) REFERENCES workspace (id) ON UPDATE CASCADE ON DELETE SET NULL
   );
 
 -- Disallow duplicate entries for the exact same token hash.
 -- If you want to allow multiple records (e.g., different reasons), drop this.
-CREATE UNIQUE INDEX IF NOT EXISTS token_blacklist_hash_key ON token (hash);
+CREATE UNIQUE INDEX IF NOT EXISTS token_hash_key ON token (hash);
 
 -- Speed up expiry sweeps.
-CREATE INDEX IF NOT EXISTS token_blacklist_expires_at_idx ON token (expires_at);
+CREATE INDEX IF NOT EXISTS token_expires_at_idx ON token (expires_at);
 
-CREATE INDEX IF NOT EXISTS token_blacklist_workspace_hash_idx ON token (workspace_id, hash);
+CREATE INDEX IF NOT EXISTS token_workspace_hash_idx ON token (workspace_id, hash);

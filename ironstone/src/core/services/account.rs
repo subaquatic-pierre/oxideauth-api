@@ -304,7 +304,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_create_account_success() -> CoreResult<()> {
+    async fn test_create_account_mock_success() -> CoreResult<()> {
         create_dbx_mock_unsafe!(
             MockDbxAccountRegister,
             fetch_one: {
@@ -345,7 +345,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_create_account_error() -> CoreResult<()> {
+    async fn test_create_account_mock_error() -> CoreResult<()> {
         create_dbx_mock_unsafe!(
             MockDbxAccountRegister,
             fetch_one: {

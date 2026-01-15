@@ -20,7 +20,7 @@ mod web;
 
 use app::new_app_data;
 
-use crate::web::router::AppRouter;
+use crate::{app::AppEnv, web::router::AppRouter};
 
 #[tokio::main]
 async fn main() {
@@ -31,7 +31,8 @@ async fn main() {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let app = new_app_data().await;
+    let app_env = AppEnv::from_env();
+    let app = new_app_data(app_env).await;
 
     // Define the address to run the server on.
     let bind_addr = format!("{}:{}", app.config.host, app.config.port);

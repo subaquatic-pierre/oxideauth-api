@@ -51,8 +51,7 @@ where
     pub svc_factory: Arc<ServiceFactory<D, C>>,
 }
 
-pub async fn new_app_data() -> AppState<PgDbx, RedisChx> {
-    let app_env = AppEnv::from_env();
+pub async fn new_app_data(app_env: AppEnv) -> AppState<PgDbx, RedisChx> {
     let (sm, cm, dbx, chx, config) = match app_env {
         AppEnv::Development => {
             let config = Config::from_env();

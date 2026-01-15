@@ -70,7 +70,7 @@ impl Nullable for TokenKind {
 #[derive(Debug, Fields)]
 pub struct TokenForCreate {
     pub hash: Sha256Hash,
-    pub account_id: Option<Uuid>,
+    pub account_id: Uuid,
     pub kind: TokenKind,
     pub workspace_id: Uuid,
     pub expires_at: OffsetDateTime,
@@ -150,7 +150,7 @@ impl Default for TokenForCreate {
     fn default() -> Self {
         Self {
             hash: Sha256Hash::gen_rand(),
-            account_id: None,
+            account_id: Uuid::default(),
             kind: TokenKind::Auth,
             workspace_id: Uuid::default(),
             expires_at: OffsetDateTime::now_utc(),

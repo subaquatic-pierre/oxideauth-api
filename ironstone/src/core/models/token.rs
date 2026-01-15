@@ -79,7 +79,7 @@ pub struct TokenDeleteParams {
 pub struct TokenCreateParams {
     pub hash: Sha256Hash,
     pub kind: TokenKind,
-    pub account_id: Option<Uuid>,
+    pub account_id: Uuid,
     pub workspace_id: Uuid,
     pub expires_at: OffsetDateTime,
     pub reason: Option<String>,

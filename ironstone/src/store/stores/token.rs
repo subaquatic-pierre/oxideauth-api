@@ -69,9 +69,15 @@ impl<D: DbExecutor> MutateStore for TokenStore<D> {
 // -----------------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
     use crate::{
-        dev::init::init_test,
+        core::models::workspace,
+        dev::{
+            fixtures::{global_ws_id, root_user_id},
+            init::init_test,
+        },
         store::{
             ctx::StoreCtx,
             entities::{hash::Sha256Hash, token::TokenForCreate},
@@ -84,6 +90,7 @@ mod tests {
     use serde_json::json;
     use serial_test::serial;
     use time::Duration;
+    use uuid::Uuid;
 
     #[tokio::test]
     #[serial]
@@ -100,6 +107,8 @@ mod tests {
         let data = TokenForCreate {
             hash: hash_2,
             expires_at: now_utc() + Duration::days(1),
+            workspace_id: global_ws_id(),
+            account_id: root_user_id(),
             ..Default::default()
         };
 
@@ -129,6 +138,8 @@ mod tests {
         let data = TokenForCreate {
             hash: hash,
             expires_at: now_utc() + Duration::days(1),
+            workspace_id: global_ws_id(),
+            account_id: root_user_id(),
             ..Default::default()
         };
         let created_entry = store.create(&ctx, data).await?;
@@ -163,11 +174,15 @@ mod tests {
                 hash: hash_2,
                 expires_at: now_utc() + Duration::days(1),
                 reason: Some("REASON".to_string()),
+                account_id: root_user_id(),
+                workspace_id: global_ws_id(),
                 ..Default::default()
             },
             TokenForCreate {
                 hash: Sha256Hash::gen_rand(),
                 expires_at: now_utc() + Duration::days(1),
+                workspace_id: global_ws_id(),
+                account_id: root_user_id(),
                 ..Default::default()
             },
         ];
