@@ -6,6 +6,7 @@ use crate::{
     core::services::{
         account::AccountService,
         auth::AuthService,
+        credential::CredentialService,
         membership::MembershipService,
         permission::PermissionService,
         project::ProjectService,
@@ -67,6 +68,11 @@ where
             self.account(),
             self.role(),
         );
+        svc
+    }
+
+    pub fn credential(&self) -> CredentialService<D> {
+        let svc = CredentialService::new(self.sm.clone(), self.workspace(), self.account());
         svc
     }
 

@@ -107,6 +107,8 @@ impl<D: DbExecutor, C: CacheExecutor> MembershipService<D, C> {
         workspace_id: Uuid,
     ) -> CoreResult<Account> {
         // Hydrate related Account and Workspace
+        let added_perms = vec![PermissionCheck::try_from("account:describe")?];
+        ctx.perm_checker.extend(added_perms);
         let account = self
             .acc_svc
             .describe(

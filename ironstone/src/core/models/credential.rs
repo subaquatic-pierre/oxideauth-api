@@ -18,8 +18,9 @@ use crate::{
         },
     },
     store::entities::credential::{
-        CredentialFilter as StoreCredentialFilter, CredentialKind,
-        CredentialMeta as StoreCredentialMeta, CredentialProvider, CredentialRow, CredentialStatus,
+        CredentialFilter as StoreCredentialFilter, CredentialForCreate, CredentialForUpdate,
+        CredentialKind, CredentialMeta as StoreCredentialMeta, CredentialProvider, CredentialRow,
+        CredentialStatus,
     },
 };
 
@@ -47,6 +48,26 @@ pub struct Credential {
     pub meta: CredentialMeta,
 
     pub audit: CoreAuditFields,
+}
+
+impl Default for Credential {
+    fn default() -> Self {
+        Self {
+            id: Default::default(),
+            account: Default::default(),
+            workspace: Default::default(),
+            kind: CredentialKind::Password,
+            provider: CredentialProvider::Local,
+            status: CredentialStatus::Pending,
+            provider_id: Default::default(),
+            email: Default::default(),
+            secret: Default::default(),
+            last_used_at: Default::default(),
+            tags: Default::default(),
+            meta: Default::default(),
+            audit: Default::default(),
+        }
+    }
 }
 
 impl Credential {
@@ -84,7 +105,7 @@ impl Credential {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct CredentialCreateParams {
     pub account_id: Uuid,
     pub workspace_id: Uuid,
@@ -97,6 +118,24 @@ pub struct CredentialCreateParams {
     pub last_used_at: Option<OffsetDateTime>,
     pub tags: Vec<String>,
     pub meta: CredentialMeta,
+}
+
+impl From<CredentialCreateParams> for CredentialForCreate {
+    fn from(params: CredentialCreateParams) -> Self {
+        Self {
+            kind: params.kind,
+            provider: params.provider,
+            status: params.status,
+            account_id: params.account_id,
+            workspace_id: params.workspace_id,
+            provider_id: params.provider_id,
+            email: params.email,
+            secret: params.secret,
+            last_used_at: params.last_used_at,
+            tags: params.tags,
+            meta: params.meta,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -114,9 +153,9 @@ impl CredentialDescribeParams {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct CredentialUpdateParams {
-    pub id: Option<Uuid>,
+    pub id: Uuid,
     pub provider_id: Option<String>,
     pub email: Option<String>,
 
@@ -134,9 +173,25 @@ pub struct CredentialUpdateParams {
     pub meta: Option<CredentialMeta>,
 }
 
+impl From<CredentialUpdateParams> for CredentialForUpdate {
+    fn from(params: CredentialUpdateParams) -> Self {
+        Self {
+            kind: params.kind,
+            provider: params.provider,
+            status: params.status,
+            provider_id: params.new_provider_id,
+            email: params.new_email,
+            secret: params.secret,
+            last_used_at: params.last_used_at,
+            tags: params.tags,
+            meta: params.meta,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CredentialDeleteParams {
-    pub id: Option<Uuid>,
+    pub id: Uuid,
     pub account_id: Uuid,
     pub workspace_id: Uuid,
     pub provider_id: Option<String>,
@@ -144,6 +199,7 @@ pub struct CredentialDeleteParams {
 }
 
 pub struct CredentialListParams {
+    pub workspace_id: Uuid,
     pub filter: Option<RequestFilterParams<CredentialFilter>>,
     pub options: Option<RequestListOptions>,
 }

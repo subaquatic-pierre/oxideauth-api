@@ -1,35 +1,122 @@
-use crate::core::{
-    ctx::CoreCtx,
-    error::CoreResult,
-    models::{
-        credential::{
-            Credential, CredentialCreateParams, CredentialDeleteParams, CredentialDescribeParams,
-            CredentialListParams, CredentialUpdateParams,
+use uuid::Uuid;
+
+use crate::{
+    core::models::{permission::PermissionCheck, workspace::Workspace},
+    store::{
+        entities::credential::{CredentialForCreate, CredentialForUpdate, CredentialRow},
+        manager::StoreManager,
+        stores::credential::CredentialStore,
+        traits::{crud::*, dbx::DbExecutor},
+    },
+};
+use crate::{
+    core::{
+        ctx::CoreCtx,
+        error::CoreResult,
+        models::{
+            account::{Account, AccountDescribeParams},
+            credential::{
+                Credential, CredentialCreateParams, CredentialDeleteParams,
+                CredentialDescribeParams, CredentialListParams, CredentialUpdateParams,
+            },
+            list::ListResponse,
         },
-        list::ListResponse,
+        services::{account::AccountService, auth::AuthValidator, workspace::WorkspaceService},
+        traits::{
+            list::RequestListParams,
+            service::{
+                CoreModelCreateService, CoreModelDeleteService, CoreModelDescribeService,
+                CoreModelListService, CoreModelService, CoreModelUpdateService,
+            },
+        },
     },
-    services::{account::AccountService, auth::AuthValidator, workspace::WorkspaceService},
-    traits::service::{
-        CoreModelCreateService, CoreModelDeleteService, CoreModelDescribeService,
-        CoreModelListService, CoreModelService, CoreModelUpdateService,
-    },
+    store::contains::FilterByContains,
 };
-use crate::store::{
-    entities::credential::{CredentialForCreate, CredentialForUpdate},
-    manager::StoreManager,
-    stores::credential::CredentialStore,
-    traits::{crud::*, dbx::DbExecutor},
-};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 pub struct CredentialService<D: DbExecutor> {
     sm: Arc<StoreManager<D>>,
     ws_svc: WorkspaceService<D>,
+    acc_svc: AccountService<D>,
 }
 
 impl<D: DbExecutor> CredentialService<D> {
-    pub fn new(sm: Arc<StoreManager<D>>, ws_svc: WorkspaceService<D>) -> Self {
-        Self { sm, ws_svc }
+    pub fn new(
+        sm: Arc<StoreManager<D>>,
+        ws_svc: WorkspaceService<D>,
+
+        acc_svc: AccountService<D>,
+    ) -> Self {
+        Self {
+            sm,
+            ws_svc,
+            acc_svc,
+        }
+    }
+
+    async fn get_account(
+        &self,
+        ctx: &mut CoreCtx,
+        id: Uuid,
+        workspace_id: Uuid,
+    ) -> CoreResult<Account> {
+        let added_perms = vec![PermissionCheck::try_from("account:describe")?];
+        ctx.perm_checker.extend(added_perms);
+
+        let account = self
+            .acc_svc
+            .describe(
+                ctx,
+                AccountDescribeParams {
+                    workspace_id,
+                    email: None,
+                    id: Some(id),
+                },
+            )
+            .await?;
+        Ok(account)
+    }
+
+    async fn hydrate_credentials(
+        &self,
+        ctx: &mut CoreCtx,
+        rows: Vec<CredentialRow>,
+    ) -> CoreResult<Vec<Credential>> {
+        let mut workspaces: HashMap<Uuid, Workspace> = HashMap::new();
+        let mut accounts: HashMap<Uuid, Account> = HashMap::new();
+
+        let mut credentials: Vec<Credential> = Vec::with_capacity(rows.len());
+
+        // // Hydrate results
+        for row in rows.into_iter() {
+            let workspace_id: Uuid = row.workspace_id.into();
+            let workspace = match workspaces.get(&workspace_id) {
+                Some(ws) => ws,
+                None => {
+                    let ws = self.get_workspace(ctx, workspace_id).await?;
+                    let ws_id = ws.id;
+                    workspaces.insert(ws_id, ws);
+                    // SAFETY: can unwrap as insert occurs directly above
+                    workspaces.get(&ws_id).unwrap()
+                }
+            };
+            let account_id: Uuid = row.account_id.into();
+            let account = match accounts.get(&account_id) {
+                Some(acc) => acc,
+                None => {
+                    let acc = self.get_account(ctx, account_id, workspace_id).await?;
+                    let acc_id = acc.id;
+                    accounts.insert(acc_id, acc);
+                    // SAFETY: can unwrap as insert occurs directly above
+                    accounts.get(&acc_id).unwrap()
+                }
+            };
+            let project =
+                Credential::from_row_with_entities(row, account.clone(), workspace.clone())?;
+            credentials.push(project);
+        }
+
+        Ok(credentials)
     }
 }
 
@@ -57,37 +144,28 @@ impl<D: DbExecutor> CoreModelCreateService<D> for CredentialService<D> {
         ctx: &mut CoreCtx,
         params: Self::CreateParams,
     ) -> CoreResult<Self::CoreModel> {
-        // let store = self.store();
+        let store = self.store();
 
-        // let for_create = CredentialForCreate {
-        //     account_id: params.account_id,
-        //     workspace_id: params.workspace_id,
-        //     kind: params.kind,
-        //     provider: params.provider,
-        //     status: params.status,
-        //     provider_id: params.provider_id,
-        //     email: params.email,
-        //     secret: params.secret,
-        //     last_used_at: params.last_used_at,
-        //     tags: params.tags,
-        //     meta: params.meta,
-        // };
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::CREATE_PERMISSION])
+            .await?;
 
-        // let row = store.create(&ctx.into(), for_create).await?;
+        let for_create: CredentialForCreate = params.clone().into();
+
+        let row = store.create(&store_ctx, for_create).await?;
 
         // // Use describe to return fully hydrated model
-        // self.describe(
-        //     ctx,
-        //     CredentialDescribeParams {
-        //         id: Some(row.id.into()),
-        //         account_id: params.account_id,
-        //         workspace_id: params.workspace_id,
-        //         provider_id: None,
-        //         email: None,
-        //     },
-        // )
-        // .await
-        todo!()
+        self.describe(
+            ctx,
+            CredentialDescribeParams {
+                id: row.id.into(),
+                account_id: params.account_id,
+                workspace_id: params.workspace_id,
+                provider_id: None,
+                email: None,
+            },
+        )
+        .await
     }
 }
 
@@ -101,23 +179,22 @@ impl<D: DbExecutor> CoreModelDescribeService<D> for CredentialService<D> {
         ctx: &mut CoreCtx,
         params: Self::DescribeParams,
     ) -> CoreResult<Self::CoreModel> {
-        // let store = self.store();
+        let store = self.store();
 
-        // // 1. Resolve ID and fetch row
-        // // Note: Real implementation would handle lookup by email/provider_id if id is None
-        // let db_id: DbId = params.id.expect("ID required for boilerplate").into();
-        // let row = store.get(&ctx.into(), &db_id).await?;
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DESCRIBE_PERMISSION])
+            .await?;
 
-        // // 2. Hydrate related entities via Services
-        // let account_svc = AccountService::new(self.sm.clone());
-        // let workspace_svc = WorkspaceService::new(self.sm.clone());
+        let row = store.get(&store_ctx, &params.id.into()).await?;
 
-        // let account = account_svc.describe(ctx, row.account_id.into()).await?;
-        // let workspace = workspace_svc.describe(ctx, row.workspace_id.into()).await?;
+        let acc = self
+            .get_account(ctx, params.account_id, params.workspace_id)
+            .await?;
+        let ws = self.get_workspace(ctx, params.workspace_id).await?;
 
-        // // 3. Construct Core Model
-        // Credential::from_row_with_entities(row, account, workspace)
-        todo!()
+        let credential = Credential::from_row_with_entities(row, acc, ws)?;
+
+        Ok(credential)
     }
 }
 
@@ -131,37 +208,39 @@ impl<D: DbExecutor> CoreModelListService<D> for CredentialService<D> {
         ctx: &mut CoreCtx,
         params: Self::ListParams,
     ) -> CoreResult<ListResponse<Self::CoreModel>> {
-        // let store = self.store();
-        // let options = params.list_options();
-        // let filter = params.filter.map(|f| f.0);
+        let store = self.store();
 
-        // let rows = store
-        //     .list(&ctx.into(), filter, Some(options.clone()))
-        //     .await?;
-        // let total = store.count(&ctx.into(), None).await?; // Simplified
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::LIST_PERMISSION])
+            .await?;
+        // validate params
+        let list_options = params.list_options();
+        let tags_filter = params.validate_filter_tags()?;
 
-        // let mut credentials = Vec::new();
-        // for row in rows {
-        //     // Hydrate each for the list response
-        //     if let Ok(c) = self
-        //         .describe(
-        //             ctx,
-        //             CredentialDescribeParams {
-        //                 id: Some(row.id.into()),
-        //                 account_id: row.account_id.into(),
-        //                 workspace_id: row.workspace_id.into(),
-        //                 provider_id: None,
-        //                 email: None,
-        //             },
-        //         )
-        //         .await
-        //     {
-        //         credentials.push(c);
-        //     }
-        // }
+        if let Some(tags) = tags_filter.tags() {
+            let data = store
+                .filter_by_tags_contain(&store_ctx, tags.clone(), Some(list_options.clone()))
+                .await?;
+            let total = store.count_by_tags_contain(&store_ctx, tags).await?;
 
-        // Ok(ListResponse::new(credentials, total, options))
-        todo!()
+            let projects = self.hydrate_credentials(ctx, data).await?;
+
+            return Ok(ListResponse::new(projects, total, list_options));
+        }
+
+        if let Some(filter) = tags_filter.filter() {
+            let data = store
+                .list(&store_ctx, Some(filter.clone()), Some(list_options.clone()))
+                .await?;
+            let total = store.count(&store_ctx, Some(filter)).await?;
+
+            let projects = self.hydrate_credentials(ctx, data).await?;
+
+            return Ok(ListResponse::new(projects, total, list_options));
+        }
+
+        // empty response
+        Ok(ListResponse::default())
     }
 }
 
@@ -175,35 +254,28 @@ impl<D: DbExecutor> CoreModelUpdateService<D> for CredentialService<D> {
         ctx: &mut CoreCtx,
         params: Self::UpdateParams,
     ) -> CoreResult<Self::CoreModel> {
-        //     let store = self.store();
-        //     let db_id: DbId = params.id.expect("ID required for update").into();
+        let store = self.store();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::UPDATE_PERMISSION])
+            .await?;
 
-        //     let for_update = CredentialForUpdate {
-        //         kind: params.kind,
-        //         provider: params.provider,
-        //         status: params.status,
-        //         provider_id: params.new_provider_id,
-        //         email: params.new_email,
-        //         secret: params.secret,
-        //         last_used_at: params.last_used_at,
-        //         tags: params.tags,
-        //         meta: params.meta,
-        //     };
+        let for_update: CredentialForUpdate = params.clone().into();
 
-        //     store.update(&ctx.into(), &db_id, for_update).await?;
+        store
+            .update(&store_ctx, &params.id.into(), for_update)
+            .await?;
 
-        //     self.describe(
-        //         ctx,
-        //         CredentialDescribeParams {
-        //             id: Some(db_id.into()),
-        //             account_id: params.account_id,
-        //             workspace_id: params.workspace_id,
-        //             provider_id: None,
-        //             email: None,
-        //         },
-        //     )
-        //     .await
-        todo!()
+        self.describe(
+            ctx,
+            CredentialDescribeParams {
+                id: params.id,
+                account_id: params.account_id,
+                workspace_id: params.workspace_id,
+                provider_id: None,
+                email: None,
+            },
+        )
+        .await
     }
 }
 
@@ -217,25 +289,26 @@ impl<D: DbExecutor> CoreModelDeleteService<D> for CredentialService<D> {
         ctx: &mut CoreCtx,
         params: Self::DeleteParams,
     ) -> CoreResult<Self::CoreModel> {
-        // let store = self.store();
-        // let db_id: DbId = params.id.expect("ID required for delete").into();
+        let store = self.store();
+        let (store_ctx, workspace) = self
+            .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::DELETE_PERMISSION])
+            .await?;
 
-        // let entity = self
-        //     .describe(
-        //         ctx,
-        //         CredentialDescribeParams {
-        //             id: Some(db_id.into()),
-        //             account_id: params.account_id,
-        //             workspace_id: params.workspace_id,
-        //             provider_id: None,
-        //             email: None,
-        //         },
-        //     )
-        //     .await?;
+        let to_delete = self
+            .describe(
+                ctx,
+                CredentialDescribeParams {
+                    id: params.id,
+                    account_id: params.account_id,
+                    workspace_id: params.workspace_id,
+                    provider_id: None,
+                    email: None,
+                },
+            )
+            .await?;
 
-        // store.delete(&ctx.into(), &db_id).await?;
+        let res = store.delete(&store_ctx, &params.id.into()).await?;
 
-        // Ok(entity)
-        todo!()
+        Ok(to_delete)
     }
 }
