@@ -73,18 +73,6 @@ impl<D: DbExecutor> RoleService<D> {
         }
     }
 
-    async fn get_workspace(&self, ctx: &mut CoreCtx, workspace_id: Uuid) -> CoreResult<Workspace> {
-        let params = WorkspaceDescribeParams {
-            id: Some(workspace_id),
-            slug: None,
-        };
-
-        let added_perms = vec![PermissionCheck::try_from("workspace:describe")?];
-        ctx.perm_checker.extend(added_perms);
-
-        self.ws_svc.describe(ctx, params).await
-    }
-
     async fn role_to_ws_map(
         &self,
         ctx: &mut CoreCtx,

@@ -31,8 +31,7 @@ pub trait CoreModelService<D: DbExecutor> {
             slug: None,
         };
 
-        let added_perms = vec![PermissionCheck::try_from("workspace:describe")?];
-        ctx.perm_checker.extend(added_perms);
+        ctx.extend_perms(&["workspace:describe"])?;
 
         self.ws_svc().describe(ctx, params).await
     }
@@ -43,6 +42,8 @@ pub trait CoreModelService<D: DbExecutor> {
         workspace_id: Uuid,
         required_perms: &[&str],
     ) -> CoreResult<(StoreCtx, Workspace)> {
+        println!("CoreCtx: {ctx:?}, required permissions: {required_perms:?}");
+
         let workspace = self.get_workspace(ctx, workspace_id).await?;
 
         let auth_validator = self.validator(&ctx);

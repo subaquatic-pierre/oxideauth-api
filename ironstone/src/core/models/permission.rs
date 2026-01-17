@@ -195,6 +195,16 @@ impl PermissionCheck {
         perms
     }
 
+    pub fn perms_from_string_slice(perms: &[String]) -> CoreResult<Vec<PermissionCheck>> {
+        let mut data: Vec<PermissionCheck> = vec![];
+
+        for perm in perms {
+            data.push(PermissionCheck::try_from(perm)?);
+        }
+
+        Ok(data)
+    }
+
     fn matches_str(granted: &str, required: &str) -> bool {
         if required == "*" || granted == "*" {
             return true;
@@ -205,6 +215,14 @@ impl PermissionCheck {
         }
 
         return false;
+    }
+}
+
+impl TryFrom<&String> for PermissionCheck {
+    type Error = CoreError;
+
+    fn try_from(value: &String) -> Result<Self, Self::Error> {
+        value.as_str().try_into()
     }
 }
 
@@ -311,6 +329,21 @@ impl PermissionChecker {
         required.iter().all(|needed| self.is_allowed(needed))
     }
 
+    pub fn perms_vec(&self) -> CoreResult<Vec<PermissionCheck>> {
+        let mut data: HashSet<PermissionCheck> = HashSet::new();
+
+        for (resource, perms) in self.granted.iter() {
+            let perms_vec: Vec<String> =
+                perms.iter().map(|el| format!("{resource}:{el}")).collect();
+
+            let perms_vec = PermissionCheck::perms_from_string_slice(&perms_vec)?;
+
+            data.extend(perms_vec.into_iter());
+        }
+
+        Ok(Vec::from_iter(data.into_iter()))
+    }
+
     pub fn is_allowed(&self, required: &PermissionCheck) -> bool {
         // Check for a global resource wildcard first, e.g., "*:delete"
         if let Some(actions) = self.granted.get("*") {
@@ -378,7 +411,7 @@ mod tests {
     use anyhow::Result;
 
     #[test]
-    fn permission_try_from_valid_string() -> Result<()> {
+    fn test_permission_try_from_valid_string() -> Result<()> {
         let perm: PermissionCheck = "project:create".try_into()?;
         assert_eq!(perm.resource, "project");
         assert_eq!(perm.action, "create");
@@ -400,7 +433,7 @@ mod tests {
     }
 
     #[test]
-    fn permission_try_from_invalid_string() {
+    fn test_permission_try_from_invalid_string() {
         // No delimiter
         let result = PermissionCheck::try_from("project_create");
         assert!(result.is_err());
@@ -424,7 +457,7 @@ mod tests {
     }
 
     #[test]
-    fn permission_matches_str_logic() {
+    fn test_permission_matches_str_logic() {
         let perm = PermissionCheck {
             resource: "r".to_string(),
             action: "a".to_string(),
@@ -452,7 +485,7 @@ mod tests {
     }
 
     #[test]
-    fn permission_full_matches() -> Result<()> {
+    fn test_permission_full_matches() -> Result<()> {
         let granted_read: PermissionCheck = "project:read".try_into()?;
         let granted_all: PermissionCheck = "project:*".try_into()?;
         let granted_global: PermissionCheck = "*:read".try_into()?;
@@ -502,7 +535,7 @@ mod tests {
     }
 
     #[test]
-    fn checker_construction_and_extend() -> Result<()> {
+    fn test_checker_construction_and_extend() -> Result<()> {
         let mut checker = PermissionChecker::from_str_slice(&["project:read"])?;
 
         // Check initial state
@@ -527,7 +560,7 @@ mod tests {
     }
 
     #[test]
-    fn checker_is_allowed_specific_match() -> Result<()> {
+    fn test_checker_is_allowed_specific_match() -> Result<()> {
         let checker = setup_checker()?;
         let required: PermissionCheck = "project:create".try_into()?;
 
@@ -546,7 +579,7 @@ mod tests {
     }
 
     #[test]
-    fn checker_is_allowed_action_wildcard_grant() -> Result<()> {
+    fn test_checker_is_allowed_action_wildcard_grant() -> Result<()> {
         let checker = setup_checker()?;
         // Granted: account:*
         let required_delete: PermissionCheck = "account:delete".try_into()?;
@@ -559,7 +592,7 @@ mod tests {
     }
 
     #[test]
-    fn checker_is_allowed_resource_wildcard_grant() -> Result<()> {
+    fn test_checker_is_allowed_resource_wildcard_grant() -> Result<()> {
         let checker = setup_checker()?;
         // Granted: *:read
         let required_read: PermissionCheck = "workspace:read".try_into()?;
@@ -578,7 +611,7 @@ mod tests {
     }
 
     #[test]
-    fn checker_is_allowed_global_wildcard_grant() -> Result<()> {
+    fn test_checker_is_allowed_global_wildcard_grant() -> Result<()> {
         let mut checker = setup_checker()?;
         checker.extend(vec!["*".try_into()?]);
         // Granted: * (which is *:*)
@@ -598,7 +631,7 @@ mod tests {
     }
 
     #[test]
-    fn checker_is_allowed_no_match() -> Result<()> {
+    fn test_checker_is_allowed_no_match() -> Result<()> {
         let mut checker = setup_checker()?;
         // project:delete is neither granted specifically, nor covered by *:read, account:*, or project:read/create
         let required: PermissionCheck = "project:delete".try_into()?;
@@ -627,7 +660,7 @@ mod tests {
     }
 
     #[test]
-    fn checker_has_subset_check() -> Result<()> {
+    fn test_checker_has_subset_check() -> Result<()> {
         let checker = setup_checker()?;
 
         let allowed_subset = PermissionCheck::perms_from_str_slice(&[

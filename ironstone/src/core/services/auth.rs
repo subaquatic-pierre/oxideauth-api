@@ -179,3 +179,40 @@ impl<'a> AuthValidator<'a> {
         Ok(Some(requested_workspace_id))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serial_test::serial;
+
+    use crate::dev::init::init_test;
+
+    use super::*;
+
+    fn setup_checker() -> CoreResult<PermissionChecker> {
+        PermissionChecker::from_str_slice(&[
+            "project:read",
+            "project:create",
+            "account:*",
+            "*:read",
+        ])
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_validate_perms() -> CoreResult<()> {
+        let app = init_test().await;
+        let granted = setup_checker()?;
+
+        let mut ctx = CoreCtx::new_test()?;
+        ctx.extend_perms(&["account:create"])?;
+        let auth = AuthValidator::new(&ctx);
+
+        let success = auth.validate_ctx_perms(&["account:create"]);
+
+        assert!(
+            matches!(success, Ok(())),
+            "should be success on validate context"
+        );
+        Ok(())
+    }
+}

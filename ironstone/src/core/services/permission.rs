@@ -62,18 +62,6 @@ impl<D: DbExecutor> PermissionService<D> {
         Self { sm, ws_svc }
     }
 
-    async fn get_workspace(&self, ctx: &mut CoreCtx, workspace_id: Uuid) -> CoreResult<Workspace> {
-        let params = WorkspaceDescribeParams {
-            id: Some(workspace_id),
-            slug: None,
-        };
-
-        let added_perms = vec![PermissionCheck::try_from("workspace:describe")?];
-        ctx.perm_checker.extend(added_perms);
-
-        self.ws_svc.describe(ctx, params).await
-    }
-
     async fn hydrate_permissions(
         &self,
         ctx: &mut CoreCtx,

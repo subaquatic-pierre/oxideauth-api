@@ -107,6 +107,7 @@ impl<D: DbExecutor> CoreModelCreateService<D> for AccountService<D> {
 
     async fn create(&self, ctx: &mut CoreCtx, params: AccountCreateParams) -> CoreResult<Account> {
         let store = self.store();
+        // println!("CoreCtx: {ctx:?}");
 
         let (store_ctx, workspace) = self
             .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::CREATE_PERMISSION])
@@ -279,6 +280,7 @@ mod tests {
 
     use super::*;
     use crate::{
+        app::{new_app_data, AppEnv},
         cache::{manager::CacheManager, redis::RedisChx},
         config::Config,
         core::services::factory::ServiceFactory,
@@ -301,6 +303,23 @@ mod tests {
     use serde_json::json;
     use serial_test::serial;
     use uuid::Uuid;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_account_create() -> CoreResult<()> {
+        let app = init_test().await;
+        let acc_svc = app.svc_factory.account();
+        let mut ctx = CoreCtx::new_test()?;
+        ctx.extend_perms(&["account:create"])?;
+
+        let mut params = AccountCreateParams::default();
+        params.email = "new_exist@new.com".to_string();
+
+        let new_acc = acc_svc.create(&mut ctx, params).await?;
+
+        println!("{new_acc:?}");
+        Ok(())
+    }
 
     #[tokio::test]
     #[serial]
@@ -329,6 +348,8 @@ mod tests {
         let svc_factory = ServiceFactory::new(sm, cm);
         let svc = svc_factory.account();
         let mut ctx = CoreCtx::new_test()?;
+        ctx.extend_perms(&["account:create"])?;
+
         let params = AccountCreateParams::default();
 
         let new_acc = svc.create(&mut ctx, params).await?;
@@ -377,6 +398,8 @@ mod tests {
         let svc = svc_factory.account();
 
         let mut ctx = CoreCtx::new_test()?;
+        ctx.extend_perms(&["account:create"])?;
+
         let params = AccountCreateParams::default();
         let new_acc = svc.create(&mut ctx, params).await;
 

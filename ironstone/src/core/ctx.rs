@@ -1,5 +1,5 @@
-use std::ops::Deref;
 use std::str::FromStr;
+use std::{collections::HashSet, ops::Deref};
 
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -10,7 +10,7 @@ use crate::{
         models::{
             account::Account,
             membership::CachedMembership,
-            permission::PermissionChecker,
+            permission::{PermissionCheck, PermissionChecker},
             workspace::{Workspace, GLOBAL_WS_ID},
         },
     },
@@ -23,7 +23,7 @@ pub struct CoreCtx {
     pub cached_mem: CachedMembership,
     pub account: Account,
     pub workspace: Workspace,
-    pub perm_checker: PermissionChecker,
+    perm_checker: PermissionChecker,
 }
 
 impl CoreCtx {
@@ -54,24 +54,17 @@ impl CoreCtx {
         })
     }
 
-    pub fn permission_checker(&self) -> CoreResult<PermissionChecker> {
-        // 1. Convert the owned Vec<String> to a temporary Vec<&str>.
-        // This vector is owned by this function, but the references *inside* // point safely back to the String data owned by `self.cached_mem.permissions`.
-        let perms_slice_vec: Vec<&str> = self
-            .cached_mem
-            .permissions
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
+    pub fn permission_checker(&self) -> CoreResult<&PermissionChecker> {
+        Ok(&self.perm_checker)
+    }
 
-        // 2. The critical step: Call the validator with the slice reference.
-        // The lifetime of the result is tied to the lifetime of the data that
-        // `perms_slice_vec` references (the content of `self.cached_mem.permissions`, which lives as long as `self`).
-        let cached_perms = PermissionChecker::from_str_slice(perms_slice_vec.deref())?;
+    pub fn extend_perms(&mut self, perms: &[&str]) -> CoreResult<()> {
+        let new_perms: Vec<String> = perms.iter().map(|el| el.to_string()).collect();
 
-        // 3. Return the checker. The compiler knows that the references inside
-        // `cached_perms` point to data that lives as long as `self`, satisfying the `PermissionChecker<'_>` return signature.
-        Ok(cached_perms)
+        let mut new_perms: Vec<PermissionCheck> = PermissionCheck::perms_from_str_slice(perms)?;
+
+        self.perm_checker.extend(new_perms);
+        Ok(())
     }
 
     pub fn workspace_id(&self) -> Uuid {
@@ -99,5 +92,39 @@ impl From<&CoreCtx> for StoreCtx {
 impl From<&mut CoreCtx> for StoreCtx {
     fn from(ctx: &mut CoreCtx) -> Self {
         Self::new(ctx.account.id, ctx.workspace.id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serial_test::serial;
+
+    use crate::dev::init::init_test;
+
+    use super::*;
+
+    fn setup_checker() -> CoreResult<PermissionChecker> {
+        PermissionChecker::from_str_slice(&[
+            "project:read",
+            "project:create",
+            "account:*",
+            "*:read",
+        ])
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_ctx_extend() -> CoreResult<()> {
+        let mut ctx = CoreCtx::new_test()?;
+
+        let initial_perms = ctx.permission_checker()?;
+        println!("initial_perms: {initial_perms:?}");
+
+        ctx.extend_perms(&["account:create"])?;
+
+        let extended_perms = ctx.permission_checker()?;
+        println!("extended_perms: {extended_perms:?}");
+
+        Ok(())
     }
 }
