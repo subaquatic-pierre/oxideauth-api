@@ -114,6 +114,7 @@ impl From<MembershipUpdateParams> for MembershipForUpdate {
     }
 }
 
+#[derive(Default)]
 pub struct MembershipListParams {
     pub workspace_id: Uuid,
     pub filter: Option<RequestFilterParams<MembershipFilter>>,

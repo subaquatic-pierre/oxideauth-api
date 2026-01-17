@@ -434,6 +434,7 @@ mod tests {
 
     use super::*;
     use crate::{
+        app::AppState,
         cache::redis::RedisChx,
         config::Config,
         core::services::factory::ServiceFactory,
@@ -444,6 +445,7 @@ mod tests {
             entities::{
                 account::AccountRow,
                 credential::{CredentialForCreate, CredentialProvider},
+                membership::MembershipFilter,
             },
             error::StoreError,
             meta::StoreId,
@@ -457,9 +459,135 @@ mod tests {
     use serial_test::serial;
     use uuid::Uuid;
 
+    async fn setup_membership_deps<D: DbExecutor, C: CacheExecutor>(
+        app: &AppState<D, C>,
+        ctx: &mut CoreCtx,
+    ) -> CoreResult<(Uuid, Uuid)> {
+        ctx.extend_perms(&["workspace:create", "account:create", "membership:create"])?;
+
+        // 1. Create a Workspace
+        let ws = app
+            .svc_factory
+            .workspace()
+            .create(
+                ctx,
+                crate::core::models::workspace::WorkspaceCreateParams {
+                    name: "Test WS".to_string(),
+                    slug: format!("ws-{}", Uuid::new_v4()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        // 2. Create an Account
+        let acc = app
+            .svc_factory
+            .account()
+            .create(
+                ctx,
+                crate::core::models::account::AccountCreateParams {
+                    workspace_id: ws.id,
+                    email: format!("test-{}@example.com", Uuid::new_v4()),
+                    name: "Member User".to_string(),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        Ok((ws.id, acc.id))
+    }
+
     #[tokio::test]
     #[serial]
-    async fn test_create_membership_success() -> CoreResult<()> {
+    async fn test_membership_crud_lifecycle() -> CoreResult<()> {
+        let app = init_test().await;
+        let svc = app.svc_factory.membership();
+        let mut ctx = CoreCtx::new_test()?;
+
+        // Setup Workspace and Account
+        let (workspace_id, account_id) = setup_membership_deps(app, &mut ctx).await?;
+
+        // --- 1. Create ---
+        ctx.extend_perms(&["membership:create", "membership:describe"])?;
+        let params = MembershipCreateParams {
+            workspace_id,
+            account_id,
+            role_ids: vec![], // Logic currently doesn't assign these in service
+            scope: None,
+            status: None,
+            project_id: None,
+            tags: Some(vec!["pioneer".to_string()]),
+            meta: None,
+        };
+
+        let membership = svc.create(&mut ctx, params).await?;
+        assert_eq!(membership.workspace.id, workspace_id);
+        assert_eq!(membership.account.id, account_id);
+        assert!(membership
+            .tags
+            .as_ref()
+            .unwrap()
+            .contains(&"pioneer".to_string()));
+
+        // --- 2. Update ---
+        ctx.extend_perms(&["membership:update"])?;
+        let update_params = MembershipUpdateParams {
+            id: membership.id,
+            workspace_id,
+            tags: Some(vec!["veteran".to_string()]),
+            ..Default::default()
+        };
+
+        let updated = svc.update(&mut ctx, update_params).await?;
+        assert!(updated
+            .tags
+            .as_ref()
+            .unwrap()
+            .contains(&"veteran".to_string()));
+
+        // --- 3. Describe ---
+        ctx.extend_perms(&["membership:describe"])?;
+        let described = svc
+            .describe(
+                &mut ctx,
+                MembershipDescribeParams {
+                    id: membership.id,
+                    workspace_id,
+                },
+            )
+            .await?;
+        assert_eq!(described.id, membership.id);
+
+        // --- 4. List ---
+        ctx.extend_perms(&["membership:list"])?;
+        let filter: MembershipFilter = json!({ "tags": {"$contains": "veteran"} }).try_into()?;
+        let list_params = MembershipListParams {
+            workspace_id,
+            filter: Some(),
+            ..Default::default()
+        };
+        let list = svc.list(&mut ctx, list_params).await?;
+        assert_eq!(list.data.len(), 1);
+
+        // --- 5. Delete ---
+        ctx.extend_perms(&["membership:delete"])?;
+        let deleted = svc
+            .delete(
+                &mut ctx,
+                MembershipDeleteParams {
+                    id: membership.id,
+                    workspace_id,
+                },
+            )
+            .await?;
+        assert_eq!(deleted.id, membership.id);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_create_mock_membership_success() -> CoreResult<()> {
         create_dbx_mock_unsafe!(
             MockDbxAccountRegister,
             fetch_one: {
@@ -470,43 +598,6 @@ mod tests {
             },
             fetch_optional: { Ok(None) },
             fetch_all: { Ok(vec![]) },
-            execute: { Ok(1) }
-        );
-
-        let config = Config::test_config();
-
-        // build store manager
-        let dbx = Arc::new(MockDbxAccountRegister);
-        let sm = Arc::new(StoreManager::new(dbx));
-
-        // build cache manager
-        let redis_cache = Arc::new(RedisChx::new(&config.redis_url).await);
-        let cm = Arc::new(CacheManager::new(redis_cache));
-        let svc_factory = ServiceFactory::new(sm, cm);
-        let svc = svc_factory.membership();
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_create_account_error() -> CoreResult<()> {
-        create_dbx_mock_unsafe!(
-            MockDbxAccountRegister,
-            fetch_one: {
-                let acc = AccountRow::default();
-                let result = unsafe { mem::transmute_copy::<AccountRow, O>(&acc) };
-                mem::forget(acc);
-                Ok(result)
-            },
-            fetch_optional: { Ok(None) },
-            fetch_all: {
-                let mut acc = AccountRow::default();
-                acc.email = "user@user.com".to_string();
-                let result = unsafe { mem::transmute_copy::<AccountRow, O>(&acc) };
-                mem::forget(acc);
-                Ok(vec![result])
-            },
             execute: { Ok(1) }
         );
 

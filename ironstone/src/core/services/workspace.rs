@@ -239,15 +239,11 @@ impl<D: DbExecutor> CoreModelUpdateService<D> for WorkspaceService<D> {
         params: WorkspaceUpdateParams,
     ) -> CoreResult<Workspace> {
         let store = self.store();
-        ctx.extend_perms(&["workspace:describe"])?;
 
         let auth_validator = self.validator(&ctx);
 
         // validate permissions
         auth_validator.validate_ctx_perms(&[Self::UPDATE_PERMISSION])?;
-        let workspace_id = self
-            .get_workspace_id(ctx, params.id, params.slug.clone())
-            .await?;
 
         // scope store_ctx
         let store_ctx = auth_validator.scope_store_workspace(None)?;
@@ -258,7 +254,6 @@ impl<D: DbExecutor> CoreModelUpdateService<D> for WorkspaceService<D> {
 
         let config = StoreWorkspaceConfig::default();
 
-        // 2. Map Core Params to Store ForUpdate struct
         let update_data = WorkspaceForUpdate {
             name: params.name,
             slug: params.slug,
@@ -268,7 +263,6 @@ impl<D: DbExecutor> CoreModelUpdateService<D> for WorkspaceService<D> {
             meta: params.meta,
         };
 
-        // 3. Execute store update
         let res = store.update(&store_ctx, &id.into(), update_data).await?;
 
         Ok(res.into())
@@ -292,9 +286,6 @@ impl<D: DbExecutor> CoreModelDeleteService<D> for WorkspaceService<D> {
 
         // validate permissions
         auth_validator.validate_ctx_perms(&[Self::DELETE_PERMISSION])?;
-        let workspace_id = self
-            .get_workspace_id(ctx, params.id, params.slug.clone())
-            .await?;
 
         // scope store_ctx
         let store_ctx = auth_validator.scope_store_workspace(None)?;
