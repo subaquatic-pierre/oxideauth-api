@@ -313,7 +313,7 @@ mod tests {
         };
 
         // test setter method for StoreCtx
-        ctx_a.set_workspace_scope(ws_id_a);
+        ctx_a.set_workspace_scope(Some(ws_id_a));
 
         // Context 2: Scoped to ws_id_b
         let ws_id_b = Uuid::try_parse("10000000-0000-0000-0000-000000000003").unwrap();
@@ -322,7 +322,7 @@ mod tests {
             ..StoreCtx::new_root()
         };
 
-        ctx_b.set_workspace_scope(ws_id_b);
+        ctx_b.set_workspace_scope(Some(ws_id_b));
 
         // Context 3: Root (Unscoped) context
         let ctx_unscoped = StoreCtx::new_root();

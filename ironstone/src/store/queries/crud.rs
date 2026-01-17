@@ -1000,7 +1000,7 @@ mod tests {
         let enforced_ws_id = Uuid::try_parse(GLOBAL_WS_ID).unwrap();
         let user_id = Uuid::new_v4();
         let mut scoped_ctx = StoreCtx::new(user_id, enforced_ws_id);
-        scoped_ctx.set_workspace_scope(enforced_ws_id);
+        scoped_ctx.set_workspace_scope(Some(enforced_ws_id));
 
         // 2. Define the forged workspace ID in the DTO (WS_B)
         let forged_ws_id = Uuid::new_v4();

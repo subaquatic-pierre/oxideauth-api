@@ -4,6 +4,7 @@ use std::{collections::HashSet, ops::Deref};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::dev::fixtures::{global_ws_id, root_user_id};
 use crate::{
     core::{
         error::CoreResult,
@@ -20,9 +21,9 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct CoreCtx {
-    pub cached_mem: CachedMembership,
-    pub account: Account,
-    pub workspace: Workspace,
+    cached_mem: CachedMembership,
+    account: Account,
+    workspace: Workspace,
     perm_checker: PermissionChecker,
 }
 
@@ -42,20 +43,25 @@ impl CoreCtx {
     }
 
     pub fn new_test() -> CoreResult<Self> {
-        let ctx_acc = Account::default();
-        let ctx_ns = Workspace::default();
-        let cm = CachedMembership::default();
+        let mut acc = Account::default();
+        acc.id = root_user_id();
+        let mut ns = Workspace::default();
+        ns.id = global_ws_id();
+
+        let mut cm = CachedMembership::default();
+        cm.workspace_id = global_ws_id();
+
         let perm_checker = PermissionChecker::from_string_vec(cm.permissions.clone())?;
         Ok(Self {
             cached_mem: cm,
-            account: ctx_acc,
-            workspace: ctx_ns,
+            account: acc,
+            workspace: ns,
             perm_checker,
         })
     }
 
-    pub fn permission_checker(&self) -> CoreResult<&PermissionChecker> {
-        Ok(&self.perm_checker)
+    pub fn permission_checker(&self) -> &PermissionChecker {
+        &self.perm_checker
     }
 
     pub fn extend_perms(&mut self, perms: &[&str]) -> CoreResult<()> {
@@ -71,9 +77,13 @@ impl CoreCtx {
         self.cached_mem.workspace_id
     }
 
+    pub fn set_workspace_id(&mut self, ws_id: Uuid) {
+        self.cached_mem.workspace_id = ws_id;
+        self.workspace.id = ws_id;
+    }
+
     pub fn is_global_workspace(&self) -> CoreResult<bool> {
-        let global_ws_id = Uuid::try_parse(GLOBAL_WS_ID)?;
-        Ok(self.workspace.id == global_ws_id)
+        Ok(self.workspace.id == global_ws_id())
     }
 }
 
@@ -117,13 +127,15 @@ mod tests {
     async fn test_ctx_extend() -> CoreResult<()> {
         let mut ctx = CoreCtx::new_test()?;
 
-        let initial_perms = ctx.permission_checker()?;
-        println!("initial_perms: {initial_perms:?}");
+        let initial_perms = ctx.permission_checker();
 
         ctx.extend_perms(&["account:create"])?;
 
-        let extended_perms = ctx.permission_checker()?;
-        println!("extended_perms: {extended_perms:?}");
+        let checker = ctx.permission_checker();
+        let perms = PermissionCheck::perms_from_str_slice(&["account:create"])?;
+        let res = checker.has_subset(&perms);
+
+        assert_eq!(res, true, "ctx should have account:create permission");
 
         Ok(())
     }

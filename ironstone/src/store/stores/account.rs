@@ -127,16 +127,12 @@ impl<D: DbExecutor> ContainsFilterStore for AccountStore<D> {
 mod tests {
     use super::*;
     use crate::{
-        dev::init::init_test, // Your test setup helper
+        dev::init::init_test,
         store::{
             ctx::StoreCtx,
             entities::credential::{CredentialForCreate, CredentialProvider},
             error::StoreError,
-            traits::{
-                contains::FilterByContains, // Assuming this is the correct path
-                crud::*,
-                join::GetOneToMany,
-            },
+            traits::{contains::FilterByContains, crud::*, join::GetOneToMany},
         },
     };
     use anyhow::Result;

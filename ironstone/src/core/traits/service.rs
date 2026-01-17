@@ -36,14 +36,16 @@ pub trait CoreModelService<D: DbExecutor> {
         self.ws_svc().describe(ctx, params).await
     }
 
+    fn should_remove_workspace_from_store_ctx(&self) -> bool {
+        false
+    }
+
     async fn scope_and_validate_ctx(
         &self,
         ctx: &mut CoreCtx,
         workspace_id: Uuid,
         required_perms: &[&str],
     ) -> CoreResult<(StoreCtx, Workspace)> {
-        println!("CoreCtx: {ctx:?}, required permissions: {required_perms:?}");
-
         let workspace = self.get_workspace(ctx, workspace_id).await?;
 
         let auth_validator = self.validator(&ctx);
@@ -52,7 +54,11 @@ pub trait CoreModelService<D: DbExecutor> {
         auth_validator.validate_ctx_perms(required_perms)?;
 
         // scope store_ctx
-        let store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
+        let mut store_ctx = auth_validator.scope_store_workspace(Some(workspace.id))?;
+
+        if (self.should_remove_workspace_from_store_ctx()) {
+            store_ctx.set_workspace_scope(None);
+        }
 
         Ok((store_ctx, workspace))
     }

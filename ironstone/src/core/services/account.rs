@@ -58,6 +58,10 @@ impl<D: DbExecutor> CoreModelService<D> for AccountService<D> {
     fn ws_svc(&self) -> &WorkspaceService<D> {
         &self.ws_svc
     }
+
+    fn should_remove_workspace_from_store_ctx(&self) -> bool {
+        true
+    }
 }
 
 // TODO: URGENT NOTE
@@ -107,7 +111,6 @@ impl<D: DbExecutor> CoreModelCreateService<D> for AccountService<D> {
 
     async fn create(&self, ctx: &mut CoreCtx, params: AccountCreateParams) -> CoreResult<Account> {
         let store = self.store();
-        // println!("CoreCtx: {ctx:?}");
 
         let (store_ctx, workspace) = self
             .scope_and_validate_ctx(ctx, params.workspace_id, &[Self::CREATE_PERMISSION])
@@ -285,7 +288,10 @@ mod tests {
         config::Config,
         core::services::factory::ServiceFactory,
         create_dbx_mock_unsafe,
-        dev::init::init_test,
+        dev::{
+            fixtures::{global_ws_id, root_user_id},
+            init::init_test,
+        },
         store::{
             ctx::StoreCtx,
             entities::{
@@ -313,6 +319,7 @@ mod tests {
         ctx.extend_perms(&["account:create"])?;
 
         let mut params = AccountCreateParams::default();
+        params.workspace_id = global_ws_id();
         params.email = "new_exist@new.com".to_string();
 
         let new_acc = acc_svc.create(&mut ctx, params).await?;
@@ -323,7 +330,27 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_create_account_mock_success() -> CoreResult<()> {
+    async fn test_account_list() -> CoreResult<()> {
+        let app = init_test().await;
+        let acc_svc = app.svc_factory.account();
+        let mut ctx = CoreCtx::new_test()?;
+        ctx.extend_perms(&["account:list"])?;
+
+        let params = AccountListParams {
+            workspace_id: global_ws_id(),
+            filter: None,
+            options: None,
+        };
+
+        let accounts = acc_svc.list(&mut ctx, params).await?;
+
+        println!("{accounts:?}");
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_create_mock_account_success() -> CoreResult<()> {
         create_dbx_mock_unsafe!(
             MockDbxAccountRegister,
             fetch_one: {
@@ -366,7 +393,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_create_account_mock_error() -> CoreResult<()> {
+    async fn test_create_mock_account_error() -> CoreResult<()> {
         create_dbx_mock_unsafe!(
             MockDbxAccountRegister,
             fetch_one: {

@@ -452,7 +452,7 @@ mod tests {
 
         // 4. Create scoped context for WS_A
         let mut scoped_ctx = StoreCtx::new(Uuid::new_v4(), ws_a);
-        scoped_ctx.set_workspace_scope(ws_a);
+        scoped_ctx.set_workspace_scope(Some(ws_a));
 
         // Filter for the tag (which exists in both A and B), but the scope should restrict the count.
         let filter: PermissionFilter = from_value(json!({"name":{"$contains": tag}})).unwrap();
@@ -497,7 +497,7 @@ mod tests {
 
         // 3. Create scoped context for WS_ENFORCED
         let mut scoped_ctx = StoreCtx::new(Uuid::new_v4(), ws_enforced);
-        scoped_ctx.set_workspace_scope(ws_enforced);
+        scoped_ctx.set_workspace_scope(Some(ws_enforced));
 
         // 4. Filter attempts to explicitly count the other workspace (WS_Target)
         let filter: PermissionFilter =
@@ -572,7 +572,7 @@ mod tests {
 
         // 6. Create scoped context for WS_A
         let mut scoped_ctx = StoreCtx::new(Uuid::new_v4(), ws_a.id.into());
-        scoped_ctx.set_workspace_scope(ws_a.id.into());
+        scoped_ctx.set_workspace_scope(Some(ws_a.id.into()));
 
         // Act
         // This query counts permissions WHERE name = 'CHILD_A/B...' AND workspace_id = WS_A

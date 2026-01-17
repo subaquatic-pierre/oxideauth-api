@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use uuid::Uuid;
 
+#[derive(Debug)]
 pub struct StoreCtx {
     pub user_id: Uuid,
     pub ws_id: Uuid,
@@ -33,7 +34,7 @@ impl StoreCtx {
         self.workspace_scope
     }
 
-    pub fn set_workspace_scope(&mut self, id: Uuid) {
-        self.workspace_scope = Some(id);
+    pub fn set_workspace_scope(&mut self, ws: Option<Uuid>) {
+        self.workspace_scope = ws
     }
 }

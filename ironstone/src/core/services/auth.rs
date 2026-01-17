@@ -66,7 +66,7 @@ impl<'a> AuthValidator<'a> {
 
     pub fn validate_ctx_perms<'b>(&self, required: &[&str]) -> CoreResult<()> {
         let required = PermissionCheck::perms_from_str_slice(required)?;
-        let granted = self.ctx.permission_checker()?;
+        let granted = self.ctx.permission_checker();
 
         let all_required_match_granted = granted.has_subset(&required);
         if (all_required_match_granted) {
@@ -113,7 +113,7 @@ impl<'a> AuthValidator<'a> {
         let mut store_ctx: StoreCtx = ctx.into();
         // set workspace context
         if let Some(workspace_id) = self.validate_workspace(requested_workspace_id)? {
-            store_ctx.set_workspace_scope(workspace_id);
+            store_ctx.set_workspace_scope(requested_workspace_id);
         }
         Ok(store_ctx)
     }

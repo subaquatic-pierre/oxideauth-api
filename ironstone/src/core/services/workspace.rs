@@ -94,6 +94,10 @@ impl<D: DbExecutor> CoreModelService<D> for WorkspaceService<D> {
     fn ws_svc(&self) -> &WorkspaceService<D> {
         &self
     }
+
+    fn should_remove_workspace_from_store_ctx(&self) -> bool {
+        true
+    }
 }
 
 impl<D: DbExecutor> CoreModelCreateService<D> for WorkspaceService<D> {
@@ -166,7 +170,7 @@ impl<D: DbExecutor> CoreModelDescribeService<D> for WorkspaceService<D> {
         auth_validator.validate_ctx_perms(&[Self::DESCRIBE_PERMISSION])?;
 
         // scope store_ctx
-        let store_ctx = auth_validator.scope_store_workspace(Some(workspace_id))?;
+        let store_ctx = auth_validator.scope_store_workspace(None)?;
 
         let res = store.get(&store_ctx, &workspace_id.into()).await?;
 
@@ -235,17 +239,18 @@ impl<D: DbExecutor> CoreModelUpdateService<D> for WorkspaceService<D> {
         params: WorkspaceUpdateParams,
     ) -> CoreResult<Workspace> {
         let store = self.store();
+        ctx.extend_perms(&["workspace:describe"])?;
 
         let auth_validator = self.validator(&ctx);
 
         // validate permissions
-        auth_validator.validate_ctx_perms(&[Self::DESCRIBE_PERMISSION])?;
+        auth_validator.validate_ctx_perms(&[Self::UPDATE_PERMISSION])?;
         let workspace_id = self
             .get_workspace_id(ctx, params.id, params.slug.clone())
             .await?;
 
         // scope store_ctx
-        let store_ctx = auth_validator.scope_store_workspace(Some(workspace_id))?;
+        let store_ctx = auth_validator.scope_store_workspace(None)?;
 
         let id = self
             .get_workspace_id(ctx, params.id, params.slug.clone())
@@ -292,7 +297,7 @@ impl<D: DbExecutor> CoreModelDeleteService<D> for WorkspaceService<D> {
             .await?;
 
         // scope store_ctx
-        let store_ctx = auth_validator.scope_store_workspace(Some(workspace_id))?;
+        let store_ctx = auth_validator.scope_store_workspace(None)?;
 
         let id = self.get_workspace_id(ctx, params.id, params.slug).await?;
 
@@ -309,8 +314,9 @@ mod tests {
 
     use super::*;
     use crate::{
+        core::models::list::RequestFilterParams,
         create_dbx_mock_unsafe,
-        dev::init::init_test,
+        dev::{fixtures::global_ws_id, init::init_test},
         store::{
             ctx::StoreCtx,
             entities::{
@@ -328,4 +334,174 @@ mod tests {
     use serde_json::json;
     use serial_test::serial;
     use uuid::Uuid;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_workspace_describe() -> CoreResult<()> {
+        let app = init_test().await;
+        let svc = app.svc_factory.workspace();
+        let mut ctx = CoreCtx::new_test()?;
+
+        let mut params = WorkspaceDescribeParams::default();
+        params.id = Some(global_ws_id());
+
+        let err = svc.describe(&mut ctx, params.clone()).await;
+
+        ctx.extend_perms(&["workspace:describe"])?;
+
+        let ok = svc.describe(&mut ctx, params).await;
+
+        assert!(matches!(ok, Ok(..)));
+        assert!(matches!(err, Err(..)));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_workspace_create() -> CoreResult<()> {
+        let app = init_test().await;
+        let svc = app.svc_factory.workspace();
+        let mut ctx = CoreCtx::new_test()?;
+
+        let slug = format!("test-ws-{}", Uuid::new_v4());
+        let mut params = WorkspaceCreateParams::default();
+        params.slug = slug.clone();
+        params.name = "Test Workspace".to_string();
+
+        // 1. Test unauthorized (missing permission)
+        let err = svc.create(&mut ctx, params.clone()).await;
+        assert!(
+            err.is_err(),
+            "Should fail without workspace:create permission"
+        );
+
+        // 2. Test success
+        ctx.extend_perms(&["workspace:create"])?;
+        let workspace = svc.create(&mut ctx, params.clone()).await?;
+
+        assert_eq!(workspace.name, "Test Workspace");
+        assert_eq!(workspace.slug, slug);
+
+        // 3. Test duplicate slug
+        let err_dup = svc.create(&mut ctx, params).await;
+        assert!(matches!(err_dup, Err(CoreError::AlreadyExists(_))));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_workspace_list() -> CoreResult<()> {
+        let app = init_test().await;
+        let svc = app.svc_factory.workspace();
+        let mut ctx = CoreCtx::new_test()?;
+        ctx.extend_perms(&["workspace:create"])?;
+
+        let mut params = WorkspaceCreateParams::default();
+        params.name = "list-ns-a".to_string();
+        params.slug = "list-ns-a-test-a".to_string();
+        params.description = Some("LIST_BY_DESCRIPTION".to_string());
+        let workspace = svc.create(&mut ctx, params.clone()).await?;
+        params.name = "list-ns-b".to_string();
+        params.slug = "list-ns-a-test-b".to_string();
+        let workspace = svc.create(&mut ctx, params.clone()).await?;
+
+        ctx.extend_perms(&["workspace:list"])?;
+
+        let filter: WorkspaceFilter = json!({ "description": "LIST_BY_DESCRIPTION" }).try_into()?;
+        let filter = RequestFilterParams {
+            fields: Some(filter),
+            tags: None,
+        };
+        let options = ListOptions::from_limit(1);
+
+        let params = WorkspaceListParams {
+            filter: Some(filter),
+            options: Some(options),
+        };
+
+        let res = svc.list(&mut ctx, params).await?;
+
+        assert!(res.data.len() == 1);
+        assert!(res.metadata.total >= 1);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_workspace_update() -> CoreResult<()> {
+        let app = init_test().await;
+        let svc = app.svc_factory.workspace();
+        let mut ctx = CoreCtx::new_test()?;
+
+        // Setup: Create a workspace to update
+        ctx.extend_perms(&["workspace:update", "workspace:create"])?;
+        let slug = format!("update-me-{}", Uuid::new_v4());
+        let created = svc
+            .create(
+                &mut ctx,
+                WorkspaceCreateParams {
+                    name: "Original Name".to_string(),
+                    slug,
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        // Update name
+        let update_params = WorkspaceUpdateParams {
+            id: Some(created.id),
+            name: Some("Updated Name".to_string()),
+            ..Default::default()
+        };
+
+        let updated = svc.update(&mut ctx, update_params).await?;
+        assert_eq!(updated.name, "Updated Name");
+        assert_eq!(updated.id, created.id);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_workspace_delete() -> CoreResult<()> {
+        let app = init_test().await;
+        let svc = app.svc_factory.workspace();
+        let mut ctx = CoreCtx::new_test()?;
+
+        ctx.extend_perms(&["workspace:create", "workspace:delete", "workspace:describe"])?;
+
+        // Setup: Create workspace
+        let slug = format!("delete-me-{}", Uuid::new_v4());
+        let created = svc
+            .create(
+                &mut ctx,
+                WorkspaceCreateParams {
+                    name: "To Be Deleted".to_string(),
+                    slug: slug.clone(),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        // Delete
+        let delete_params = WorkspaceDeleteParams {
+            id: Some(created.id),
+            slug: None,
+        };
+        let deleted = svc.delete(&mut ctx, delete_params).await?;
+        assert_eq!(deleted.id, created.id);
+
+        // Verify it's gone
+        let desc_params = WorkspaceDescribeParams {
+            id: Some(created.id),
+            slug: None,
+        };
+        let err = svc.describe(&mut ctx, desc_params).await;
+        assert!(err.is_err());
+
+        Ok(())
+    }
 }
