@@ -6,3 +6,6 @@ db.*
 .sqlx
 test-results
 .cargo
+.sqlx
+data
+.venv
