@@ -1,6 +1,23 @@
 # OxideAuth
 
-Rust - Actix Web authorization server
+OxideAuth is a high-performance, layered **OIDC (OpenID Connect) Authentication Service** built with Rust. It provides a robust architecture for managing identities, workspaces, and accounts using a modern async stack.
+
+## 🏗 Architecture
+
+The project follows a clean, service-oriented architecture to ensure separation of concerns and testability:
+
+- **Web Layer (`/web`)**: Axum-based routing, handlers, and a custom middleware stack (CORS, Context, Tracing, Response mapping).
+- **Core Layer (`/core`)**: The business logic heart, including the `ServiceFactory`, `TokenService`, and background workers.
+- **Store Layer (`/store`)**: SQLx/PostgreSQL implementation managing persistence with specialized entity mapping.
+- **Cache Layer (`/cache`)**: Redis-backed performance layer for session and token management.
+
+## 🛠 Tech Stack
+
+- **Framework:** [Axum](https://github.com/tokio-rs/axum)
+- **Runtime:** [Tokio](https://tokio.rs/)
+- **Database:** [PostgreSQL](https://www.postgresql.org/) & [SQLx](https://github.com/launchbadge/sqlx)
+- **Caching:** [Redis](https://redis.io/)
+- **Logging:** [Tracing](https://github.com/tokio-rs/tracing) with EnvFilter
 
 ## Psql Commands
 
